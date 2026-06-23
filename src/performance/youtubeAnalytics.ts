@@ -112,21 +112,38 @@ export async function fetchYtMetrics(req: YtFetchReq, deps: { backend: YtBackend
   return backend.run(req);
 }
 
-/** refresh token → access token 교환(운영 record/live 전용). env: YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN. */
-export async function getYoutubeAccessToken(): Promise<string> {
-  const clientId = process.env.YT_OAUTH_CLIENT_ID;
-  const clientSecret = process.env.YT_OAUTH_CLIENT_SECRET;
-  const refreshToken = process.env.YT_OAUTH_REFRESH_TOKEN;
+/** OAuth env 가드(순수) — 셋 다 있으면 반환, 하나라도 없으면 throw. 테스트는 가짜 env 주입(process.env 비오염). */
+export function requireOauthEnv(env: Record<string, string | undefined> = process.env): {
+  clientId: string;
+  clientSecret: string;
+  refreshToken: string;
+} {
+  const clientId = env.YT_OAUTH_CLIENT_ID;
+  const clientSecret = env.YT_OAUTH_CLIENT_SECRET;
+  const refreshToken = env.YT_OAUTH_REFRESH_TOKEN;
   if (!clientId || !clientSecret || !refreshToken) {
     throw new Error("YouTube Analytics OAuth 미설정(YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN) — 채널 인증 1회 필요.");
   }
+  return { clientId, clientSecret, refreshToken };
+}
+
+/** OAuth 토큰 응답 파싱(순수) — access_token(비빈 string) 없으면 throw. 네트워크·비밀 무관 → 테스트 가능. */
+export function parseTokenResponse(json: unknown): string {
+  if (typeof json === "object" && json !== null) {
+    const tok = (json as { access_token?: unknown }).access_token;
+    if (typeof tok === "string" && tok.length > 0) return tok;
+  }
+  throw new Error("OAuth 응답에 access_token 없음.");
+}
+
+/** refresh token → access token 교환(운영 record/live 전용). env: YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN. */
+export async function getYoutubeAccessToken(): Promise<string> {
+  const { clientId, clientSecret, refreshToken } = requireOauthEnv();
   const res = await fetch(TOKEN_URL, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, refresh_token: refreshToken, grant_type: "refresh_token" }),
   });
   if (!res.ok) throw new Error(`OAuth 토큰 교환 실패 ${res.status}: ${(await res.text()).slice(0, 300)}`); // 응답 본문 절단
-  const json = (await res.json()) as { access_token?: string };
-  if (!json.access_token) throw new Error("OAuth 응답에 access_token 없음.");
-  return json.access_token;
+  return parseTokenResponse(await res.json());
 }
