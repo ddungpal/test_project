@@ -1,1 +1,13 @@
-{"phases": []}
+{
+  "phases": [
+    {
+      "dir": "harness-smoke",
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (smoke-add)",
+      "attempt": 1,
+      "elapsed_seconds": 120,
+      "heartbeat_at": "2026-06-23T21:42:21+0900"
+    }
+  ]
+}
