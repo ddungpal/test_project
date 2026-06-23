@@ -1,0 +1,406 @@
+# produce script — 진행 상태 (PROJECT_STATE)
+
+> 다음 세션에서 이어서 작업하기 위한 상태 파일.
+> 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
+> 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
+
+_Last updated: 2026-06-23(밤) · 단계: **구글 로그인·촉이 수준별 주제(V1) 완료·푸쉬. 다음 재개점=썸네일(스타일 일치 + A/B 학습) — 설계 합의됨, 구현 미착수. tsc0/vitest130. 브랜치 `feat/phase3-dashboard`. migration 17~21 적용.**_
+
+## ▶▶ 다음 재개점 — 썸네일 (스타일 일치 + A/B/C 학습) — 설계 합의·구현 미착수
+**사용자 지적**: ①생성 썸네일이 김짠부 실제 스타일과 안 닮음(현 캔버스=초안) ②A/B/C 성과로 어떤 썸네일이 좋았는지 학습하는 경로가 없음.
+**코드 현황(검토 완료)**: 훅이(`hook_maker/prepare.ts`)는 과거 '제목'만 레퍼런스(썸네일 디자인 레퍼런스 없음)·출력은 layout텍스트+copy뿐. ThumbnailCanvas=검정+노랑+카피 '초안'(실사진 없음). A/B 인프라(`ab_variants`[thumbnail]·`abVerdict.judgeComponent`·회고 `buildAbSummaries`)는 **존재**하나, **`style_profiles`(thumbnail_copy·patterns jsonb)+`profile_training_sources`는 테이블만 있고 앱코드 미사용(미구현)** + **썸네일 A/B CTR 입력 경로 없음**(YouTube Analytics는 변형별 CTR 미제공→Studio "테스트 및 비교"=수동). **공통 빠진 조각=style_profiles가 비어있음**(= 김짠부 썸네일 스타일의 집).
+**합의 설계**:
+- **문제1(스타일)**: ①스타일 추출(김짠부 실제 썸네일 패턴→`style_profiles(thumbnail_copy)` 1회 추출, tone_extractor처럼)+훅이 prepare가 주입(제목만→썸네일까지). 선결: 김짠부 과거 썸네일 데이터(`contents.thumbnail_url` 컬럼 있음→YouTube 수집/라벨). ②캔버스→**HTML/CSS 템플릿**(인물 슬롯+카피 자동배치, 이미지생성모델은 한글·인물일관성 약점→후순위).
+- **문제2(A/B 학습 루프)**: 빠진 조각 딱 2개 — ①**썸네일 A/B 입력 UI/스크립트**(ingest.ts·ab_variants 이미 받음) ②**style_profiles 가중 학습 writer**(decisive/marginal A/B→이긴 패턴 weight=ctr/Σctr로 patterns 갱신+profile_training_sources 출처링크, tech.md §13.2). 판정·회고·환류 골격은 존재. 사람 승인 게이트(과적합 방지).
+**추천 단계**: 0)데이터 확보(썸네일 URL 수집+A/B CTR 수동입력 UI) → 1)style_profile 추출+훅이 주입(스타일 즉시개선) → 2)캔버스 템플릿화 → 3)A/B→style_profiles 가중학습(루프 닫기).
+**정할 것**: ①시각방식(템플릿 추천/이미지생성/초안유지) ②A/B 출처(수동입력 시작 OK?) ③시작범위(1단계부터/3단계까지). (구현은 max·joy·esther 팀 병렬 가능: esther=템플릿/캔버스, max=학습 배선)
+
+## 📜 세션 로그 (2026-06-23) — 전부 푸쉬됨(feat/phase3-dashboard)
+- `77f41f9` 골든 A/B(OpenAI 백엔드+하니스) · `05d29fc` 셜록셀 재구성+overview.html · `477e555` 짠펜 opus 채택
+- `21ed2f3` 구글 로그인(OAuth)+이메일 제거 · `26c676b`/`ff01568` 유저테스트 체크리스트(편집형·0·1 고정)
+- `ef76e72` 촉이 수준별 주제(V1·토글) · `9c4a31c`/`f8f6c5e` 3-에이전트 팀 하네스(Max·Joy·Esther)
+- 라이브 검증: 구글 로그인 성공 / 촉이 'ETF 배당' 4수준(입문·초급·중급·고급) 정확 생성 / 셜록셀 새 순서 관통
+- 사용자 액션 완료: 구글 OAuth(Google Console+Supabase provider 활성·google:true) · DEV_OWNER_BYPASS=0 · 로컬 서버 2개 기동(검증됨). credentials/google-oauth.md(gitignore)에 OAuth 자격 보관.
+
+## ✅ 완료 — 셜록 셀 재구성 + 전체흐름 시각화 (2026-06-23) — 미커밋
+**사용자 지적(셈이의 grounding gap)에 따라 셜록 셀 DAG 변경 + 초등학생용 전체흐름 HTML 제작.**
+- **셜록 셀 재배치**(`researchCell.ts`): 기존 `scope→[팩트검증가 ‖ 셈이 ‖ 유이]→리콘실→반론`(셋 병렬) → **`scope→팩트검증가(claim별 병렬)→리콘실(확정 사실)→[셈이 ‖ 유이]→반론`**. 셈이·유이가 '계획상 claim'이 아니라 **'검증된 사실(factContext: claim·verification_status·quote_excerpt)'**을 받아 grounding(grounding gap 해소). 셈이·유이끼리는 여전히 병렬. 캡 처리=`throwIfCapRejected` 헬퍼로 두 병렬 블록 각각.
+- **에이전트 입력 변경**: `numbers/step.ts`(claims→facts: ResearchFactContext[]·verified 수치만 사실, 미검증은 가정/생략)·`analogist/step.ts`(facts 추가·검증사실과 어긋나는 비유 금지). 시스템 프롬프트도 갱신.
+- **라이브 검증**(run-topic-slice claude-p $0): 새 순서로 전체 관통(셜록→검색tavily→정리→셈이/유이→반론→짠펜 10단락·표절0.38·lineage6·approved). 미래값(2026 금리)이라 fact 전부 could_not_verify→셈이가 가정처리(새 로직 작동). 테스트데이터 cleanup.
+- **시각화** `docs/overview.html`(미커밋): 초등학생용. 크루 11(반장·촉이·훅이·구다리·셜록·팩트검증가·셈이·유이·반론·⚙️정리규칙[AI아님]·짠펜·회고) + 5단계 컨베이어 + **순서도(순차 vs 병렬 범례·셜록셀 5단계: 셜록→팩트검증가→정리→셈이∥유이→반론)** + 안전지킴이 + 학습루프. TRUS색.
+- **함정/주의**: 셈이·유이 입력 변경→promptHash 변경→기존 `fixtures/parity/{numbers,analogist}` 무효(record 모드 라이브서 새로 기록됨, eval은 output만 읽어 무관). tsc0·vitest130·build0.
+- **→ 남음**: 커밋(코드+overview.html 미커밋). 골든 A/B 사용자 블라인드 선택.
+
+## ✅ 완료 — 골든 A/B: 짠펜 말투 비교 (2026-06-23, Opus 4.8 vs GPT-5.5) — ✅커밋 77f41f9
+**남은 엔지니어링이던 골든 A/B 완성. OpenAI 백엔드 신규 + 동일 입력 짠펜 대본 블라인드 비교(사람 판정·"김짠부는 선택만").**
+- **OpenAI 백엔드**(`src/llm/backends/openai.ts`): SDK 없이 raw fetch(chat/completions)·json_object 모드+스키마 프롬프트 주입+ajv 사후검증(claude-p와 동형 전략, strict structured outputs는 minItems 미지원이라 회피). `types.ts`(LlmBackend+="openai")·`config.ts`(수용)·`pricing.ts`(backend별 단가 라우팅, GPT 단가=`OPENAI_IN/OUT_PER_M` env·보수적 기본 10/30)·`callLLM.ts`(pickDriver+pricing에 driver.name 전달). `.env`(OPENAI_MODEL=gpt-5.5)·`.env.example` OPENAI_*.
+- **하니스**(`scripts/golden-ab.ts` prepare/run/cleanup): 동일 짠펜 입력(tone/outline/facts/assets)을 Opus(claude-p $0)·GPT-5.5(openai 유료·하드캡 $3 `GOLDEN_AB_CAP_USD`)에 먹여 대본 생성→블라인드 HTML(`corpus/golden-ab/ab.html`: 모델·비용·지연 가림·중립지표[단락수·자수·코퍼스포함도]만·reveal에 정답). fixtures=off로 promptHash 충돌 회피·A/B 라벨 무작위·매핑은 results.json 보존.
+- **입력 동결**: 재사용 런 1(파킹통장) + 파이프라인 신규 2(안전자산 분산·청년 포트폴리오, claude-p $0·주제 idx 다르게). 함정: 낙관적 전이가 네트워크 재시도로 0행 보고(상태는 실제 전이됨)→prepare가 실제 상태 재확인으로 견고화.
+- **실행 결과**(3편): GPT 실비 합계 **$0.40**(캡 $3). 표절 포함도 전부 0.42~0.52(<0.6). 길이/단락: Opus 7~20단락, GPT 8~10단락.
+- **✅ 판정(2026-06-23): Opus 4.8 승 → 짠펜(scribe) 운영 기본 모델 sonnet→opus 반영(`roles.ts`)**. 운영 그대로 Anthropic api(openai 백엔드 운영 불필요·비교용 코드만 유지). 편당 비용 ~$0.39→~$0.74 추정(여전히 캡·목표 한참 아래, `docs/operations.md` 갱신).
+- **테스트**: `tests/openaiBackend.test.ts`(config 수용·backend별 단가, 6건). tsc0·vitest130·build0.
+- **→ 남음**: prepared 테스트 런 정리=`golden-ab.ts cleanup`(원할 때). scribe→opus 변경분 커밋.
+
+## ▶▶ 다음 세션 재개점 — 이제 '배포 게이트'(사용자 작업) 차례
+**엔지니어링 측 할 일은 끝. 아래는 사용자가 직접 해야 하는 것(배포까지).**
+
+### ▶ NEXT (바로 할 일 — 배포까지 최단경로)
+1. **owner 비밀번호 변경** — 검증용 임시 `Tmp-8d17aefb-verify` → 본인 것으로(Supabase 대시보드 → Authentication → Users → reset). 안 하면 로그인 불가.
+2. **브라우저 최종 검증** — `DEV_OWNER_BYPASS=0`로 `/login` → 로그인 → 대시보드 조작 → 로그아웃 직접 확인. (로컬 dev: `./node_modules/.bin/next dev -p 3001`)
+3. **PR #1 리뷰·머지** — https://github.com/ddungpal/produce-script/pull/1 (feat/phase3-dashboard → main, 27+커밋).
+4. **Vercel 배포** — 운영 env 세팅(`docs/operations.md` 참조: `LLM_BACKEND=api`·`LLM_FIXTURES=off`·키·캡·`PERFORMANCE_SOURCE=youtube`). **`DEV_OWNER_BYPASS` 절대 미설정.** Inngest 프로덕션 연결.
+
+### 📋 BACKLOG (배포 후/병행)
+- **YouTube Analytics OAuth** 채널 인증 → `YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN`(성과 자동 수집 실연결). 안 하면 성과 수집은 수동 입력(`scripts/ingest-performance.ts`)로.
+- **OpenAI 키 rotate** — 채팅 노출분 폐기(codex가 사용 중).
+- ✅ **(선택 엔지니어링) 골든 A/B** — 완료(위 섹션). Opus 4.8 vs GPT-5.5 짠펜 블라인드 비교 실행. 사용자 선택만 남음.
+- (선택) 운영 비용 모니터링·eval 확장 등.
+
+### ✅ 적용 완료 / 검증됨 (참고)
+- migration 17~21 전부 적용. audit_log·Realtime 라이브 검증 통과. 실인증 라이브 검증(로그인·게이트·리다이렉트). 편당 비용 실측 $0.39.
+
+---
+
+## ✅ 완료 — 감사 뷰어 + Realtime 검증 (2026-06-23, `b9c3a37`)
+- **Realtime 라이브 검증**: migration 21 적용 확인 — 필터없는 production_runs 구독으로 UPDATE 3건 수신(LiveRefresh는 필터없음 → 운영 세션서 작동). 첫 시도 실패는 필터옵션 이슈일 뿐.
+- **감사 로그 뷰어 `/audit`**(`b9c3a37`): audit_log를 볼 곳 추가 → 기능 end-to-end(기록9액션→저장→뷰어). `auditView.getAuditLog`(actor display_name 코드조인·한국어 액션라벨)·owner 게이트·detail 사람친화 렌더·layout '감사' 네비. 라이브검증(라벨·조인·detail) 통과.
+- **→ 남은 엔지니어링**: 골든 A/B(OpenAI 백엔드 필요·실비·모델ID 불확실 → 사용자 스코핑). 그 외는 배포 게이트(사용자).
+
+## ✅ 완료 — 실시간 구독 (2026-06-23, `7fd5791`)
+- **audit_log 라이브 검증**: migration 20 적용 확인 — service-role insert·인덱스 조회·정리 정상. 감사 로그 실제 기록됨.
+- **실시간 구독**(migration 21 `realtime_runs`): production_runs를 supabase_realtime publication에 추가(멱등 DO). `LiveRefresh` 컴포넌트=Realtime 구독+느린 폴링 8s 폴백(하이브리드) → dev 바이패스/publication 미적용 시 폴링 degrade(ship-safe). StageStepper AutoRefresh→LiveRefresh 교체(작업 중만). AutoRefresh 제거. ⏳**migration 21 SQL 적용 시 Realtime 활성**.
+- **→ 남음(사용자)**: migration 21 SQL · (기존)owner비번·YT OAuth·OpenAI키rotate·브라우저검증·Vercel배포. 선택 하드닝: 골든 A/B(OpenAI 백엔드 필요·별도 트랙).
+
+## ✅ 완료 — 마감 4건 (2026-06-23)
+- **D 서브진행바**(`a9843f0`): 셜록 4스텝(검증범위→병렬→교차정리→반론)·짠펜 2스텝(대본→표절) setProgress, 완료 시 null.
+- **audit_log**(`7d771b5`, migration 20): 사람 게이트 9액션(run_started·stage_selected·research/script_approved·script_rework·run_aborted·run_deleted·insight_status·insight_edited) 영속 기록. `auditLog` best-effort(테이블 미적용 시 무시). 읽기 owner·쓰기 service-role. ⏳SQL 적용 필요.
+- **eval 엄밀화**(`d21caa6`): `tests/eval.test.ts` 골든셋 회귀 — 커버리지·비자명성·발굴 융합(web:/yt:)·시청자대면 MOCK 누출(fact_verifier reasoning은 제외). 형태 변이 견고(레거시 fixture 건너뜀·골든셋 개수 강제). vitest 112→124.
+- **머지 PR #1**: feat/phase3-dashboard→main(27커밋·157파일). 함정: main 27커밋 뒤짐. 머지 후 migration 17~20 SQL 적용 필요.
+- **→ 남음(사용자)**: migration 17~20 SQL · owner 비번 · YT OAuth · OpenAI키 rotate · 브라우저 검증 · Vercel 배포. (선택 하드닝: 실시간구독·골든 A/B)
+
+## ✅ 완료 — 운영 전환 검증 (2026-06-22) — claude-p→API
+**API 백엔드는 이미 완성돼 있어 '검증+실측'. 실비 ~$0.5 소요(승인). `docs/operations.md` go-live 체크리스트 작성.**
+- **① API 스모크**(haiku 1콜·$0.001): provider=api·forced tool_use 스키마 검증·비용계산 정상.
+- **③ 하드캡 검증**($0): 낮은 캡 → 예약 단계 `HardCapExceededError`(추정 > 캡) → **API 호출 0·과금 0**. 캡이 호출 전 차단.
+- **② 편당 비용 실측 = $0.39**(api·full pipeline 촉이→짠펜·검색 mock): scribe $0.088·structurer $0.063·fact_verifier×4 $0.065·topic $0.045·numbers $0.034·hook $0.034·critic $0.029·sherlock $0.026·analogist(haiku) $0.007. **하드캡 $10의 3.9%·소프트캡 $7의 5.6%**. fixture 추정($0.09)보다 ~4배(라이브 프롬프트가 더 무거움)나 목표 한참 아래.
+- **🐛 critic parity 수정**(운영 전환이 드러냄): `counter_evidence`·`missing`이 required인데 모델이 빈배열일 때 통째 누락 → forced tool_use도 required 100% 보장X → api 무재시도서 편 전체 실패. **required에서 제외 + step `?? []` 기본값**(빈 배열 가능 필드는 required 금지=신규 에이전트 원칙). tsc0/vitest112.
+- **세션 실비**: 스모크 $0.001 + 실패런(critic 전) $0.13 + 풀런 $0.39 ≈ **$0.52**(추정 $0.11 초과 — 실비>추정 + critic 실패로 부분런). 전부 정리됨.
+- **→ go-live 남음(`docs/operations.md`)**: 운영 env(LLM_BACKEND=api·fixtures off·키·캡) · 사용자 액션(owner 비번·YT OAuth·OpenAI키 rotate·브라우저 검증·Vercel) · 후순위(실시간구독·audit_log·eval·골든 A/B).
+
+## ✅ 완료 — Phase 5 진짜 인증 (2026-06-22, ✅푸쉬 `cadf310`) — 배포 블로커 해소
+**Supabase Auth 세션 기반 실인증 와이어링. 바이패스(`DEV_OWNER_BYPASS`)는 게이트된 채 '선택적 개발 편의'로 유지(NODE_ENV!=='production'+플래그, 프로덕션 절대 작동 안 함).**
+- **미들웨어** `src/middleware.ts`: Supabase SSR 세션 갱신(getUser→토큰 refresh·쿠키 동기화). edge. matcher로 정적·inngest·client-error 제외.
+- **인증 헬퍼** `auth.ts`: `resolveOwnerId`(세션→profiles.role='owner', 미인증 null) 기반으로 `requireOwner`(throw·액션용)·`requireOwnerPage`(redirect /login·페이지용)·`getOwnerId`(null 허용) 분리. 바이패스 경로 유지.
+- **로그인/아웃** `session.ts`(use server): `signIn`(signInWithPassword·이메일 열거공격 차단 단일 에러)·`signOut`. `/login/page.tsx` + `LoginForm.tsx`(useActionState) + `SignOutButton.tsx`(헤더, 실세션만 노출·바이패스 시 숨김).
+- **게이트 교체**: page·runs/[id]·insights를 `requireOwnerPage`로(미인증→/login 리다이렉트, 에러 대신).
+- **검증**: tsc0·vitest112·build 그린(/login·Middleware 등록). **라이브**: signInWithPassword 세션발급+owner역할 통과·틀린비번 거부 / 미로그인 `/`→307 /login·`/insights`→/login·`/login` 200(폼). 임시 owner 비번 설정(검증용)→**사용자가 본인 비번 설정 필요**(Supabase 대시보드 또는 admin updateUserById).
+- **→ Phase 5 잔여**: 운영 전환(claude-p→API·골든 A/B·비용 실측) · 실시간 구독(현 수동 새로고침→Supabase Realtime) · audit_log · eval 엄밀화. 그 후 배포(Vercel). 유저 최종 검증(브라우저 로그인 플로우) 예정.
+
+## 🔨 진행중 — ① 운영 자동화 (2026-06-22) — Sub-B: 성과 수집 자동화(미커밋)
+**manual.json → YouTube Analytics API 자동 수집. 어댑터+수집 Cron+fixture를 완성(개발 $0), 실 OAuth 연결만 추후. A/B는 API 미제공 → overall 지표만(A/B는 수동 유지).**
+- **YT Analytics 어댑터** `src/performance/youtubeAnalytics.ts`: reports.query(views·impressionsClickThroughRate→ctr·averageViewPercentage→avgViewPct) + record/replay fixture(search 패턴) + `mockYtBackend`(결정적·테스트 주입) + `getYoutubeAccessToken`(refresh token 교환). **`pickYtBackend`=PERFORMANCE_SOURCE=youtube일 때만 실수집, 그 외 null=자동수집 비활성**(개발 수동입력 보존·cron no-op).
+- **수집 오케스트레이션** `src/performance/collect.ts`: `dueWindows`(순수: 경과일 ≥ 윈도우일수 & 미적재)·`windowDateRange`(순수) + `collectPerformance`(발행 영상[vid+upload_date, **안정정렬 upload_date·id**]→due 윈도우 수집→ingest, backend null이면 no-op, limit 가드).
+- **수집 Cron** `src/inngest/functions/performanceCron.ts`: cron(매일 06:30 KST, 회고 sweep 07:00 직전) + `performance/collect.requested`. 수집되면 `performance/collected` 발행 → 회고 sweep 깨움(루프 연결). client 이벤트·레지스트리·`.env.example`(PERFORMANCE_SOURCE/FIXTURES·YT_OAUTH_*).
+- **검증**: tsc0·**vitest 112**(103→+9)·라이브(mock 백엔드 주입): 8콘텐츠 due 윈도우 수집→ingest, **2회차 0 fetch(완전 멱등)**, 안정정렬로 limit 결정적 → cleanup. **함정**: contents 쿼리 ORDER BY 없으면 limit 하 매번 다른 부분집합(불안정)→안정정렬 필수. A/B 변형 CTR은 Analytics API 미노출→overall만.
+- **→ ① 운영 자동화 종료(루프 자동화: 성과 수집 Cron→회고 sweep→인사이트 draft→사람 승인→환류).** 실 OAuth 연결은 사용자 채널 인증 시. 다음 = Phase 5(진짜인증·운영전환) / D(서브진행바).
+
+## 🔨 진행중 — ① 운영 자동화 (2026-06-22) — Sub-A: 회고 자동 트리거(미커밋)
+**수동 루프 → 스스로 도는 루프. 성과가 적재됐는데 회고가 없는 콘텐츠를 sweep해 자동 회고. OAuth 불필요·claude-p $0.**
+- **멱등 sweep** `runRetrospective.ts`: `eligibleForRetrospective`(순수: 성과 있고 회고 없는 콘텐츠만·bounded) + `retrospectiveSweep`(performance_metrics overall ∖ retrospectives → 각 회고 실행). **콘텐츠당 1회 정책**(회고 생기면 다음 sweep 제외 → retry·중복이벤트 안전). codex P1(비멱등) 해소.
+- **Inngest 함수** `retrospectiveCron.ts`: 트리거 3개 = cron(매일 07:00 KST 누락보정) + `performance/collected`(성과 수집 직후) + `retro/sweep.requested`(수동). concurrency 1·retries 1·onFailure 캡처. client.ts 이벤트 2개 추가. functions/index 등록.
+- **검증**: tsc0·**vitest 103**(98→+5)·라이브: 성과 적재 → sweep 1회차 대상1·회고 실행(인사이트3) → 2회차 대상0(멱등) → cleanup. `scripts/run-retro-sweep.ts`(--limit).
+- **→ 다음 Sub-B(성과 수집 자동화)**: manual.json → **YouTube Analytics API 어댑터**(OAuth 필요) + 수집 Cron(영상 d1/d7/d14/d30 윈도우 도달 시 수집 → `performance/collected` 발행). **OAuth는 사용자 채널 인증 1회 필요** — 어댑터+fixture 먼저, 실연결은 추후. 그 후 Phase 5(진짜인증·운영전환).
+
+## ✅ 교차검토 패스 (2026-06-22, ✅푸쉬 `2a103a3`) — Claude×2관점 + GPT-5.5 codex 병렬
+**Phase 4 전체(슬라이스1~4)를 Claude 다중관점(정확성·데이터무결성 / 보안·거버넌스·결정성) + GPT-5.5 codex 병렬 정적검토. 거버넌스 C(댓글 원문 비전송)·인증(requireOwner)·XSS·픽스처 결정성 양쪽 PASS. 합의 결함 수정:**
+- **[P0]** `cleanupRetrospectives` × `ON DELETE SET NULL`(migration17) × A3 CHECK(migration18) 충돌 — draft만 지우고 retrospective 삭제 시 살아남는 승격 insight FK가 SET NULL→source_type='retrospective'와 충돌 throw. → 승격분 먼저 detach(FK null + source_type='human_authored') 후 부모 삭제. **라이브 검증**(승인 insight 달린 retrospective cleanup → throw 없이 detach 보존).
+- **[P1]** 회고 저장 원자성(insights 실패 시 retrospective 보상삭제) · 중복 입력(같은 window·variant)→upsert 크래시 파싱단계 거부 · 환류 정렬 비결정성(loadApprovedInsights created_at·id tie-break) · evidence 'insight:' 접두사 노트 정합.
+- **[P2]** 인사이트 상태전이 낙관적 잠금(.eq status=from) · valid_until YYYY-MM-DD 검증 · pickContentVerdict 비교자 antisymmetric · summarizeChoicePayload 가드.
+- **보류(기록)**: 댓글 query 정렬 추가는 기존 topic_scout 픽스처 깨짐 위험(commentSignals 동점순서 변동)→미변경(잠복·현재 표본<5000) · ingest cleanup 범위/재적재 stale ab_variants는 단일 writer 가정下 후순위.
+- **검증**: tsc0·**vitest 98**(96→+2)·build 그린. codex는 P0 0건(cleanup을 P1로)·Claude는 P0로 — 양쪽 합의 수정.
+
+## 🎉 완료 — C Phase 4 학습 루프 닫힘 (2026-06-22) — 슬라이스 4: 환류(미커밋)
+**승인된 인사이트를 차기 런 prepare에 주입 → 학습 루프 완전히 닫힘(성과→회고→인사이트→승인→다음 제작 반영). 촉이·훅이·구다리 3단계 환류.**
+- **공유 헬퍼** `src/agents/shared/approvedInsights.ts`: `loadApprovedInsights(supa, categories, {asOf})`=status='approved'만(슬라이스3 승인 게이트)·valid_until 필터·신뢰도순 + `filterValidInsights`·`appendLearnedInsights`(순수: system에 학습규칙 섹션 주입, evidence_ids에 insight:id 링크 지시). 테스트 6.
+- **★ 픽스처 보존 설계**: 승인 인사이트가 **있을 때만** input.learned_insights/system을 변경(없으면 기존 promptHash 동일) → **기존 parity 픽스처 14건 전부 보존**(vitest 96 그린).
+- **촉이**(topic_scout): `learned_insights?` 조건부 추가 + system 주입(category 'topic', asOf=run.as_of_date). **훅이**(hook_maker): 'title'·'thumbnail'. **구다리**(structurer): 기존 인라인 insight 쿼리(reviewed+approved)를 공유 헬퍼(**approved만**)로 표준화, structure_insights 필드 형태 유지.
+- **검증**: tsc0·**vitest 96**(90→+6)·next build 그린. **라이브 환류**: 승인-유효/승인-만료/초안/타카테고리 insight 삽입 → loadApprovedInsights('topic')가 **승인+유효 1건만** 반환(만료·초안·타카테고리 제외)·id 'insight:' 형식 → cleanup. 픽스처 보존 = parity 통과로 입증.
+- **함정**: input에 빈 배열이라도 항상 넣으면 promptHash 변동→기존 픽스처 깨짐 → 조건부 주입 필수. `.in("category")`는 enum union 타입 필요(InsightCategory[]).
+- **→ Phase 4 학습 루프 종료.** 다음 = **Phase 5(진짜 인증=바이패스 제거·운영 전환=claude-p→API·실시간 구독·audit_log·eval)** 또는 **D(셜록·짠펜 서브진행바)** 또는 회고/환류 운영 자동화(YouTube Analytics 성과 수집·회고 Cron).
+
+## 🔨 진행중 — C Phase 4 학습 루프 (2026-06-22) — 슬라이스 3: 인사이트 승인 UI 완료(미커밋)
+**회고가 만든 학습노트(insights draft)를 김짠부가 검토→승인/폐기하는 대시보드. 승인된 것만 차기 런 환류(슬라이스 4). '선택+수정' 패턴.**
+- **상태 전이 가드(순수)** `src/domain/insightStatus.ts`: draft→reviewed/approved/deprecated, reviewed↔draft·→approved/deprecated, approved→deprecated/reviewed, deprecated→draft(되살리기). `canTransitionInsightStatus`·`nextInsightStatuses` + INSIGHT_STATUS_LABEL·INSIGHT_CATEGORY_LABEL(8종 한국어). 테스트 6.
+- **읽기 헬퍼** `src/lib/dashboard/insightsView.ts`(server-only): `getInsightsBoard`=상태별 그룹 + source content 라벨 코드조인 + draftCount.
+- **서버 액션** `src/app/actions/insights.ts`(requireOwner): `setInsightStatus`(서버가 canTransition 가드·허용 안된 전이 거부)·`updateInsight`(title/body/confidence/valid_until 수정, 빈값 거부).
+- **UI**: `src/app/insights/page.tsx`(force-dynamic·requireOwner·상태별 섹션 draft 먼저) + `src/components/InsightCard.tsx`(클라: 전이 버튼 nextInsightStatuses 기반·승인=노랑 강조·인라인 수정·router.refresh) + layout.tsx 네비 "인사이트" 링크.
+- **검증**: tsc0·**vitest 90**(84→+6)·next build 그린(`/insights` 1.99kB). **라이브**: 테스트 insight 3건(source_type=null로 A3 무해)→보드 그룹핑 정확(draft 2·approved 1)·전이 가드(draft→approved✓·approved→draft✗)·승인 후 재그룹(approved 1→2)→cleanup 0. ⚠️UI 브라우저 클릭검증은 미수행(server-only 장벽으로 헤드리스 액션호출 불가) — 구성계층(read·전이·build) 각각 검증.
+- **→ 다음 슬라이스 4(환류·루프 닫힘)**: approved insights를 각 에이전트 `prepare` context에 주입(촉이부터 — category='topic'·valid_until>now·status='approved' 필터). 그 후 Phase 5(진짜인증·운영전환).
+
+## 🔨 진행중 — C Phase 4 학습 루프 (2026-06-22) — 슬라이스 2: 회고 에이전트 완료(미커밋)
+**발행 후 성과+선택+시청자반응을 인과로 복기→인사이트 draft 제안하는 '회고' 에이전트. 학습 루프의 심장(회고→인사이트 승격) 절반 구축. 라이브 실LLM 검증($0).**
+- **역할** `roles.ts retrospectivist`(name "회고", opus·tools[], 편당1회·저빈도·고가치). 파이프라인 단계 아님(production_run 무관·발행 후 독립 실행).
+- **스키마** `src/agents/retrospectivist/schema.ts`: RETROSPECTIVE_SCHEMA(good_points·improvements·lessons + insights[category(8종)·title·body·confidence0~1·evidence]) + SYSTEM(성과←선택 인과·근거없는 일반화 금지·A/B decisive면 conf↑·한영상 과적합 금지·'제안'이지 강요 아님).
+- **prepare** `prepare.ts`(결정적 §8.1·거버넌스 C): performance_metrics(overall 윈도우) + ab_variants→`buildAbSummaries`(judgeComponent 재사용=margin/decisiveness 단일출처) + 최신 run proposal→selection 코드조인(`summarizeChoicePayload`) + **발행후 댓글 집계**(content_id 한정[migration17 백필]·aggregateCommentSignals·원문 비전송). has_performance=성과없으면 회고 스킵.
+- **실행** `runRetrospective.ts`: prepare→callLLM 1회(CostGuard 자체구성·runId='retro:{cid}'·claude-p $0)→**retrospectives 1행 + insights draft N개**(status='draft'·source_type='retrospective'·provenance FK, **migration18 A3 CHECK 충족**, evidence는 body에 합침). 승격은 사람몫(슬라이스3). `cleanupRetrospectives`(draft만 삭제·승격분 보존).
+- **CLI** `scripts/run-retrospective.ts`(--content/--video·--cleanup). 단위테스트 `tests/retrospective.test.ts`(buildAbSummaries·summarizeChoicePayload·스키마, 8건).
+- **검증**: tsc0·**vitest 84**(76→+8)·build 그린. **라이브 실LLM 회고**(영상 5f8EtDUXgoQ ISA, claude-p record $0): 성과(A/B질문형 decisive·CTR 우상향·retention 하락) + 실댓글 1000개·질문397·키워드(만기일·9999년) 인과분석 → 인사이트 3draft(thumbnail conf0.75·structure0.5·research0.4 "한영상이라 약하게"=과적합경계 작동). DB: retrospectives1+insights3draft·provenance/A3 일치 검증 → 회고·성과·임시파일·녹화fixture 전부 cleanup(실데이터 무오염).
+- **함정**: 회고 fixture는 임시 성과데이터 의존→커밋 안 함(삭제). 녹화 경로=`fixtures/parity/{roleId}/`.
+- **→ 다음 슬라이스**: ③ 인사이트 승인 UI(draft→reviewed→approved→deprecated, 대시보드) → ④ 환류(approved insights→각 prepare context, 촉이부터). 그 후 Phase 5.
+
+## 🔨 진행중 — C Phase 4 학습 루프 (2026-06-22) — 슬라이스 1: 성과 수집 완료(✅푸쉬 `1a4693b`)
+**학습 루프(제안→선택→회고→인사이트승격→환류) 중 비어있던 '성과 수집' 토대 구축. 코드 전용·LLM 0회(거버넌스 C). 개발=사람이 직접 채우는 입력 파일 / 운영=YouTube Analytics 어댑터로 교체(writer 동일).**
+- **입력 계약** `src/performance/types.ts`: PerformanceEntry(content_id|youtube_video_id + metrics[d1/d7/d14/d30 views·ctr·avg_view_pct] + ab[title/thumbnail·A/B/C·ctr_pct·impressions]). `parsePerformanceFile`=명확한 에러 모음 반환(throw X).
+- **A/B 판정** `src/performance/abVerdict.ts`(순수·테스트15): `judgeComponent`=CTR 내림차순 rank·is_winner + 차순위 대비 **상대 리프트** margin → decisive(≥10%)/marginal(≥3%)/inconclusive. `pickContentVerdict`=결정된 것 중 margin 최대(동률 썸네일 우선). `config.ab`(env AB_DECISIVE_MARGIN/AB_MARGINAL_MARGIN).
+- **적재 writer** `src/performance/ingest.ts`: `performance_metrics`(윈도우별·ab_variant='overall') + `ab_variants`(변형별 판정) **멱등 upsert**(unique 제약 기존). **`contents.ab_*` = ab_variants에서 파생되는 캐시**(단일 출처 → ERD 후보A 드리프트 차단). `cleanupPerformance`=역연산(스모크/복구). content_id 해석(youtube_video_id 매칭).
+- **수동 입력 + CLI**: `src/performance/manualSource.ts`(fixtures/performance/manual.json 로드·검증), `scripts/ingest-performance.ts`(`--list` 영상목록·`--cleanup` 역연산), `fixtures/performance/manual.example.json` 템플릿. manual.json=gitignore(개인데이터), .env.example AB 섹션.
+- **검증**: tsc0·**vitest 76**(61→+15)·next build 그린. **라이브 스모크**(영상 5f8EtDUXgoQ): 2회 적재 멱등(3·2행 불변), B rank1 winner(6.8)·A rank2(5.1), contents.ab_*=margin 0.333·decisive·decided **정확** → cleanup으로 0행·pending 복귀(실데이터 무오염). 라이브 contents 18건(업로드 8·제작 10) 확인.
+- **함정**: tsx -e는 top-level await 불가(IIFE)·exactOptionalPropertyTypes(optional에 undefined 명시 대입 금지→조건부 할당)·noUncheckedIndexedAccess(배열 인덱스 ?. 필요).
+- **→ 다음 슬라이스**: ② 회고 에이전트(성과+선택[stage_selections]+발행후 댓글신호 → retrospectives 1행 + 인사이트 draft) → ③ 인사이트 승인 UI(draft→approved) → ④ 환류(approved insights → 각 prepare context). 그 후 Phase 5(진짜인증·운영전환).
+
+## ✅ 완료 — B 발굴 신선도 (2026-06-22) — 검색 캐시 TTL + 매일 발굴 Cron
+**검색 결과가 영구 동결되던 문제(트렌드 쿼리가 옛 fixture로 박제) + 발굴이 수동 런에만 의존하던 문제를 해소. ✅커밋 `cf34d66`(미푸쉬), migration 19 적용·라이브 검증 완료(발굴 34후보·2회 멱등성·last_seen 33건 갱신).**
+- **① 검색 캐시 TTL**: fixture **mtime 기준** TTL(포맷 변경 0·기존 호환). `config.search`(default 1일 + volatility static30일/slow7일/fast1h, 전부 env). `SearchQuery.volatility`(해시 미포함 — 만료판정만). **`record` 모드에서만 stale→라이브 재호출**, `replay`(개발 $0)는 stale이어도 반환 → **개발 $0 계약 유지·운영(record)=진짜 TTL 캐시**. 촉이 트렌드 쿼리=`fast`(1h)→매일 cron 항상 갱신, 키워드=`slow`. (`src/search/{types,search}.ts` `ttlSecondsFor`, `config.ts`, `externalSignals.ts`, `prepare.ts`)
+- **② 매일 발굴 Cron**: **코드 전용(LLM 0회·~$0·governance C)**. 댓글 광역집계+외부신호(웹트렌드·YT경쟁)→`topic_candidates` **멱등 upsert**(dedup_key·last_seen_at, status 미포함=승격/반려 보존). 촉이(LLM)가 다음 런서 풀 읽어 승격(§8.1 유지). Inngest 함수 트리거 2개=cron(매일 06:00 KST)+`discovery/refresh.requested`(수동·UI버튼용). (`src/agents/topic_scout/{discovery,commentSignals}.ts`, `src/inngest/functions/discoveryCron.ts`+레지스트리+client 이벤트)
+- **공유 리팩터**: 댓글 키워드 집계를 `commentSignals.aggregateCommentSignals`로 추출(prepare·discovery 공유, stripJosa re-export로 테스트 호환).
+- **migration 19 `discovery_freshness`**: topic_candidates += `dedup_key`(일반 unique — Postgres NULL distinct로 과거행 다중허용, partial 안 씀=supabase onConflict 호환)·`last_seen_at`. ⏳**SQL 에디터 수동 적용 + database.types 갱신(완료)**.
+- **검증**: tsc0·**vitest 61**(55→+6: TTL매핑·댓글집계)·next build 그린. 라이브 통합=`scripts/run-discovery.ts`(2회 실행 멱등성·last_seen 갱신 검증, `--cleanup`). .env.example SEARCH 섹션 추가.
+- **함정/주의**: `record` 모드는 이제 stale fixture를 재호출(과금) — 개발 $0는 `replay` 사용. partial unique index는 supabase upsert onConflict와 안 맞음(일반 unique+NULL distinct로 해결).
+- **→ 다음**: migration 19 적용 → (선택)라이브 발굴 검증 → 커밋·푸쉬. 그 후 **C Phase 4 회고&발굴** / **D 셜록·짠펜 서브진행바**.
+
+## ✅ 완료 — ERD 하드닝 (2026-06-20, migration 18) — GPT-5.5 codex 교차검토
+
+## ✅ 완료 — ERD 하드닝 (2026-06-20, migration 18) — GPT-5.5 codex 교차검토
+**Claude + GPT-5.5(codex) 병렬 재검토 → 합의 P1~P2를 migration 18 `hardening`으로 적용·커밋·푸쉬 `37d8182`.** codex 발견 전부 실스키마와 교차검증(할루시네이션 0).
+- **A1+A2**: `link_content_by_video_id()` before-insert 트리거(transcripts·comments_raw) = content_id를 youtube_video_id에서 권위있게 파생(누락방지+불일치차단). `transcripts.content_id` **NOT NULL**. **ingest 앱주입 제거**(트리거가 단일소스).
+- **A3**: `insights` CHECK — retrospective FK ⇔ `source_type='retrospective'`.
+- **B1** ⭐: `content_links` **RLS 정책 추가**(migration 14가 enable만·정책0 = 진짜인증 시 전면차단 잠복버그). contents 패턴.
+- **B2**: `script_segments.ord` check(≥0) + unique(run_id, ord). **B3**: active 단일성 tone_profile·style_profiles partial unique.
+- **라이브 검증**: 위반 insert 4건 전부 거부(A3=23514·B2=23514·A1=23502[트리거+NOTNULL]·B3=23505). tsc0/vitest55/build 그린.
+- **보류(백로그)**: B4 lineage 복합FK(무거움)·B5 pts on delete restrict·B6 수치도메인 CHECK·후보A(A/B 3곳분산→Phase4 A/B회수와)·후보B(검색출처 이원화→의도된 층위분리). codex 원문 `/tmp/erd-review-ascii/OUT.md`.
+- **→ ERD 구조·무결성 개선 사이클 종료.** 다음은 B(발굴신선도)/C(Phase4·5)/D 기능진척.
+
+## ✅ 완료 — ERD 개선 사이클 1바퀴 (2026-06-20)
+**다이어그램(ERD) 렌즈로 ①문제→②해결→③검증 1사이클 완주. FK 그래프 고립 5개 중 4개 연결, 1개(룩업)는 의도 단독 유지.**
+- **migration 17 `connect_orphans` 적용 완료**(SQL에디터 수동) + 커밋·푸쉬 `78050ee`.
+  - `script_imports` **드롭**(코드 0회·링크키 0, corpus_editions가 역할 대체=죽은 테이블)
+  - `transcripts` `content_id` FK(`on delete restrict` — L1불변트리거와 cascade/setnull 충돌 회피, 백필 위해 트리거 일시해제)
+  - `comments_raw` `content_id` FK(`on delete set null` — 촉이 전역 댓글풀 보존, 트리거 없어 직접 백필)
+  - `insights` provenance FK 2건(`source_retrospective_id`·`source_content_id` — 학습루프 "회고→인사이트 승격" 역추적)
+- **라이브 검증**: 자막 8/8·댓글 4092/4092 content_id 백필 / `script_imports`=404 PGRST205(드롭확정) / insights 컬럼 존재. **tsc0·vitest55·next build 그린. ERD 30T·33FK → 29T·37FK.**
+- **동반코드**: `database.types.ts`(수기)·`scripts/ingest-youtube.ts`(vid→content_id 주입, 신규행 재고립 방지)·`scripts/generate-erd.mjs`. 신규 **diff 다이어그램** `scripts/generate-erd-diff.mjs`→`erd-database-diff.html`(AS-IS/TO-BE).
+- **함정**: supabase-js `head:true` count는 드롭된 테이블에 에러 대신 null 반환(오판 주의)→실 select로 404 확인. ASCII /tmp엔 node_modules 없음→검증스크립트는 프로젝트 내부 임시파일로.
+
+### ▶ 다음 (ERD 구조개선은 거의 소진 — 둘 다 보류 권장)
+- **후보 A** A/B 성과 3곳 분산(`contents.ab_*` 캐시 + `ab_variants` + `performance_metrics`, 진실출처 모호·드리프트) → **코드 미사용 = Phase 4 A/B 회수 구현과 함께 정리**.
+- **후보 B** 검색출처 이원화(촉이 `stage_proposals.sources` jsonb 인라인 vs 셜록 `source_documents` FK 정규화) → **층위 다른 의도적 분리 가능성↑, 강제 정규화 = 과설계**.
+- (2026-06-20 GPT-5.5 codex 병렬 재검토 진행 중 — 결과 반영 예정.)
+- → 그 다음은 **B 발굴 신선도(검색캐시 TTL·매일발굴 Cron)** / **C Phase 4·5** / **D 셜록·짠펜 서브진행바** 로.
+
+### (과거) 입력 리포트 5종 — `structure-audit/target/result.html` · `erd-pipeline.html` · `erd-database.html`(생성기 `generate-erd.mjs`). PDF는 ERD 가로폭에 깨짐→링크. 공유 URL 보류.
+
+## (과거·대부분 ✅완료) Phase 3 검토
+**(1) 병렬 code-review ✅ 완료 → 수정 ✅ 완료. 남은 것: (2) 라이브 E2E.**
+1. ✅ **병렬 code-review 완료(2026-06-19)** — Claude 3관점(보안·정확성·XSS) + GPT-5.5 codex(/tmp ASCII) 교차검토. 즉시 위협 0(admin=server-only 봉인·전 액션 requireOwner). **교차검증 7건 수정 완료**(tsc0/55테스트/build 그린, 미커밋):
+   - **읽기 페이지 인증 게이트**(codex P0/Claude P2): `page.tsx`·`runs/[id]/page.tsx` 상단 `await requireOwner()` — 진짜 인증 전환 시 비로그인 admin 읽기 노출 차단(현재 바이패스 통과).
+   - **FactCard URL 스킴 화이트리스트**(Claude P0/codex P1): `safeHref` http/https만 링크, 그 외 텍스트 폴백 + rel noopener. javascript: XSS 차단.
+   - **selectedBy 감사필드 위조 차단**(codex P1): topicRun 3곳 `selectedBy: ownerId` 강제(클라 입력 무시).
+   - **.env.example `DEV_OWNER_BYPASS=0`**(양쪽 P1) + **auth.ts `import "server-only"`**.
+   - **jsonb payload 캐스팅 방어**(3리뷰 합의): CandidateBody·ProposalSelector EditFields — `outline`/필드 옵셔널 가드·빈 폴백·컨트롤드 입력 `?? ""`.
+   - **soft-cap 재개 단계 서버 판정**(codex P1): **migration 13 `paused_stage` 컬럼 ✅ 적용완료(2026-06-19, SQL에디터 수동)** — pause 시 단계 보존, `resolveResumeStage`(보존값>research_facts 폴백)로 서버가 판정. `resumeRunAction` stage 인자 제거, RunControls 단일 "재개" 버튼.
+   - **리서치 UX 정합성**: `research_ready`에서 fact 미리보기(RESEARCH_LOADED에 추가), `research_review`에서 rv=null(로딩)과 검수0건 구분.
+2-0. ✅ **에러 영속 캡처 층 추가(2026-06-19, 실사용 디버깅용)** — 4표면 공통 싱크 `logs/errors.jsonl`(gitignore): `src/lib/observability/captureError.ts`(node 동적import·throw안함) + `src/instrumentation.ts` `onRequestError`(서버/RSC/액션) + Inngest `onFailure` 5함수(`src/inngest/onFailure.ts`, inngest에 `(failure)` 등록 확인) + `error.tsx`·`global-error.tsx`→`/api/client-error`(클라 렌더). 비용캡 등 정상흐름은 미캡처. 스모크 검증 완료.
+2. **실제 테스트 검토(라이브 E2E)** ← **다음**: `pnpm inngest:dev` + `pnpm dev`로 한 편 실주행 — 새편시작→촉이주제선택→훅이/구다리→셜록 트리아지(에스컬레이션 승인/반려)→짠펜 검수→approved. 화면 실동작·새로고침 흐름·비용/lineage 표시·kill switch/재개 확인. (개발 $0: claude-p+fixtures. **주의**: `.env`의 `DEV_OWNER_BYPASS=1` 유지해야 로그인 없이 동작.)
+3. 커밋(7건 수정) → E2E에서 추가 P0/P1 나오면 수정 → 재검증 → PR 머지(또는 main 반영).
+
+> `docs/tech.md` v0.3 — 실 DDL·enum·TTL·에이전트 I/O·반장 상태머신·인젝션·트리아지·말투·ingest·학습 코퍼스 규칙 + **DB 검토 반영(정적/동적 3분류·config_registry·lineage/provenance FK 조인 정규화·누락 FK·unique·contents 단일척추·L1 불변성)**. 남은 미확정은 tech.md §15.
+> DB 검토: 내 검토 + Codex 병렬검토 합의 — 배열 lineage·섬·고정값 혼재를 v0.3에서 정규화로 해결.
+
+---
+
+## ▶ 다음에 바로 진행할 작업 (NEXT)
+_직전 완료(2026-06-18): **Phase 1 전체 완료**(DB·TS타입·ingest corpus8/자막8/댓글4092/owner시드·contents척추) + 런타임 계약 명문화 + next 15.5.19 보안패치. 모두 푸쉬(…→ec4defb)._
+
+### ▶▶ Phase 2 진행 — 에이전트 + 반장 파이프라인
+**합의 확정(2026-06-18): (i) 말투→촉이 순서 / (ii) Inngest는 촉이 슬라이스에서 골격째 함께.**
+
+1. ✅ **말투 추출(tone_profile) 완료** — corpus 8편 스크립트 → `tone_extractor`(role 추가, opus) → `callLLM` 1회 → 8 components(vocab·sentence_length·rhythm·hooks·phrases·banned·persona·easy_explain). **DB 저장: `tone_profile v1`(status=draft) + `profile_training_sources` 8편(provenance)**. 코드: `src/agents/tone_extractor/schema.ts`(스키마+추출프롬프트) + `scripts/extract-tone.ts`(dry-run/--commit, fixture record로 재실행 $0). 산출 검수파일: `corpus/tone/`. 코퍼스 인용 근거로 채워짐(짠하!/찐짠이들/도시락=ETF 등). `tsc0/14테스트`.
+   - **남은 사람 게이트**: draft → **active 승격**(짠펜이 쓰려면 필요. 짠펜 미구현이라 비차단).
+2. ✅ **촉이(topic_scout) 수직 슬라이스 + Inngest 골격 완료(2026-06-18)** — `created→[촉이]→topic_proposed→[선택]→topic_selected` 전구간 $0(claude-p) 관통 검증.
+   - **재사용 spine(`src/pipeline/`)**: `stageContract.runProposalStage`(§8.1 골격: DB읽기→prep→callLLM≤1→proposed저장→전이→cost_ledger flush, 멱등 메모이즈) · `gate.selectProposal`(사람게이트=상태전환만) · `runState`(전이가드+낙관잠금) · `stages`(단계 디스크립터). **훅이·구다리는 이 spine 복붙 + prepare/schema만 작성.**
+   - **촉이(`src/agents/topic_scout/`)**: schema+system+prepare+stage. prepare가 **댓글 원문 비전송**(governance C) — 코드로 키워드 빈도 집계(조사 스트립·like 가중·질문카운트)만 LLM에 전달. 실측: 파킹통장117·ISA118 등으로 5개 주제 제안, 전부 evidence_ids 보유.
+   - **Inngest(`src/inngest/`)**: client(이벤트버스) + `functions/topicStage`(step.run 1회 durable, 검증스크립트와 동일 runProposalStage 호출) + `app/api/inngest/route.ts`(serve). 설치=inngest@3.54.2(pnpm; TS peer 때문에 npm 불가). **next.config extensionAlias(.js→.ts)** 추가(webpack이 src .js import resolve).
+   - **Server Action(`app/actions/topicRun.ts`)**: startTopicRun(content+run생성→이벤트발행)·selectTopic. ⚠️owner 인증 TODO.
+   - 검증: `scripts/run-topic-slice.ts`(npm: `slice:topic`). `tsc0/14테스트/next build` 그린. 라이브 실행=`pnpm inngest:dev`+`pnpm dev`.
+   - **남은 것**: UI 페이지(버튼)=Phase 3 대시보드. owner 인증 와이어링.
+3. ✅ **훅이·구다리 팬아웃 완료(2026-06-18)** — spine 복붙으로 2단계 추가. 슬라이스가 이제 `created→[촉이]→topic_selected→[훅이]→titles_selected→[구다리]→structure_selected` 3단계 전구간 $0 관통.
+   - **훅이(`src/agents/hook_maker/`, title_thumb)**: prep=선택주제+tone_profile+과거제목(corpus title) 레퍼런스+TRUS 썸네일 제약. 출력=제목3안+썸네일 layout/copy. 실측: 김짠부 말투 제목("찐짠이들·짠부가 직접·500만원 직접계산")+tone:v1/ref 근거.
+   - **구다리(`src/agents/structurer/`, structure)**: prep=선택주제·제목+structure insights+tone.easy_explain. 출력=구성2안(서로 다른 approach)+섹션(section/goal/why, 이해흐름: 순서·불안완화·오개념선제). 실측: "숫자체감먼저" vs "오개념타파먼저".
+   - **공통 헬퍼 `src/pipeline/context.ts`**: getSelectedStagePayload(이전 단계 선택값, 수정본 우선)·getToneProfile(active>draft). Inngest 함수 3종 + `_shared.executeProposalStage` + 이벤트 3종 + Server Action(request/select ×3). tsc0/14테스트/next build 그린.
+4. ✅ **셜록 셀 완료(2026-06-18)** — fan-out/join 골격 + 검색 어댑터 + 7무결성가드 + 트리아지 게이트. 슬라이스가 `…→structure_selected→[셜록]→research_ready→[검수]→research_approved`까지 관통.
+   - **검색 어댑터(`src/search/`)**: `search()` = mock(결정적·$0) / **tavily(실검색, 키 작동 확인)** 스위치 + fixture(tavily 응답 리플레이 $0). callLLM과 동형. 한국공식도메인 includeDomains(§9-⑥). Perplexity는 비움(선택).
+   - **셜록 5에이전트(`src/agents/{sherlock_lead,fact_verifier,numbers,analogist,critic}/`)**: scope(claims/concepts 분해) · 팩트검증가(검색+인용실재 판정) · 셈이(숫자+코드검산) · 유이(비유+왜곡검증) · 반론(빠진관점·반대근거).
+   - **`src/pipeline/researchCell.runResearchCell`**: scope→[팩트검증가(claim별 search) ‖ 셈이 ‖ 유이] **Promise.all 병렬**→**코드 리콘실(7가드 강제**: isVerifiedValid 강등·mock/인용부재→could_not_verify·독립출처카운트·math 검산)→**§11 트리아지**(금융·미검증·stale→escalated)→반론→research_facts+explanation_assets 저장→research_ready.
+   - **트리아지 게이트(`researchGate.ts`)**: ready→review→approved, 에스컬레이션 fact만 사람 검수(human_approved). Inngest research 함수 + 이벤트 + Server Action(request/review/approve).
+   - 실측(tavily): fact 4(전부 금융→검수, **거짓 verified 0건**=가드 정상), asset 10, 반론이 변동금리·종합과세 누락 포착. tsc0/14테스트/next build 그린.
+5. ✅ **짠펜 완료(2026-06-19)** — **전체 파이프라인 관통**: `…research_approved→[짠펜]→script_ready→[검수]→approved`. 한 편이 주제→완성 대본까지 완주.
+   - tone_profile v1 **active 승격**(`scripts/activate-tone.ts`). 짠펜이 사용.
+   - **`src/agents/scribe/`** + **`src/pipeline/scriptCell.runScriptStage`**: outline+승인facts(human_approved OR 자동verified)+explanation_assets+tone → script_segments. **lineage 저장**(script_segment_facts·_explanation_assets, used_in_script 마킹). **가드**: freshness 사전게이트(stale→scripting→researching rework), **표절**(`scriptGuards.containment` 문자5-gram 포함도, 임계 0.6), 말투/쉬운설명은 프롬프트+asset 링크로. delete-before-insert 멱등+전이 마지막.
+   - `scriptGate`(ready→review→approved | rework) + Inngest scriptStage(concurrency 1/run) + Server Action 4종. 실측: 8 segment, 김짠부 말투("짠하!/찐짠이들/오키?/주차 비유"), 표절 0.42, lineage 연결. tsc0/46테스트/next build.
+6. ✅ **반장 마감 완료(2026-06-19) → Phase 2 닫힘** — 비용 2단캡·max_rework·kill switch 파이프라인 연동.
+   - **per-run 비용캡**: `CostGuard.seed(runId, run.cost_usd)`로 캡을 편 전체 누계 기준화. `runGuards.runStageGuarded`가 모든 단계 실행을 감싸 SoftCapPause→`paused_soft_cap`(사람 확인) / HardCap→`aborted`. researchCell fan-out .catch는 캡 에러 재전파(강등 안 함).
+   - **max_rework=2**: `bumpRework`(durable 카운터) — scriptCell stale rework + scriptGate 수정요청에 연결, 초과 시 abort.
+   - **kill switch**: `abortRun`(어느 상태든→aborted, 사유 기록) + Server Action `abortRunAction`/`resumeRunAction`(softAck 재개).
+   - ✅ **migration 12 적용 완료(2026-06-19)**(`rework_count`·`abort_reason` 컬럼) — SQL 에디터 수동적용 완료.
+   - tsc0/50테스트(CostGuard.seed per-run 캡)/next build. **전체 파이프라인 created→approved 여전히 그린**.
+
+**▶ Phase 3 대시보드 진행 중** (Server Action·게이트·가드 모두 코드로 존재 → UI만).
+- ✅ **3.1 셸 + 런 목록 + 새 편 시작 완료(2026-06-19)** — 결정 a(개발용 owner 바이패스)·3.1부터 시작.
+  - **인증(결정 a)**: `auth.ts`에 `DEV_OWNER_BYPASS=1`(+NODE_ENV!=production 이중가드) → `requireOwner()`가 시드 owner id 반환. 로그인 UI 없이 대시보드 액션 허용. `isDevBypass()`로 배너 노출. ⚠️배포 전 진짜 인증 필요(Phase 5). `.env`/`.env.example`에 플래그.
+  - **읽기**: `src/lib/dashboard/queries.ts`(server-only, admin 클라이언트) `listRuns()` — production_runs + contents 별도조회 코드조인(database.types Relationships 비어 임베드 타입추론 안 됨). `labels.ts`=STATE_LABEL(18상태 한국어)+runTone.
+  - **UI**: `layout.tsx` TRUS 헤더 네비 + `page.tsx`(force-dynamic) 런 목록(상태뱃지·비용·재작업·중단사유)·빈상태 + `components/NewRunButton.tsx`(client, startTopicRun+router.refresh, 주제 선택입력).
+  - tsc0/55테스트/next build 그린. `/`=ƒ Dynamic. 라이브=`pnpm inngest:dev`+`pnpm dev`.
+- ✅ **3.2 런 상세: 제안→선택 완료(2026-06-19)** — `/runs/[id]`에서 topic·title·structure 제안→선택 루프.
+  - **읽기**: `runDetail.ts` `getRunDetail()`(run+content+단계별 최신 proposal·selection). `proposalTypes.ts`(payload 타입+PROPOSAL_STAGES+STAGE_TITLE 공용).
+  - **컴포넌트**: `ProposalSelector`(client, 후보 라디오선택+수정필드(단계별)+한줄이유→select 액션, editedPayload는 원안과 다를때만 전송=§8.4 델타) · `CandidateBody`(순수, 서버요약+클라 공용) · `ThumbnailCanvas`(순수, 썸네일 3안 TRUS 캔버스 초안) · `RequestStageButton`(다음단계 request) · `RefreshButton`(durable 비동기→수동 새로고침).
+  - **페이지**: 상태별 단계 렌더(선택됨 요약/활성 선택기/시작 버튼/대기), paused·aborted 배너, 리서치 진입버튼(structure_selected→requestResearch). 목록 RunRow→상세 링크.
+  - tsc0/55테스트/next build 그린(`/runs/[id]`=ƒ Dynamic).
+- ✅ **3.3 리서치 트리아지 승인 완료(2026-06-19)** — 위험기반 검수(§11, 전건 X).
+  - **읽기**: `researchView.ts` `getResearchView()`(research_facts 전체+escalated 분리+autoPassedCount, explanation_assets). `labels.ts`에 VERIFICATION/SOURCE_TIER/FRESHNESS 한국어 맵.
+  - **컴포넌트**: `FactCard`(순수, 무결성 뱃지: 검증상태·금융·tier·freshness·독립출처·인용확인·검수대상·승인/반려·인용excerpt·출처링크) · `ResearchReview`(client, 에스컬레이션 fact만 승인/반려 토글 기본승인→approveResearchAction{approveFactIds,rejectFactIds}) · `EnterReviewButton`(research_ready→openResearchReview) · RequestStageButton에 script 추가.
+  - **페이지 ResearchSection**: structure_selected→리서치시작 / researching→대기 / research_ready→검수시작 / research_review→트리아지(escalated 0건이면 ApproveAllInline)+전체fact·asset패널 / 승인후→읽기패널. **ScriptSection**: research_approved→대본작성시작(requestScript) / scripting·script_*→대기(3.4) / approved→완료.
+  - tsc0/55테스트/next build 그린(`/runs/[id]` 4.37kB).
+- ✅ **3.4 짠펜 검수 + lineage + 비용 뷰 완료(2026-06-19) → Phase 3 닫힘 🎉** — 대시보드로 주제→완성대본 전 과정 조작 가능.
+  - **읽기**: `scriptView.ts` `getScriptView()`(script_segments + segment별 fact/asset **lineage** 조인) + `getCostView()`(cost_ledger 카테고리별 합계+총액+엔트리). `labels`에 COST_CATEGORY 맵.
+  - **컴포넌트**: `EnterScriptReviewButton`(script_ready→openScriptReview) · `ScriptReview`(client, 최종승인/수정요청(confirm)→approve/requestScriptRework) · `SegmentList`(순수, 단락+lineage 칩: fact claim·숫자/비유 asset) · `CostPanel`(순수, 총액·카테고리·엔트리, SOFT$7/HARD$10 맥락) · `RunControls`(client, **kill switch** 중단 + **paused_soft_cap 재개**(리서치/스크립트 선택)).
+  - **페이지**: ScriptSection(research_approved→대본시작 / scripting→대기 / script_ready→검수진입+세그먼트 / script_review→승인·수정요청+세그먼트 / approved→완성+세그먼트) · CostSection(엔트리 있으면 항상) · 헤더 RunControls(aborted 배너 별도).
+  - tsc0/55테스트/next build 그린(`/runs/[id]` 5.22kB).
+  - **▶ 다음**: Phase 4(회고&발굴) — 또는 운영 라이브 E2E(inngest:dev+dev로 한 편 실주행)·진짜 Supabase 인증 와이어링(바이패스 제거)·실시간 구독(현재 수동 새로고침).
+
+**Phase 2 기반(이미 있음):** callLLM(claude-p $0/api)·roles.ts(role_id·tool화이트)·enums.ts(상태머신)·비용2단캡·ajv스키마·fixtures리플레이·Phase1 데이터(corpus·자막·댓글·contents척추).
+**가로지르는 강제:** 7무결성가드·최신성엔진·인젝션방어·검색API(Tavily+한국공식+Perplexity, 셜록단계서 키 필요).
+**비용:** 개발 $0(claude-p+fixtures). 운영 전환은 Phase 2 말 골든 A/B.
+
+---
+_(이하 과거 진행 기록)_
+
+**Phase 0 코어 = ✅ 완료(미커밋)**: Next.js15+Tailwind v4 + TRUS 토큰 · `callLLM()` 어댑터(claude-p/api) · 비용 2단 캡+**preflight 예약**(병렬 누수 차단) · fixtures 리플레이($0) · ajv 스키마 강제 · enum+전이가드+verified규칙 · role_id 레지스트리+tool 화이트리스트 · 댓글 HMAC · parity 스파이크(12 테스트). `tsc 0 / vitest 12 / next build` 그린.
+
+**▶ 다음**:
+- ✅ Phase 0 완료: 부트스트랩(ebd755d) + 코드리뷰 P1×8 수정(1b82b4d) + **parity:live 실증·claude-p 격리 수정(a499148)**
+- ✅ parity 확인: claude-p(격리·구독무료) ↔ Anthropic API 스키마 통과·키 동형. claude-p는 cwd=tmp+`--system-prompt`+`--setting-sources ""`로 격리 호출(CLAUDE.md·훅 오염 차단)
+- ⚠️ 노출된 OpenAI 키 rotate 권장. .env에 ANTHROPIC_API_KEY 설정됨(커밋 안 됨)
+
+**Phase 1 DB = 마이그레이션 SQL 11개 작성 + 이중검토 완료(미적용)**: `supabase/migrations/` 01~11 + README. §17 DB강제분 전부 반영. GPT-5.5 codex 검토 → P0×2(app_role 순서·자가승격 차단) + P1×8(verified NULL-safe·전이 INSERT가드·L1 insert-only·불변FK충돌·HMAC NOT NULL·pts CHECK·owner쓰기) 수정 커밋 074a71e.
+
+**Supabase 적용·검증 완료(2026-06-18)**: SQL 에디터로 `_apply_all.sql` 적용(예약어 `window→metric_window` 1건 수정 후 성공). `scripts/db-verify.ts`로 service-role 검증 — config 9·핵심테이블·전이38 OK. 프로젝트 ref `hcuwptjaywkchtwhqymj`. SUPABASE_DB_URL 없이 SQL에디터 수동적용 방식 채택.
+
+- ✅ (a) DB→TS 타입 완료(`src/lib/supabase/database.types.ts` 28테이블, admin/server/browser 연결, tsc0/14테스트)
+
+**✅ ingest 레이어 완료 (Phase 1, 2026-06-18)**:
+- ✅ (b) **구글독스 8편 파싱**(`scripts/ingest-corpus.ts`, 순수 코드·$0) → corpus_editions 8 + corpus_components 48 + **contents 척추 8행(source=imported, youtube_video_id)**. NFC·base64이미지·변형 처리.
+- ✅ (c) **YouTube ingest**(`scripts/ingest-youtube.ts`): 자막 8편(youtube-transcript) + 댓글 4092개(Data API v3). **youtube_video_id로 척추 매칭**(스크립트↔자막↔댓글). 거버넌스: author 미보관·HMAC.
+- ✅ (d) **owner 시드**(`scripts/seed-owner.ts`): dddungpal@gmail.com → role=owner(service-role 승격). owner 1명.
+- **▶ 다음 = Phase 2** (셜록 셀·짠펜·촉이·훅이·구다리 에이전트 + 반장 Inngest 파이프라인 — §8 런타임 계약 적용).
+- ⚠️ **노출 OpenAI 키 rotate 권장** (platform.openai.com)
+- Phase 1: Supabase 마이그레이션(§17: FK순서/DEFERRABLE·RLS정책·verified CHECK·hot FK 인덱스) · ingest · 콜드스타트 시드
+> ⚠️ 구현 시 tech.md §17 준수. P0 2건 문서수정 완료, P1 8건 중 **코드 강제분(비용 preflight·state enum/전이가드·verified규칙·HMAC·인젝션 델리미터·role tool 화이트리스트)은 Phase 0에서 선반영**, DB 강제분(FK순서·RLS·CHECK·인덱스)은 Phase 1 마이그레이션에서.
+
+### ✅ C 확정 추가 (2026-06-18 · 런타임 계약 명문화)
+사용자와 구조 토론 → `tech.md §8(8.1~8.4)·§18` + `ARCHITECTURE.md`에 명문화(코드는 Phase 2~3).
+- **흐름**: 요청 → 백엔드 결정적 로직 → DB저장 → 이벤트 트리거 → AI 1회(준비된 데이터 위) → 결과 DB저장(proposed) → 사용자 컨펌 → DB update(selected). **AI는 데이터 수집기로 안 씀**, 단계당 1회.
+- **단계 계약(§8.1)**: 모든 에이전트 단계 동일 골격(DB읽기→prep→callLLM≤1→DB저장→전이→게이트). **저장 후 표시**(컨펌 전 proposed 저장 → 컨펌=상태전환만 → API 1회 보장).
+- **트리거(§8.2)**: 버튼=단계경계/사람게이트에만. 버튼→ServerAction→DB→이벤트. 멱등성·버튼상태=DB파생.
+- **durable·재연결$0(§8.3)**: AI는 서버 durable 파이프라인, 클라이언트 연결과 분리. 읽기=$0·게이트대기=waitForEvent=$0·끝난단계=메모이제이션. **생성↔전달 분리**(auto-research-agent deliver.ts 패턴).
+- **학습 입도(§8.4)**: 처음(proposed)↔최종(selected) 델타 + selection_reason × 성과 가중. 중간 수정은 진단용(proposal_revisions, append-only) — **학습 미투입**.
+- **채널(§18)**: 채널=얇은 어댑터(동일 이벤트버스+DB state). **Slack=인터랙티브 1순위**(Block Kit·서명검증·owner전용·dedup) / **카톡=알림 전용**(메모 API "나에게 보내기"·무료, `auto-research-agent/src/lib/{kakao,deliver}.ts` 토큰관리·생성전달분리 재사용).
+
+### ✅ B 확정 추가 (2026-06-18 · 문서 초안)
+- **principles.md v0.1**: 북극성·제1원칙(선택vs이유)·3층·학습루프(코퍼스≠골든셋)·**혼동방지 원칙 격상**(사실/생성/추정 경계·말투≠내용·최신성·7가드)·비용/개발·크루·TRUS.
+- **governance.md v0.2**: 댓글 **작성자 미보관(본문만)** · 원본 무기한+삭제요청 파기+**저장량 알림** · 외부전송 **C안**(댓글 원문 LLM 비전송 — 집계·키워드 신호만) · 자격증명 프롬프트 금지 · API 경로만.
+
+### ✅ A 확정 추가 (2026-06-17 · §15 닫힘)
+- **구글독스**: 단일 롤링 문서(탭 기능, **1탭=1편**)·**8편 완성·전부 정보형**. 새 편은 **수동 export import**(자동 Drive API 동기화는 Phase 5 연기). 문서ID `1N7Cd3jeOLOVg0M1CtdXZwY4vOcwbbue1p1BHITjXSsI`.
+- **골든 v1(동결 스냅샷, ≠코퍼스)**: 정보형 롱폼 **8편 전체** — ISA(3.22)·대출vs투자(4.6)·파킹통장(4.14)·사회초년생5단계(4.21)·채권ETF(4.29)·나스닥(5.26, 제목 ingest시 확정)·ETF Q&A(6.5)·ISA 3년만기(6.9). 코퍼스는 계속 축적, 골든은 버전업(v2…). N=8이라 hold-out 회귀탐지는 9편째부터.
+- **비용캡**: 2단 — SOFT **$7**(사람 확인) / HARD **$10**(중단). max_rework=**2**.
+- **편당 비용 추정(미측정)**: 목표 ~$5–9 / 상한 ~$18–25. Phase 0 원장이 첫 운영 편 실측.
+- **운영 모델**: Opus vs GPT-5.5 등은 **Phase 2에서 골든 v1로 말투·비용 A/B** 후 결정(`callLLM()` 단계별 혼합 가능).
+- **기본값 승인**: 트리아지 독립출처 **≥2** · A/B margin **10%/3%** · 검색 API **Tavily+한국공식도메인 직접 fetch+Perplexity**.
+
+---
+
+## ✅ 확정된 결정 (요약)
+1. **모델 전략**: RAG로 시작 → 김짠부가 "됐다" 하면 **단계별 AX 전환**(정성적). AX 우선순위 = **말투내재화 > 선제제안 > 자율성**.
+2. **결과물**: 웹 대시보드(Next.js+Vercel) + **TRUS Create 디자인**. 2단계 썸네일은 디자인 스펙 기반 **HTML 캔버스 실물 3안**.
+3. **크루(하이브리드)**: **반장**(총괄PD) / **촉이**(주제) / **훅이**(썸네일·제목) / **구다리**(구성) / **셜록**(리서치) / **짠펜**(스크립트).
+4. **비용 모델(C안)**: 개발=`claude -p`(구독·정액·공짜 무한반복) / 운영=API(편당 ~$20). `callLLM()` 어댑터로 스위치.
+5. **파이프라인**: Vercel + **Inngest(durable)**. 개발은 fixtures 리플레이로 과금 0.
+6. **데이터**: 전용 Supabase DB 신설 + 옆 프로젝트/구글독스/유튜브에서 **필요분만 ingest 동기화**.
+7. **팩트체크**: 출처명시 + 교차검증 + 사람 최종확인.
+8. **YouTube**: 김짠부=운영자 → Data API + Studio Analytics 풀 접근 (OAuth 연결 필요).
+9. **학습자료**: 구글독스 과거 스크립트(말투) / "왜 골랐나" 주관식 인터뷰(선택패턴) / 촬영대본=스크립트 / 자막=유튜브 링크.
+
+## 🗂 데이터 구조 (3층 · v2)
+- **L1 raw**: script_imports, transcripts, comments_raw, topic_interviews, research_sources, reference_media
+- **L2 structured**: contents, production_runs(+prompt_version·model·context_snapshot·latency_ms·as_of_date), stage_proposals, stage_selections(+selection_reason), research_facts(+source_tier·verification_status[+could_not_verify]·conflicting·human_approved·is_financial · **최신성: as_of_date·source_published_at·data_reference_period·volatility[static/slow/fast]·freshness·recheck_after** · **무결성: primary_source_url·independent_origin_count·quote_excerpt·citation_verified·misleading_check·escalated_to_human**), performance_metrics(+A/B CTR), **explanation_assets(NEW: kind·numeric_example·analogy·source·verified·math_verified·distortion_checked·used_in_script·landed_score)**, **topic_candidates(NEW)**, comments_structured, entities/events/relations/evidence
+- **L3 knowledge**: insights(+analogy 카테고리), retrospectives, tone_profile(+components: 어휘·문장길이·리듬·후킹·표현·금칙어·페르소나·쉬운설명톤), selection_patterns, agent_graduation, cost_ledger, **eval_runs(NEW: +이해도)**, **data_gaps(NEW)**
+- **핵심 패턴**: 제안 N개+이유 → 선택+수정 기록 → 회고 성과연결 → 인사이트 승격
+
+## 🔍 셜록 리서치 셀 + 최신성 엔진
+- **셜록 = 리서치 팀장**: 스코핑 → 병렬 fan-out → 리콘실(조인).
+  - 병렬: **팩트검증가**(교차검증·출처) · **셈이**(숫자: 수치·계산+산술/단위/시점 검증, 코드 검산) · **유이**(비유: 일상비유+왜곡검증).
+  - 조인: 정합성 교차검사(비유⟷사실 모순 X, 숫자 검증통과) → 충돌은 해당 전문가만 rework. *팬아웃→조인*(완전 병렬 아님).
+  - **D. 반론·완전성 패스**: 빠진 것·반대근거·회의론 → 반대증거 검색(확증편향 차단·사고확장).
+- **리서치 무결성 7대 가드(airtight)**: ①출처 독립성(원출처 추적·independent_origin_count) ②인용 실재 검증(fetch+quote_excerpt+citation_verified, 없으면 폐기) ③반론 패스 ④우아한 실패(could_not_verify·날조금지→짠펜 차단) ⑤통계 오용 검증(셈이: 명목/실질·세전후·평균함정·체리피킹·복리) ⑥1차 출처 우선+한국 현행(국세청·금융위·한은·통계청·법령) ⑦위험기반 사람검수 트리아지(금융·수치·충돌·미검증·stale만 에스컬레이션).
+- **최신성 엔진 (오늘=2026-06-17)**: as_of 스탬프 · volatility(static/slow/fast)→TTL(금리·시세=fast 매번 재확인, 개념=static) · **모델 컷오프(2026-01) 이후·시변 정보는 라이브 검색 강제** · 짠펜 freshness 게이트(TTL 초과 차단→재확인) · TTL 인지 캐싱.
+
+## ★ 콘텐츠 북극성 (반드시)
+합격 기준 = **"처음 듣는 사람도 편안하게 듣다 보니 이해됐다."**
+- **셜록(리서치 의무)**: 핵심 개념마다 ≥1 **숫자 예시** + ≥1 **쉬운 비유**(예: "ETF=토핑 여러 개 한 판 피자") 발굴·검증·출처 → `explanation_assets`.
+- **짠펜(쉬운 설명 가드)**: 낯선/추상 개념은 숫자예시·비유를 **먼저** 제시 후 설명. 미충족 시 생성 차단 → 반장이 셜록 재호출.
+- **eval 이해도**: explainer 커버리지 + 댓글 "쉽게 이해됐다/어렵다" 신호 → 통한 비유는 `insights.analogy`로 승격.
+
+## 🧩 설계 보강 (검토 반영 v2)
+1. **팩트엔진(셜록)**: claim 분해→교차검증→신뢰등급→claim별 사람승인. 🟡 금융정보 강검증+시점표기.
+2. **학습검증(eval)**: 골든셋 회귀·말투충실도·제안품질 → "학습 건강도" 패널.
+3. **말투 메커니즘**: 구성요소 분해→코퍼스 추출→유사도 few-shot→말투 가드.
+4. **댓글→주제**: 댓글 마이닝→topic_candidates 자동승격→촉이.
+5. **데이터격차 제안**: data_gaps 진단→수집 제안 큐.
+6. **속도**: 촉이 배치 사전계산·셜록 병렬·스트리밍·SLA(latency).
+7. **A/B 회수 + 비선형 rework**: 실측 CTR→훅이 환류 / 반장 단계 재호출.
+- 🟢 재현성(버전·스냅샷)·콜드스타트 시드·선택이유 한 줄 캡처.
+
+## 📚 학습 코퍼스 규칙 (구글독스 기반 · 확정)
+- **출처**: 김짠부 롤링 구글독스(편 누적) → 편 구분자로 분리 → `corpus_editions`/`corpus_components`.
+- **상태**: 🟢완료=학습대상 / 🔴작업필요·⚫작성중=제외.
+- **컨셉**: **정보형만** 학습. VLOG형·hybrid(정보+VLOG) 통째 제외. 인스타 무물·썰(숏폼) 제외. **롱폼 1차**.
+- **branded**: 협찬은 **직교 플래그** — 정보형이면 학습.
+- **컴포넌트 분리 학습**: 제목·썸네일문구·더보기 → `style_profiles`(훅이), 스크립트 → `tone_profile`(짠펜). 각자 독립 코퍼스.
+- **A/B 학습(지연·가중)**: 썸네일/제목 3안 → 업로드 ~d7 후 % 회수 → `weight·margin·decisiveness` 가중. inconclusive(격차<3%/노출부족)면 학습 보류. (Codex F4 해소)
+- **골든셋**: 🟢 info 롱폼에서 말투+이해도+A/B 성과 기준 10~15편 (선정 대기).
+- 상세 스펙: `docs/tech.md` §3.5·§13.1·§13.2.
+
+## 🛡 Codex 교차검토 반영 (v3 — P1+P2 전부, 단계 태그)
+- **보안·신뢰·거버넌스**: 프롬프트 인젝션 방어[MVP] · 데이터 lineage(script_segments)[MVP] · 파서 전략+아카이브(source_documents)[MVP→하드닝] · 검색 fallback[MVP] · 개인정보/동의/보관 거버넌스[MVP] · 감사·백업(audit_log)[하드닝]
+- **비용·실행**: claude -p 레이트리밋 한계 명시 · dev/prod parity 운영모델 최종검증 · $20=상한가드(전체비용 원장) · 무거운 작업 전용 워커[하드닝]
+- **AX·학습**: AX 정의 못박기·학습 파이프라인·롤백[하드닝] · eval 엄밀화(라벨·평가자·합의도)[축소MVP→하드닝] · 말투 표절/과적합 가드[MVP]
+- **데이터모델**: MVP 최소셋(지식그래프·eval_runs·selection_patterns 연기, lineage 먼저) · enum/판정 루브릭 · stable role_id · context_snapshot hash저장 · quote 저작권
+- **리서치 금융**: research_facts +effective_date·applies_to·grace_period·bill_status(E1) · 원출처 추적[하드닝] · 검색 API 확정(범용+한국공식도메인+Perplexity)
+- **발굴·지표·품질**: topic_candidates +트렌드·경쟁채널·경제캘린더 · attribution 한계표기 · 댓글 약신호 보정 · 이해도=순서·맥락·불안완화·오개념제거·속도까지
+- **자산**: 썸네일 canvas는 초안(실사진 합성 별도) · YouTube 토큰 암호화·quota
+- **최대 리스크(두 모델 합의)**: 틀린/낡은 금융 claim을 그럴듯하게 포장 배포 → lineage+금융최신성+우아한실패가 방어선. (면책·투자조언 경계 등 컴플라이언스는 시스템 밖 운영자 책임)
+
+## 📋 남은 작업 (BACKLOG v3)
+- [ ] **Phase 0** 부트스트랩·문서5종(+governance)·callLLM+parity검증·전체비용/지연 원장·enum 루브릭·role_id ← **다음**
+- [ ] **Phase 1** MVP 최소 테이블 + lineage(script_segments)·source_documents + ingest(토큰암호화·PII거버넌스) + 콜드스타트 시드
+- [ ] **Phase 2** 셜록 셀(팩트검증가·셈이·유이→조인+반론+최신성+금융심화+무결성7가드+**인젝션 방어**+검색 fallback+**검색API 확정**) → 짠펜(+표절가드+이해도 확장) → 촉이·훅이(썸네일=초안)·구다리, 반장 rework 가드(재시도·비용상한·중단)
+- [x] **Phase 3** 대시보드: 제안→선택+한줄이유, 썸네일 3안, **위험기반 claim 트리아지 승인**(전건 X), lineage·비용 뷰 ✅(2026-06-19, 4슬라이스)
+- [ ] **Phase 4** 회고&발굴: 성과+댓글(Cron)→마이닝→topic_candidates(+트렌드·경쟁·경제캘린더)→회고→인사이트→차기주제, A/B 약신호·attribution 한계표기
+- [ ] **Phase 5** 하드닝: 지식그래프·audit_log·원출처추적·전용워커·파서확장 / eval 엄밀화 / AX 정의·학습·롤백 / 수동 졸업
+
+## ❓ 열린 항목 (결정 필요, 비차단)
+- ~~구글독스 전달 방식~~ → **확정**(수동 export, 단일 문서 8편)
+- ~~셜록용 검색 API~~ → **확정**(Tavily+한국공식+Perplexity, 커버리지 실측 Phase 2)
+- 채택률/AX 졸업 게이트 수치 — **데이터 축적 후 튜닝**(정성 트리거 우선)
+- A/B 최소 노출수 임계 — **d7 데이터 후 튜닝**
+- 운영 모델(Opus vs GPT-5.5) — **Phase 2 골든 v1 A/B로 결정**

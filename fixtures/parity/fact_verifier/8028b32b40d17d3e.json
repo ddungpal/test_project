@@ -1,0 +1,12 @@
+{
+  "promptHash": "8028b32b40d17d3ed6f8a455ce2576106cb4581a8983be0492fdd835d55fb9ed",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.bok.or.kr/portal/bbs/B0000216/view.do?type=YNGBGS&nttId=165614&menuNo=200647\",\"quote_excerpt\":\"이자율 측정 시에 물가의 변동, 즉 인플레이션 또는 디플레이션을 고려하는지에 따라서 명목이자율과 실질이자율로 구분됩니다. 명목이자율이란 물가변동을 감안하지 않은\",\"citation_verified\":true,\"independent_origin_count\":2,\"misleading_check\":null,\"freshness\":\"unknown\",\"reasoning\":\"해당 claim은 피셔 방정식(실질금리 = 명목금리 − 인플레이션율)의 직접적 수학적 귀결이다. 한국은행(bok.or.kr) 2개 출처가 '명목금리 = 실질금리 + 인플레이션율' 관계를 명시하고 있으며, 기획재정부(moef.go.kr)도 피셔 효과 항목에서 동일 원리를 설명한다. 서로 다른 공식 기관 2곳(moef.go.kr, bok.or.kr) 이상이 근거 원리를 뒷받침한다. '파킹통장'이라는 단어 자체는 검색결과에 없으나, 파킹통장은 명목이자율을 지급하는 수시입출금형 예금계좌에 해당하므로, 인플레이션율이 해당 명목금리를 초과할 경우 실질수익률(= 명목금리 − 인플레이션율)이 음수가 된다는 결론은 수식상 자명하고 출처에 부합한다. 발행일 미표기로 최신성은 확인 불가(unknown).\"}",
+  "usage": {
+    "inTok": 950,
+    "outTok": 195,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T01:55:07.294Z"
+}

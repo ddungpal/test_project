@@ -1,0 +1,12 @@
+{
+  "promptHash": "9c30933f2f6698b840d5485abcc7cb4fce3a2960879c3521d7942e45abe736a2",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.law.go.kr/LSW/admRulLsInfoP.do?admRulSeq=2100000263718\",\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"'예금자보호·입출금 제한 조건 없음' 표현은 오해 소지 큼. ① 은행·저축은행형 파킹통장은 예금자보호법상 원리금 합산 5천만 원 한도 내 보호(조건 있음), ② 증권사 CMA형 파킹통장은 예금자보호 대상 제외, ③ fsc.go.kr 수시입출금식 상품 관련 문서에서 '금리지급 조건(예치기간, 한도, 최고금리 등)'이 명시되어 '제한 조건 없음'과도 배치될 수 있음.\",\"freshness\":\"unknown\",\"reasoning\":\"검색결과 6건 중 '파킹통장'을 직접 언급한 문서가 전혀 없어 클레임의 직접 근거를 찾을 수 없음. law.go.kr 우체국예금 규정은 보통예금·저축예금의 입출금 자유 조항을 설명하나 파킹통장과 동일시할 수 없음. fsc.go.kr 저축은행 브리핑은 예금자보호법 5천만 원 한도 보호를 언급하지만 파킹통장 맥락이 아님. 나머지 결과는 상호저축은행법 시행령·작업반 논의 등으로 클레임과 무관. 입출금 자유는 파킹통장의 일반적 특성으로 알려져 있으나 검색결과 내 직접 확인 불가하며, '예금자보호 조건 없음' 부분은 상품 유형(은행형 vs CMA형)에 따라 상반되게 적용되므로 단일 진술로 검증 불가.\"}",
+  "usage": {
+    "inTok": 885,
+    "outTok": 208,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T14:33:23.088Z"
+}

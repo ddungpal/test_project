@@ -1,0 +1,12 @@
+{
+  "promptHash": "8dfbc3cdd59b769b88236e1c85ed0338ba5b3ade69296b8783241f61194f7df3",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.law.go.kr/LSW//admRulInfoP.do?admRulSeq=2100000070479&chrClsCd=010201\",\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":1,\"misleading_check\":\"'최고 금리'는 문맥에 따라 의미가 다를 수 있음. 예금·적금 광고에서는 '모든 우대조건 충족 시 적용되는 최고 우대금리'를 뜻하지만, 대출 광고에서는 '법정 최고이자율(금리 상한)'을 가리킬 수도 있어 혼동 소지가 있음.\",\"freshness\":\"unknown\",\"reasoning\":\"claim의 핵심은 '광고 속 최고 금리는 특정 우대조건 전부 충족 시에만 적용된다'는 것이다. 가장 관련성이 높은 결과(Result 1, score 0.54)는 law.go.kr의 '금융상품 등의 표시·광고에 관한 심사지침'으로 1차 공식 출처이며, '대출 받을 경우에는 저축 및 신탁상품에 대한 우대금리가 일반적으로 적용되지 않음에도 우대금리를 적용하는 것처럼 표시·광고하는 것은'이라는 문장이 포함되어 있어 우대금리 허위·과장 광고 규제와 관련이 있음을 시사한다. 그러나 해당 문장은 문맥이 잘려 있어 claim을 직접 뒷받침하는 완결된 명제로 볼 수 없고, '최고 금리는 특정 우대조건을 모두 충족해야만 적용된다'는 표현 자체는 어느 결과에도 그대로 존재하지 않는다. 나머지 결과들(자본시장법, 여신전문금융업법, 조달청 규정 등)은 이 claim과 무관하다. 독립 발행처도 law.go.kr 단일 도메인뿐이며, 2개 이상 출처의 일치 확인 조건을 충족하지 못한다. 근거가 약하므로 unverified로 판정한다.\"}",
+  "usage": {
+    "inTok": 2469,
+    "outTok": 235,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T14:33:22.980Z"
+}

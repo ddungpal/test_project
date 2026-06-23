@@ -1,0 +1,12 @@
+{
+  "promptHash": "2c59030df5a7e0c54cb30958426fff9430e25af1b49fbde882f5aac417a1e36e",
+  "roleId": "sherlock_lead",
+  "model": "sonnet",
+  "rawJson": "{\"claims\":[{\"text\":\"2026 하반기 주요 파킹통장(카카오뱅크·케이뱅크·토스뱅크 등)의 실제 적용 금리 수치\",\"is_financial\":true},{\"text\":\"2026 하반기 주요 CMA 상품(증권사별)의 실제 적용 금리 수치\",\"is_financial\":true},{\"text\":\"2026 하반기 주요 은행 정기예금의 실제 적용 금리 수치(1년 만기 기준)\",\"is_financial\":true},{\"text\":\"동일 금액(예: 100만 원·1,000만 원) 1년 예치 시 파킹통장·CMA·정기예금 간 이자 수령액 차이 계산값\",\"is_financial\":true},{\"text\":\"세후 실수령 이자 계산에 적용되는 이자소득세율(15.4% = 소득세 14% + 지방소득세 1.4%)\",\"is_financial\":true},{\"text\":\"파킹통장은 예금자보호법 적용 대상이라는 주장\",\"is_financial\":true},{\"text\":\"CMA는 상품 유형(RP형·MMF형·발행어음형)에 따라 예금자보호 적용 여부가 다르다는 주장\",\"is_financial\":true},{\"text\":\"정기예금 중도 해지 시 약정 금리보다 낮은 중도해지 금리가 적용되어 손실이 발생한다는 주장\",\"is_financial\":true},{\"text\":\"CMA는 주식·펀드와 달리 원금 손실 위험이 낮은 상품이라는 주장(유형별 위험도 차이 포함)\",\"is_financial\":true},{\"text\":\"파킹통장을 그대로 유지할 경우 CMA 또는 정기예금 대비 실질적으로 손해(기회비용 발생)라는 영상 핵심 주장\",\"is_financial\":true},{\"text\":\"시청자 상황별(단기 유동성 필요·중기 거치·목돈 예치 등) 최적 상품 추천 결론\",\"is_financial\":true},{\"text\":\"2026 하반기 기준 한국은행 기준금리 수준 또는 시장금리 방향성(영상 내 금리 비교 맥락의 근거로 사용될 경우)\",\"is_financial\":true}],\"concepts\":[{\"name\":\"CMA(종합자산관리계좌) — 유형(RP형·MMF형·발행어음형) 및 운용 구조\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"파킹통장 — 수시입출금형 고금리 통장의 정의와 일반 입출금통장과의 차이\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"예금자보호제도 — 1인당 5,000만 원 한도·적용 기관 범위\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"이자소득세(원천징수 15.4%) — 세전 금리와 세후 실수령 이자의 차이\",\"needs_number\":true,\"needs_analogy\":false},{\"name\":\"연이율(APR) — 금리 표시 방식과 실제 월·일 이자 환산 방법\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"정기예금 중도해지 금리 — 약정 금리 대비 실제 적용 금리 하락 구조\",\"needs_number\":true,\"needs_analogy\":false}]}",
+  "usage": {
+    "inTok": 642,
+    "outTok": 387,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T06:19:24.694Z"
+}

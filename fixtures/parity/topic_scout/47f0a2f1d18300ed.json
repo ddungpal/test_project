@@ -1,0 +1,12 @@
+{
+  "promptHash": "47f0a2f1d18300edb9a4ffa55e752207911b6878cc485c748b515810912b7b59",
+  "roleId": "topic_scout",
+  "model": "sonnet",
+  "rawJson": "{\"title\":\"리플레이 제목\",\"reason\":\"fixture\"}",
+  "usage": {
+    "inTok": 10,
+    "outTok": 5,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T00:00:00.000Z"
+}

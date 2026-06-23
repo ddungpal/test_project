@@ -1,0 +1,12 @@
+{
+  "promptHash": "693ad77e46c3705aae460a88d3646cf2626530e767e27ee5dddf9ec571e90d56",
+  "roleId": "sherlock_lead",
+  "model": "sonnet",
+  "rawJson": "{\"claims\":[{\"text\":\"파킹통장은 언제든 입출금이 자유롭다(예금자보호·입출금 제한 조건 없음)\",\"is_financial\":true},{\"text\":\"파킹통장 금리가 일반 시중은행 입출금 통장(수시입출금) 금리보다 유의미하게 높다\",\"is_financial\":true},{\"text\":\"500만 원 예치 기준 주요 파킹통장별 연간 세전·세후 실수령 이자 금액(영상에서 제시할 구체적 수치)\",\"is_financial\":true},{\"text\":\"광고에 표시되는 최고 금리는 특정 우대조건을 모두 충족한 경우에만 적용된다\",\"is_financial\":true},{\"text\":\"우대조건 미충족 시 기본금리(우대금리 미포함)만 적용된다\",\"is_financial\":true},{\"text\":\"각 파킹통장에는 최고 금리가 적용되는 잔액 한도 구간이 존재하며, 초과분에는 낮은 금리가 적용된다\",\"is_financial\":true},{\"text\":\"파킹통장 이자는 매일 잔액을 기준으로 계산된다(일별 이자 계산 구조)\",\"is_financial\":true},{\"text\":\"이자소득세 15.4%(소득세 14% + 지방소득세 1.4%)가 원천징수되어 실수령 이자가 줄어든다\",\"is_financial\":true},{\"text\":\"영상에서 비교 대상으로 선정한 파킹통장들의 금리 순위(1등 포함)가 촬영 시점 기준으로 정확하다\",\"is_financial\":true},{\"text\":\"우대 금리 조건 항목(예: 마케팅 동의, 체크카드 이용 실적, 급여이체 등)이 은행별로 다르다\",\"is_financial\":true},{\"text\":\"파킹통장 갈아타기(신규 개설 및 이체)를 5분 이내에 완료할 수 있다\",\"is_financial\":false},{\"text\":\"파킹통장 잔액은 예금자보호법에 따라 1인당 5,000만 원 한도로 보호된다\",\"is_financial\":true}],\"concepts\":[{\"name\":\"파킹통장\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"우대금리 조건\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"금리 적용 한도 구간(한도 초과 시 금리 차등)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"일별 이자 계산 구조(일변동금리·일할 계산)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"이자소득세 원천징수와 세후 실수령 이자\",\"needs_number\":true,\"needs_analogy\":false}]}",
+  "usage": {
+    "inTok": 613,
+    "outTok": 325,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T14:32:40.695Z"
+}

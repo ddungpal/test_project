@@ -1,0 +1,12 @@
+{
+  "promptHash": "7918cc19a930c9d9ec7283d50528c270ff4fe233cb051a6da3bbb174a392eee3",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"파킹통장 이자는 은행·상품마다 적용 금리가 상이하므로, 특정 금리를 명시하지 않은 채 '100만 원 예치 시 월 이자'를 단일 수치로 제시하면 오해를 유발할 수 있음. 예: 연 3% 기준 세전 월 이자 약 2,500원, 연 4% 기준 약 3,333원으로 금리에 따라 결과가 달라짐. 또한 파킹통장은 일별 복리 또는 단리 방식, 잔액 구간별 우대금리 등 상품 구조에 따라 실수령액이 다를 수 있음.\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과 3건 모두 '[MOCK 검색결과 — 실제 사실 아님]' 표식이 명시된 개발용 더미 데이터이며, URL에도 '/mock/' 경로가 포함되어 있어 실제 사실과 무관하다. 판정 규칙상 MOCK 결과는 could_not_verify + citation_verified=false로 처리해야 한다. 실제 검증을 위해서는 각 은행 공식 홈페이지 또는 금융감독원 금융상품한눈에(finlife.fss.or.kr) 등 신뢰할 수 있는 출처에서 현재 적용 금리를 확인한 뒤 '원금 × 연금리 ÷ 12 = 세전 월 이자', '세전 월 이자 × (1 − 0.154) = 세후 월 이자' 공식을 적용해야 한다.\"}",
+  "usage": {
+    "inTok": 751,
+    "outTok": 197,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T15:18:40.280Z"
+}

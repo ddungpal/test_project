@@ -1,0 +1,12 @@
+{
+  "promptHash": "098cbbaa4cd3e23552ca36d6d18eee99d3e17afd49241a15ff929a7aae888f5d",
+  "roleId": "sherlock_lead",
+  "model": "sonnet",
+  "rawJson": "{\"claims\":[{\"text\":\"청년도약계좌 월 납입 한도는 최대 70만 원(연 840만 원)이다\",\"is_financial\":true},{\"text\":\"청년도약계좌 가입 조건은 만 19~34세, 개인소득 6,000만 원 이하, 가구소득 중위 180% 이하이다\",\"is_financial\":true},{\"text\":\"청년도약계좌 의무 유지 기간은 5년이며, 중도 해지 시 정부 기여금 및 비과세 혜택이 소멸된다\",\"is_financial\":true},{\"text\":\"정부 기여금(매칭)은 소득 구간별로 차등 지급되며 월 최대 약 2만4천 원 수준이다\",\"is_financial\":true},{\"text\":\"ISA 연간 납입 한도는 2,000만 원(5년 누적 최대 1억 원)이다\",\"is_financial\":true},{\"text\":\"ISA 비과세 한도는 일반형 200만 원, 서민·농어민형 400만 원이며 초과분은 9.9% 분리과세된다\",\"is_financial\":true},{\"text\":\"ISA 의무 유지 기간은 일반형 3년, 서민·농어민형 1년이며 중도 해지 시 비과세 혜택이 사라진다\",\"is_financial\":true},{\"text\":\"청년도약계좌와 ISA는 중복 동시 가입이 허용된다\",\"is_financial\":true},{\"text\":\"도약계좌에 월 70만 원을 꽉 채우면 ISA 납입 여력 부족으로 ISA 혜택을 충분히 활용하지 못하는 구조적 충돌이 발생한다\",\"is_financial\":true},{\"text\":\"정부 기여금이 존재하는 도약계좌를 ISA·금 투자보다 먼저 채우는 것이 기대수익률상 우선이다\",\"is_financial\":true},{\"text\":\"영상에서 제시할 도약계좌·ISA·금의 특정 배분 비율이 수학적으로 최적이다\",\"is_financial\":true},{\"text\":\"금 투자는 인플레이션 및 주식시장 하락 국면에 대한 헤지 자산으로 기능한다\",\"is_financial\":true},{\"text\":\"ISA 계좌 내에서 금 ETF를 편입하면 매매차익·배당에 대해 비과세(또는 분리과세) 혜택을 받을 수 있다\",\"is_financial\":true},{\"text\":\"ISA 외부에서 국내 상장 금 ETF를 거래하면 매매차익에 배당소득세(15.4%)가 부과된다\",\"is_financial\":true}],\"concepts\":[{\"name\":\"청년도약계좌\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"ISA(개인종합자산관리계좌)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"정부 기여금(매칭 보조금)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"비과세 한도 및 분리과세\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"의무 유지 기간(lock-up)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"헤지 자산\",\"needs_number\":false,\"needs_analogy\":true},{\"name\":\"포트폴리오 배분 비율\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"금 ETF vs 실물 금 세제 차이\",\"needs_number\":true,\"needs_analogy\":false}]}",
+  "usage": {
+    "inTok": 594,
+    "outTok": 421,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T02:06:01.841Z"
+}

@@ -1,0 +1,12 @@
+{
+  "promptHash": "0ee5e246da7f0335f482afdd9854cb741c2600669e197e11fee25b9f2154ed79",
+  "roleId": "sherlock_lead",
+  "model": "sonnet",
+  "rawJson": "{\"claims\":[{\"text\":\"2026년 현재 파킹통장·CMA 금리는 약 3% 수준이다\",\"is_financial\":true},{\"text\":\"100만 원을 파킹통장에 1년 예치하면 세전 명목 이자가 3만 원이다\",\"is_financial\":true},{\"text\":\"2026년 한국 소비자물가 상승률(인플레이션율)이 파킹통장 명목금리에 근접하거나 이를 초과한다\",\"is_financial\":true},{\"text\":\"인플레이션율이 명목금리를 초과할 경우 파킹통장의 실질수익률은 마이너스가 된다\",\"is_financial\":true},{\"text\":\"금은 장기적으로 인플레이션 헤지 수단으로 기능해 왔다\",\"is_financial\":true},{\"text\":\"금 가격과 달러 가치는 역상관 관계에 있다\",\"is_financial\":true},{\"text\":\"금은 위기·경기 침체 국면에서 파킹통장 대비 자산 가치를 방어한다\",\"is_financial\":true},{\"text\":\"금은 수익을 높이는 공격 자산이 아니라 화폐 가치 하락을 막는 방어 자산이다\",\"is_financial\":true},{\"text\":\"파킹통장·CMA는 단기 유동성 수단으로 2026년 현재에도 여전히 유효하다\",\"is_financial\":true},{\"text\":\"여유자금 중 금 비중을 20%(파킹통장:금 = 80:20)로 배분하는 것이 일반적 기준으로 적절하다\",\"is_financial\":true},{\"text\":\"1,000만 원 여유자금 중 200만 원을 금 ETF에 배분하는 예시가 현실적으로 실행 가능하다\",\"is_financial\":true},{\"text\":\"국내 증권 앱에서 금 ETF를 5분 이내에 매수할 수 있다\",\"is_financial\":false},{\"text\":\"금 ETF는 실물 금 투자 대비 소액으로도 분산 매수가 가능하다\",\"is_financial\":true},{\"text\":\"금 ETF 투자 시 적용되는 세금(배당소득세·매매차익 과세) 구조가 파킹통장 이자 과세와 다르다\",\"is_financial\":true}],\"concepts\":[{\"name\":\"실질수익률\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"명목금리 vs 실질금리 차이\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"인플레이션 헤지\",\"needs_number\":false,\"needs_analogy\":true},{\"name\":\"금·달러 역상관 관계\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"금 ETF 구조(실물 금과의 차이, 국내 상장 종류)\",\"needs_number\":false,\"needs_analogy\":true},{\"name\":\"안전자산 포트폴리오 비중 설계 원칙\",\"needs_number\":true,\"needs_analogy\":false},{\"name\":\"파킹통장 vs CMA 구조 차이\",\"needs_number\":false,\"needs_analogy\":true}]}",
+  "usage": {
+    "inTok": 791,
+    "outTok": 379,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T01:54:13.606Z"
+}

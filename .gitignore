@@ -1,0 +1,78 @@
+# ── 민감정보 / 자격증명 (절대 커밋 금지 — CLAUDE.md 보안 규칙) ──
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.crt
+credentials/
+secrets/
+service-account*.json
+*-service-role*.json
+
+# YouTube/OAuth 토큰·세션
+token.json
+tokens/
+*.token
+
+# ── 콘텐츠 원본 / 민감 데이터 (커밋 금지) ──
+# 스크립트 원본, 댓글 원본, DB 덤프, 팀원 개인정보
+*.dump
+*.sql.gz
+db-dumps/
+backups/
+data/raw/
+content-originals/
+# 학습 코퍼스 원본(구글독스 export 스크립트) — README/컨벤션만 커밋, 원본은 제외
+corpus/raw/
+corpus/parsed/
+# 말투 추출 검수 스크래치(스크립트 인용 포함·재생성 가능). 진짜 산출물은 DB tone_profile.
+corpus/tone/
+
+# fixtures: 리플레이 캐시는 OK, 민감 응답은 제외
+fixtures/**/sensitive/
+fixtures/**/*.secret.json
+# 성과 수동 입력(개발 전용·개인 데이터) — 예시(.example)만 커밋
+fixtures/performance/manual.json
+
+# ── 의존성 / 빌드 산출물 ──
+node_modules/
+.next/
+out/
+dist/
+build/
+*.tsbuildinfo
+
+# ── 로그 / 캐시 / 임시 ──
+*.log
+# captureError 영속 에러 로그(errors.jsonl) — 비공개
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.cache/
+.turbo/
+coverage/
+tmp/
+*.local
+
+# ── Supabase 로컬 ──
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# ── OS / 에디터 ──
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+.gstack/
+
+# 골든 A/B 실험 산출물(재생성 가능·테스트 런 참조)
+corpus/golden-ab/
+
+# python bytecode (harness scripts)
+scripts/__pycache__/

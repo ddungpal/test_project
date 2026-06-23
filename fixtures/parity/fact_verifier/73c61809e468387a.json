@@ -1,0 +1,12 @@
+{
+  "promptHash": "73c61809e468387a1cf0312b6b164ffa249c721638c705362818b65369771dac",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":null,\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과 3건 모두 '[MOCK 검색결과 — 실제 사실 아님]' 표식이 명시되어 있는 개발용 더미 데이터다. 판정 규칙에 따라 MOCK 결과는 실제 사실로 취급할 수 없으므로, claim을 뒷받침하거나 반박하는 실재 근거가 전혀 없다. 실제로 국내 인터넷전문은행·저축은행의 파킹통장 상품들이 잔액 구간별 우대금리 상한(예: 3천만 원 또는 1억 원 초과분에는 기본금리 적용)을 운용하는 관행은 금융 실무상 널리 알려져 있으나, 본 검증에서는 이를 뒷받침하는 실제 출처(공식 상품 설명서, 금융감독원 자료, 언론 기사 등)가 제시되지 않았다. 따라서 실증 근거 부재로 could_not_verify 판정한다.\"}",
+  "usage": {
+    "inTok": 728,
+    "outTok": 143,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T15:18:40.285Z"
+}

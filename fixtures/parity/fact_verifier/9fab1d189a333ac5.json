@@ -1,0 +1,12 @@
+{
+  "promptHash": "9fab1d189a333ac5224796a68a5bb4601467a1e8b715b55f97d7b8b1021a128e",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.bok.or.kr/portal/bbs/B0000217/view.do?nttId=10080221&menuNo=200144\",\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":null,\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과는 한국은행(bok.or.kr) 금요강좌 1건뿐이며, 해당 내용은 CMA 계좌가 M2 통화 통계에 포함된 이유(유동성 특성)를 설명할 뿐 파킹통장·CMA의 구체적인 금리 수준에 대한 언급이 전혀 없다. claim인 '약 3% 수준'을 뒷받침하거나 반박하는 수치·문장이 결과 본문 어디에도 존재하지 않아 발췌 불가. 독립 출처도 0곳이므로 사실 여부를 판정할 근거가 충분하지 않다.\"}",
+  "usage": {
+    "inTok": 559,
+    "outTok": 132,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T01:55:06.863Z"
+}

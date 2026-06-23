@@ -1,0 +1,12 @@
+{
+  "promptHash": "a70d91b4f9941a3223f446d777def88d322cfc2152ae800c70accb85f63b43b8",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"파킹통장 금리는 수시로 변경되므로, 특정 시점의 세전·세후 수령액 수치는 조회 시점에 따라 달라질 수 있음. 세전·세후 구분 없이 단일 수치만 제시 시 오해 소지 있음.\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과 어디에도 '500만 원 예치 기준 주요 파킹통장별 연간 세전·세후 실수령 이자 금액'에 해당하는 구체적 수치가 포함되어 있지 않다. 관련 YouTube 영상 2건(5월·6월 파킹통장 영상)이 검색되었으나 스니펫에는 실제 금리·이자액 수치가 전혀 없고, 나머지 결과(PwC, Legal 500, OECD)는 소득세·원천징수·상속세 등 일반 세제 정보로 claim과 무관하다. claim에서 언급된 '영상에서 제시할 구체적 수치'를 뒷받침하는 텍스트 발췌가 불가능하므로 could_not_verify로 판정한다.\"}",
+  "usage": {
+    "inTok": 2539,
+    "outTok": 154,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T14:33:23.485Z"
+}

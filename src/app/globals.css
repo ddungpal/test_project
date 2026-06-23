@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+/* TRUS Create 디자인 토큰 — Black/Yellow/White 3색만. 강렬·직설. 그라데이션·그림자 금지.
+   원본: design/design-system/trus-create/trus-create-design-system.md (DESIGN.md). */
+@theme {
+  --color-trus-black: #121212;
+  --color-trus-yellow: #f8f082;
+  --color-trus-white: #ffffff;
+
+  --font-sans: "SandollGyeokdongGothic2", "Pretendard", system-ui, sans-serif;
+
+  /* 3색 외 색상 토큰을 의도적으로 두지 않는다(팔레트 강제). */
+  --radius-trus: 0px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--color-trus-black);
+  color: var(--color-trus-white);
+  font-family: var(--font-sans);
+  margin: 0;
+  /* 그림자·그라데이션 금지: 전역 기본값으로 차단 의도. */
+}
+
+::selection {
+  background: var(--color-trus-yellow);
+  color: var(--color-trus-black);
+}

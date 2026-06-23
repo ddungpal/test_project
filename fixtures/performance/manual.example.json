@@ -1,0 +1,19 @@
+{
+  "//": "성과 수동 입력(개발 전용). 이 파일을 manual.json 으로 복사해 영상별 결과 숫자를 직접 채우세요.",
+  "//사용법": "1) cp manual.example.json manual.json  2) npx tsx scripts/ingest-performance.ts --list 로 영상 목록 확인  3) youtube_video_id 매칭해 숫자 채움  4) npx tsx scripts/ingest-performance.ts 로 적재",
+  "//필드": "metrics.window=d1|d7|d14|d30, ctr/avg_view_pct=퍼센트(예 6.4), ab.component=title|thumbnail, ab.variant=A|B|C, ctr_pct=변형 클릭률%",
+  "entries": [
+    {
+      "youtube_video_id": "여기에_유튜브영상ID",
+      "metrics": [
+        { "window": "d1", "views": 12000, "ctr": 5.2, "avg_view_pct": 41.0 },
+        { "window": "d7", "views": 48000, "ctr": 6.1, "avg_view_pct": 38.5 },
+        { "window": "d30", "views": 91000, "ctr": 6.4, "avg_view_pct": 37.0 }
+      ],
+      "ab": [
+        { "component": "thumbnail", "variant": "A", "ctr_pct": 5.1, "impressions": 30000, "payload": { "label": "직설형" } },
+        { "component": "thumbnail", "variant": "B", "ctr_pct": 6.8, "impressions": 31000, "payload": { "label": "질문형" } }
+      ]
+    }
+  ]
+}

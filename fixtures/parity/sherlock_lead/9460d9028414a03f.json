@@ -1,0 +1,12 @@
+{
+  "promptHash": "9460d9028414a03ff068f0b795bda4162b1aa5c1f060601ae47558cf9aec0914",
+  "roleId": "sherlock_lead",
+  "model": "sonnet",
+  "rawJson": "{\"claims\":[{\"text\":\"100만 원을 파킹통장에 예치했을 때 매달 실제로 지급되는 이자 금액(세전 및 세후 이자소득세 15.4% 공제 후)\",\"is_financial\":true},{\"text\":\"2026년 현재 주요 파킹통장 상품별 기본금리 및 최고(우대) 금리 수준\",\"is_financial\":true},{\"text\":\"광고·홍보물에 표시된 최고 금리는 우대조건을 모두 충족해야만 적용된다\",\"is_financial\":true},{\"text\":\"파킹통장에는 우대금리 적용 한도(잔액 상한)가 존재하며, 초과분에는 낮은 기본금리가 적용된다\",\"is_financial\":true},{\"text\":\"파킹통장 이자는 일(日) 단위로 계산되어 매월 또는 매일 지급된다\",\"is_financial\":true},{\"text\":\"우대금리 충족 조건에 급여이체·자동이체·카드 이용 실적 등 부수 거래 조건이 포함된다\",\"is_financial\":true},{\"text\":\"거래 은행·이체 빈도·예치 금액 규모에 따라 실질적으로 유리한 상품이 달라진다\",\"is_financial\":true},{\"text\":\"이자소득세(15.4%) 공제 후 실수령 이자는 광고에 표시된 명목 금리 기준 금액보다 적다\",\"is_financial\":true},{\"text\":\"파킹통장은 일반 입출금 통장보다 금리가 높으면서 수시 입출금이 자유롭다\",\"is_financial\":true}],\"concepts\":[{\"name\":\"파킹통장\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"우대금리\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"일(日) 단위 이자 계산 방식\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"우대금리 적용 한도(잔액 상한)\",\"needs_number\":true,\"needs_analogy\":false},{\"name\":\"세전금리 vs 세후 실수령액(이자소득세 15.4%)\",\"needs_number\":true,\"needs_analogy\":false}]}",
+  "usage": {
+    "inTok": 632,
+    "outTok": 265,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T15:17:58.621Z"
+}

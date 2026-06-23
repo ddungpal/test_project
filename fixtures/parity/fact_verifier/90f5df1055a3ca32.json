@@ -1,0 +1,12 @@
+{
+  "promptHash": "90f5df1055a3ca32b79303a6cf0070ebc5a6de02ba25a5637028ba8bb4863b07",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"'유의미하게 높다'는 표현은 비교 시점·상품·은행에 따라 격차가 달라질 수 있으며, 금리 환경 변화(기준금리 인하 등)에 따라 실질 차이가 축소될 수 있음. 또한 파킹통장 종류(저축은행·인터넷은행·시중은행)에 따라 편차가 크므로 단일 주장으로 일반화 시 오해 소지 있음.\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과가 완전히 비어 있음(results: []). claim을 뒷받침하거나 반박할 수 있는 어떠한 출처도 확인되지 않았으므로, 판정 규칙에 따라 could_not_verify로 처리한다. 파킹통장의 금리 우위는 일반적으로 알려진 사실이나, 본 검증 체계는 제공된 검색결과 내 실재 문장에만 근거해야 하므로 근거 없이 verified 등급을 부여할 수 없다.\"}",
+  "usage": {
+    "inTok": 440,
+    "outTok": 146,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T14:33:21.380Z"
+}

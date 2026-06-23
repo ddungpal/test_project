@@ -1,0 +1,12 @@
+{
+  "promptHash": "1a52b7a32c112f0531512ab926d518c1202cf65cfe0656ec51b5085aae19aaf8",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"CMA 금리는 상품 유형(MMF형·RP형·종금형 등)과 증권사별로 상이하며, 수시로 변동되므로 단일 수치로 제시될 경우 특정 시점·특정 상품에만 해당될 수 있어 오해 소지가 있음.\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과 4건 모두 2026년 하반기 증권사별 CMA 적용 금리와 관련된 내용을 전혀 포함하지 않는다. ① bok.or.kr 통화금융통계 강좌(예금은행 가중평균금리 일반론), ② bok.or.kr 2024년 연차보고서(기준금리 정책 개관), ③ 한국은행 경제금융용어 700선(용어 해설 PDF), ④ englishdart.fss.or.kr의 Graphy 증권신고서(주식 공모 관련 목차) — 어느 것도 CMA 상품의 2026년 하반기 실제 적용 금리 수치를 담고 있지 않다. 또한 오늘 날짜(2026-06-23) 기준으로 '2026 하반기'는 아직 시작되지 않은 시점(7월~12월)이므로, 실제 적용 금리가 확정·공시된 데이터 자체가 존재하지 않을 가능성이 높다. 뒷받침 출처가 0건이므로 could_not_verify로 판정한다.\"}",
+  "usage": {
+    "inTok": 1353,
+    "outTok": 185,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T06:20:10.335Z"
+}

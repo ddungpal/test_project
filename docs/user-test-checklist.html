@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>배포 전 유저테스트 체크리스트 (편집형)</title>
+<style>
+  :root{ --bg:#121212; --fg:#fff; --yellow:#F8F082; --muted:#9a9a9a; --card:#1b1b1b; --line:#2e2e2e; --ok:#5fd38d; --danger:#e06b6b; }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{background:var(--bg); color:var(--fg); font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",sans-serif; line-height:1.6;}
+  .wrap{max-width:900px; margin:0 auto; padding:32px 18px 140px;}
+  h1{font-size:28px; font-weight:900;} h1 .hl{color:var(--yellow);}
+  .lede{color:var(--muted); font-size:14px; margin-top:4px;}
+
+  .bar{position:sticky; top:0; z-index:10; background:var(--bg); padding:14px 0 12px; border-bottom:2px solid var(--line); margin:16px 0 6px;}
+  .bar .row{display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+  .count{font-weight:900; font-size:17px;} .count b{color:var(--yellow); font-size:21px;}
+  .track{flex:1; min-width:140px; height:11px; background:#000; border:1px solid var(--line); border-radius:999px; overflow:hidden;}
+  .fill{height:100%; width:0%; background:var(--yellow); transition:width .2s;}
+  .saved{color:var(--muted); font-size:12px; width:100%;}
+  .btn{background:#000; border:1.5px solid var(--line); color:#ccc; font-weight:700; font-size:12.5px; padding:6px 11px; border-radius:8px; cursor:pointer;}
+  .btn:hover{border-color:var(--yellow); color:var(--yellow);}
+
+  .sec{margin-top:22px; background:var(--card); border:1.5px solid var(--line); border-radius:14px; padding:14px 16px;}
+  .sec-head{display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--line); padding-bottom:8px; margin-bottom:8px;}
+  .sec-title{font-size:17px; font-weight:900; flex:1; outline:none;}
+  .sec-title:focus{color:var(--yellow);}
+  .sec-x{color:var(--muted); cursor:pointer; font-size:13px; padding:2px 6px;} .sec-x:hover{color:var(--danger);}
+
+  .item{display:flex; gap:10px; align-items:flex-start; padding:8px 6px; border-radius:9px;}
+  .item:hover{background:#161616;}
+  .item input[type=checkbox]{appearance:none;-webkit-appearance:none; width:21px;height:21px; flex:0 0 auto; margin-top:2px; border:2px solid #666; border-radius:6px; background:#000; cursor:pointer; position:relative;}
+  .item input:checked{background:var(--ok); border-color:var(--ok);}
+  .item input:checked::after{content:"✓"; color:#000; font-weight:900; font-size:14px; position:absolute; left:3px; top:-3px;}
+  .item .body{flex:1; min-width:0;}
+  .item .txt{font-size:15px; outline:none; word-break:break-word;}
+  .item .txt:focus{color:var(--yellow);}
+  .item .txt:empty::before{content:"새 항목 입력…"; color:#666;}
+  .item .note{font-size:12.5px; color:var(--muted); outline:none; margin-top:2px; min-height:1em;}
+  .item .note:empty::before{content:"＋메모(예: 내일 여기부터)"; color:#555;}
+  .item.done .txt{text-decoration:line-through; text-decoration-color:#666; opacity:.6;}
+  .item .x{color:#555; cursor:pointer; font-size:14px; padding:0 5px; flex:0 0 auto;} .item .x:hover{color:var(--danger);}
+  .add{margin-top:6px;} .add .btn{font-size:12px; padding:4px 10px;}
+  .addsec{margin-top:18px;}
+
+  .callout{background:rgba(248,240,130,.07); border:1.5px dashed var(--yellow); border-radius:11px; padding:12px 14px; margin:12px 0; font-size:13.5px;}
+  .callout b{color:var(--yellow);}
+  .hint{color:var(--muted); font-size:12px; margin-top:4px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1><span class="hl">배포 전</span> 유저테스트 체크리스트 <span style="font-size:14px;color:var(--muted)">· 편집형</span></h1>
+  <p class="lede">체크·수정·추가·삭제 모두 <b>이 브라우저에 자동 저장</b>됩니다 → 내일·모레 같은 브라우저로 열면 그대로 이어집니다.</p>
+
+  <div class="bar">
+    <div class="row">
+      <span class="count"><b id="done">0</b> / <span id="total">0</span></span>
+      <div class="track"><div class="fill" id="fill"></div></div>
+      <button class="btn" id="export">백업 내보내기</button>
+      <button class="btn" id="importBtn">가져오기</button>
+      <button class="btn" id="reset">기본값 복원</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+    </div>
+    <div class="saved" id="savedAt"></div>
+  </div>
+
+  <div class="callout">
+    시작 전: <code>.env</code>의 <b>DEV_OWNER_BYPASS=0</b>(진짜 로그인 검증). 서버 2개 —
+    Inngest <code>npx inngest-cli@latest dev -u http://localhost:3001/api/inngest</code> · Next <code>./node_modules/.bin/next dev -p 3001</code>.
+    문제 시 <code>logs/errors.jsonl</code> 먼저 확인. claude-p = $0.
+    <div class="hint">· 항목/제목 글자를 클릭하면 바로 수정 · 항목 끝 <b>×</b>로 삭제 · 각 섹션의 <b>＋항목 추가</b>·맨 아래 <b>＋섹션 추가</b> · 메모칸에 "내일 여기부터" 기록</div>
+  </div>
+
+  <div id="list"></div>
+
+  <div class="addsec"><button class="btn" id="addSec">＋ 섹션 추가</button></div>
+</div>
+
+<script>
+var KEY = "produce-usertest-v3";
+
+// 기본 체크리스트(처음 1회 시드). 이후엔 사용자가 편집한 내용이 우선.
+var DEFAULT = [
+  ["0. 사전 준비  ✓ 자동 검증 완료(2026-06-23)", [
+    ".env: DEV_OWNER_BYPASS=0 · LLM_BACKEND=claude-p · LLM_FIXTURES=record · SEARCH_BACKEND=tavily · 캡 7/10",
+    "owner 로그인 계정 확인(OWNER_EMAIL/OWNER_PASSWORD). 임시 비번이면 본인 것으로(Supabase→Auth→Users)",
+    "터미널 A — Inngest: npx inngest-cli@latest dev -u http://localhost:3001/api/inngest",
+    "터미널 B — Next: ./node_modules/.bin/next dev -p 3001",
+    "http://localhost:3001 접속 OK · Inngest 대시보드(:8288) 함수 등록 확인",
+  ], true],
+  ["1. 인증 (DEV_OWNER_BYPASS=0)  ✓ 자동 검증 완료(2026-06-23)", [
+    "미로그인으로 / → /login 리다이렉트",
+    "/insights·/audit도 미로그인 시 /login",
+    "틀린 비밀번호 → 거부(어느 필드 틀렸는지 노출 안 됨)",
+    "올바른 로그인 → 대시보드 진입",
+    "헤더 로그아웃 버튼 · 로그아웃 → /login, 이후 / 다시 막힘",
+  ], true],
+  ["2. 새 편 시작 + 런 목록", [
+    "\"새 편 시작\" → 주제 입력 → 런 생성",
+    "목록에 새 런(상태 뱃지·비용·재작업·중단사유)",
+    "런 클릭 → /runs/[id] 상세로",
+  ]],
+  ["3. 촉이 — 주제 (→ topic_selected)", [
+    "단계 자동 진행, 화면 자동 갱신(LiveRefresh)",
+    "주제 후보 ≥3 + 각 근거(evidence) 표시",
+    "후보 선택(+수정+이유) → topic_selected",
+    "후보/근거가 재테크 도메인에 맞는지 확인",
+  ]],
+  ["4. 훅이 — 제목·썸네일 (→ titles_selected)", [
+    "\"다음 단계\" → 제목 3안 + 썸네일 시안(검정·노랑)",
+    "김짠부 말투 제목 확인 → 1안 선택",
+  ]],
+  ["5. 구다리 — 구성 (→ structure_selected)", [
+    "구성 2안(서로 다른 접근) + 섹션 표시",
+    "1안 선택 → 리서치 진입 버튼 노출",
+  ]],
+  ["6. 셜록 — 리서치 트리아지 (→ research_approved)", [
+    "서브진행바: 검증범위→팩트검증→교차정리→숫자·비유(셈이∥유이)→반론",
+    "research_ready 후 검수 진입",
+    "위험(에스컬레이션) fact만 검수 대상 + 자동통과 건수 표시",
+    "fact 카드 무결성 뱃지(검증상태·금융·tier·독립출처·인용)",
+    "출처 링크 클릭 정상(http/https만·안전 스킴)",
+    "승인/반려 → research_approved",
+  ]],
+  ["7. 짠펜 — 대본 검수 (→ approved)", [
+    "서브진행바(대본 작성 → 표절 검사)",
+    "단락(segment) + lineage 칩(fact/숫자/비유 연결)",
+    "김짠부 말투 반영 · 표절 포함도 표시(<0.6)",
+    "(선택) \"수정 요청\" → rework 동작 확인",
+    "최종 승인 → approved (한 편 완주)",
+  ]],
+  ["8. 비용 · 실시간 · lineage", [
+    "비용 패널(카테고리·총액·소프트$7/하드$10 맥락)",
+    "claude-p면 총액 $0(ledger 기록은 존재)",
+    "다른 창에서 같은 런 열어두면 자동 갱신(실시간/폴백)",
+  ]],
+  ["9. 안전장치 — kill switch / 재개", [
+    "진행 중 \"중단\" → aborted 배너, 더 진행 안 됨",
+    "(선택) 소프트캡 일시정지 시 \"재개\"로 이어서 진행",
+  ]],
+  ["10. 학습/운영 페이지", [
+    "/insights 보드 상태별 그룹·전이 버튼(없으면 빈 상태)",
+    "/audit 감사 로그(한국어 라벨+행위자)에 이번 액션 기록",
+  ]],
+  ["11. 테스트 데이터 정리", [
+    "테스트 런 \"편 삭제\"(하드 삭제) → 목록에서 사라짐",
+    "(선택) git status로 새 fixtures 커밋 여부 판단",
+  ]],
+  ["부록 (선택) — 운영 백엔드 1회 스모크 ~$1", [
+    "임시 LLM_BACKEND=api·LLM_FIXTURES=off → 한 편 실주행(짠펜 opus·실비 ~$0.7~1)",
+    "끝나면 복귀: LLM_BACKEND=claude-p·LLM_FIXTURES=record",
+  ]],
+  ["✅ Go / No-Go", [
+    "1~11에서 막히는 문제 없음 → 배포 진행",
+    "문제 발견 시 → logs/errors.jsonl + 캡처 공유 → 수정 후 재테스트",
+  ]],
+];
+
+var uid = 1;
+function nid(){ return "i" + (uid++) + "-" + Math.floor(performance.now()); }
+
+function seed(){
+  return { sections: DEFAULT.map(function(s){
+    return { id:nid(), title:s[0], items:s[1].map(function(t){ return { id:nid(), text:t, checked:!!s[2], note:"" }; }) };
+  }), updatedAt: 0 };
+}
+
+var state;
+try { state = JSON.parse(localStorage.getItem(KEY)); } catch(e) { state = null; }
+if (!state || !state.sections) state = seed();
+
+function save(){
+  state.updatedAt = Date.now();
+  try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e) {}
+  renderMeta();
+}
+function renderMeta(){
+  var items = state.sections.reduce(function(a,s){ return a.concat(s.items); }, []);
+  var done = items.filter(function(i){ return i.checked; }).length;
+  document.getElementById('done').textContent = done;
+  document.getElementById('total').textContent = items.length;
+  document.getElementById('fill').style.width = (items.length ? done/items.length*100 : 0) + '%';
+  var d = state.updatedAt ? new Date(state.updatedAt) : null;
+  document.getElementById('savedAt').textContent = d
+    ? "마지막 저장: " + d.toLocaleString('ko-KR')
+    : "아직 저장 안 됨 — 체크하면 자동 저장됩니다.";
+}
+
+function el(tag, cls, txt){ var e=document.createElement(tag); if(cls)e.className=cls; if(txt!=null)e.textContent=txt; return e; }
+
+function render(){
+  var list = document.getElementById('list');
+  list.innerHTML = "";
+  state.sections.forEach(function(sec){
+    var box = el('div','sec');
+    var head = el('div','sec-head');
+    var title = el('div','sec-title'); title.contentEditable = "true"; title.textContent = sec.title;
+    title.addEventListener('blur', function(){ sec.title = title.textContent.trim(); save(); });
+    var sx = el('span','sec-x','✕ 섹션삭제');
+    sx.addEventListener('click', function(){ if(confirm('이 섹션을 삭제할까요?')){ state.sections = state.sections.filter(function(s){return s!==sec;}); save(); render(); } });
+    head.appendChild(title); head.appendChild(sx);
+    box.appendChild(head);
+
+    sec.items.forEach(function(it){
+      box.appendChild(itemEl(sec, it));
+    });
+
+    var add = el('div','add');
+    var addBtn = el('button','btn','＋ 항목 추가');
+    addBtn.addEventListener('click', function(){
+      var ni = { id:nid(), text:"", checked:false, note:"" };
+      sec.items.push(ni); save(); render();
+      // 새 항목에 포커스
+      var node = document.querySelector('[data-id="'+ni.id+'"] .txt'); if(node) node.focus();
+    });
+    add.appendChild(addBtn); box.appendChild(add);
+    list.appendChild(box);
+  });
+  renderMeta();
+}
+
+function itemEl(sec, it){
+  var row = el('div','item' + (it.checked?' done':'')); row.setAttribute('data-id', it.id);
+  var cb = el('input'); cb.type='checkbox'; cb.checked = it.checked;
+  cb.addEventListener('change', function(){ it.checked = cb.checked; row.classList.toggle('done', cb.checked); save(); });
+  var body = el('div','body');
+  var txt = el('div','txt'); txt.contentEditable="true"; txt.textContent = it.text;
+  txt.addEventListener('blur', function(){ it.text = txt.textContent.trim(); save(); });
+  var note = el('div','note'); note.contentEditable="true"; note.textContent = it.note || "";
+  note.addEventListener('blur', function(){ it.note = note.textContent.trim(); save(); });
+  body.appendChild(txt); body.appendChild(note);
+  var x = el('span','x','✕');
+  x.addEventListener('click', function(){ if(confirm('이 항목을 삭제할까요?')){ sec.items = sec.items.filter(function(i){return i!==it;}); save(); render(); } });
+  row.appendChild(cb); row.appendChild(body); row.appendChild(x);
+  return row;
+}
+
+document.getElementById('addSec').addEventListener('click', function(){
+  state.sections.push({ id:nid(), title:"새 섹션", items:[] }); save(); render();
+});
+document.getElementById('reset').addEventListener('click', function(){
+  if(confirm('기본 체크리스트로 되돌릴까요? (편집·체크 내용이 모두 사라집니다)')){ state = seed(); save(); render(); }
+});
+document.getElementById('export').addEventListener('click', function(){
+  var blob = new Blob([JSON.stringify(state,null,2)], {type:"application/json"});
+  var a = el('a'); a.href = URL.createObjectURL(blob);
+  a.download = "usertest-checklist-backup.json"; a.click(); URL.revokeObjectURL(a.href);
+});
+document.getElementById('importBtn').addEventListener('click', function(){ document.getElementById('importFile').click(); });
+document.getElementById('importFile').addEventListener('change', function(e){
+  var f = e.target.files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){ try{ var s=JSON.parse(r.result); if(s&&s.sections){ state=s; save(); render(); alert('가져왔습니다.'); } else alert('형식이 올바르지 않습니다.'); }catch(err){ alert('읽기 실패: '+err.message); } };
+  r.readAsText(f);
+});
+
+render();
+</script>
+</body>
+</html>

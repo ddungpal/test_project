@@ -1,0 +1,12 @@
+{
+  "promptHash": "c34589d90452679d1270e071ae835b89ec5f5e9b10d82ddeb09a4a974520560d",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"conflicting\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://blog.naver.com/blogfsc/223566385210?viewType=pc\",\"quote_excerpt\":\"현행 : 월 2만 4천원 ✔향후 : 월 3만 3천원\",\"citation_verified\":true,\"independent_origin_count\":3,\"misleading_check\":\"'월 최대 약 2만4천 원'은 2025년 1월 이전 기준이다. 2025년 1월부터 매칭한도가 월 70만 원으로 통일·확대됨에 따라 소득 2,400만 원 이하 가입자의 최대 기여금은 월 3만3천 원으로 상향되었다. 현재 시점(2026년 6월)에 '최대 약 2만4천 원'으로 기술하는 것은 시점 오류에 해당한다.\",\"freshness\":\"aging\",\"reasoning\":\"claim은 두 부분으로 구성된다. ① '소득 구간별 차등 지급' — 금융위원회 공식 블로그(blogfsc), 정책기자단 블로그(hellopolicy), 나무위키(namu.wiki) 등 복수 출처가 소득 구간(2,400만·3,600만·4,800만·6,000만 원 이하)별로 매칭비율과 한도가 다름을 일관되게 확인하므로 이 부분은 사실. ② '월 최대 약 2만4천 원 수준' — 이는 2024년까지의 기준(월 40만 원×6.0%=2.4만 원)이며, 2025년 1월부터 매칭한도가 납입한도(월 70만 원)로 확대되어 최저소득 구간 기준 최대 기여금이 월 3만3천 원으로 증가한 사실이 동일 출처 3곳 이상(금융위 블로그, welfarehello.com, 정책기자단 블로그, 나무위키)에서 확인된다. 따라서 '차등 지급' 부분은 맞으나 '최대 약 2만4천 원'은 현 시점(2026년 6월) 기준으로 틀린 수치이며 두 주장이 충돌하는 conflicting으로 판정한다. brunch.co.kr의 결과는 40%/30%/20% 매칭비율 등 공식 자료와 상이한 수치를 제시하여 신뢰성이 낮으므로 판정에서 배제했다.\"}",
+  "usage": {
+    "inTok": 3595,
+    "outTok": 257,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T02:07:15.150Z"
+}

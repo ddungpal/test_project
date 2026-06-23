@@ -1,0 +1,39 @@
+// 에이전트 stable role_id 레지스트리 — tech.md §7. 로그·라우팅·fixture 키의 안정 식별자.
+// role_id는 절대 바꾸지 않는다(과거 fixture·lineage가 깨짐). 표시명만 변경 가능.
+
+import type { ModelTier } from "../llm/types.js";
+
+export interface AgentRole {
+  roleId: string;
+  name: string; // 한국어 표시명
+  defaultModel: ModelTier;
+  /** 인젝션 방어(§10): 이 역할이 쓸 수 있는 도구 화이트리스트. */
+  tools: readonly ("web" | "fetch" | "code")[];
+}
+
+export const ROLES = {
+  topic_scout: { roleId: "topic_scout", name: "촉이", defaultModel: "sonnet", tools: ["web"] },
+  hook_maker: { roleId: "hook_maker", name: "훅이", defaultModel: "sonnet", tools: [] },
+  structurer: { roleId: "structurer", name: "구다리", defaultModel: "sonnet", tools: [] },
+  sherlock_lead: { roleId: "sherlock_lead", name: "셜록", defaultModel: "sonnet", tools: ["web", "fetch"] },
+  fact_verifier: { roleId: "fact_verifier", name: "팩트검증가", defaultModel: "sonnet", tools: ["web", "fetch"] },
+  numbers: { roleId: "numbers", name: "셈이", defaultModel: "sonnet", tools: ["code"] },
+  analogist: { roleId: "analogist", name: "유이", defaultModel: "haiku", tools: [] },
+  critic: { roleId: "critic", name: "반론", defaultModel: "sonnet", tools: ["web", "fetch"] },
+  scribe: { roleId: "scribe", name: "짠펜", defaultModel: "opus", tools: [] }, // web/fetch 없음(§10). 골든 A/B(2026-06-23): Opus 4.8 > GPT-5.5 → 말투 품질 우선 opus.
+  // 학습 작업(파이프라인 단계 아님) — corpus 위에서 1회 도는 말투 추출(§12). 짠펜이 의존하는 자산 생성.
+  tone_extractor: { roleId: "tone_extractor", name: "말투추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus
+  // 학습 루프 회고(Phase 4) — 발행 후 성과+선택+반응을 인과로 복기→인사이트 draft. 편당 1회·저빈도·고가치 → opus.
+  retrospectivist: { roleId: "retrospectivist", name: "회고", defaultModel: "opus", tools: [] },
+} as const satisfies Record<string, AgentRole>;
+
+export type RoleId = keyof typeof ROLES;
+
+export function resolveModel(roleId: string): ModelTier {
+  const role = (ROLES as Record<string, AgentRole>)[roleId];
+  return role?.defaultModel ?? "sonnet";
+}
+
+export function roleTools(roleId: string): readonly string[] {
+  return (ROLES as Record<string, AgentRole>)[roleId]?.tools ?? [];
+}

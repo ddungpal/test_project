@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>produce script — 프로젝트 전체 개요</title>
+<style>
+  :root{
+    --black:#121212;--yellow:#F8F082;--white:#FFFFFF;--gray:#8A8A8A;--line:#2A2A2A;--panel:#181818;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{background:var(--black);color:var(--white);font-family:"Apple SD Gothic Neo","Pretendard","Malgun Gothic",sans-serif;line-height:1.5;-webkit-font-smoothing:antialiased;padding:0 24px 96px}
+  .wrap{max-width:1080px;margin:0 auto}
+
+  /* NAV */
+  nav{position:sticky;top:0;background:var(--black);border-bottom:2px solid var(--line);padding:14px 0;margin-bottom:40px;z-index:10;display:flex;gap:6px;flex-wrap:wrap}
+  nav a{color:var(--gray);font-size:12px;font-weight:800;text-decoration:none;padding:6px 12px;border:1px solid var(--line);letter-spacing:.3px}
+  nav a:hover{color:var(--black);background:var(--yellow);border-color:var(--yellow)}
+
+  /* HEADER */
+  header{padding-top:48px;border-bottom:4px solid var(--yellow);padding-bottom:30px;margin-bottom:54px}
+  .kicker{color:var(--yellow);font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;margin-bottom:12px}
+  h1{font-size:48px;font-weight:900;letter-spacing:-1.5px;line-height:1.04}
+  h1 .hl{color:var(--yellow)}
+  .sub{color:#D8D8D8;font-size:16px;margin-top:16px;max-width:760px;font-weight:600}
+  .northstar{margin-top:22px;border-left:4px solid var(--yellow);padding:12px 18px;background:var(--panel);font-weight:800;font-size:15px}
+  .northstar b{color:var(--yellow)}
+
+  /* SECTION */
+  section{margin-bottom:64px}
+  h2{font-size:13px;font-weight:900;letter-spacing:2px;color:var(--yellow);text-transform:uppercase;margin-bottom:6px}
+  .h2sub{font-size:26px;font-weight:900;letter-spacing:-.6px;margin-bottom:24px}
+
+  /* PIPELINE */
+  .pipe{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+  .step{border:2px solid var(--line);background:var(--panel);padding:16px 14px;position:relative}
+  .step .num{color:var(--yellow);font-weight:900;font-size:12px;letter-spacing:1px}
+  .step .nm{font-size:18px;font-weight:900;margin:6px 0 2px}
+  .step .who{font-size:12px;font-weight:700;color:var(--gray)}
+  .step .dz{font-size:12px;font-weight:600;color:#C8C8C8;margin-top:8px;line-height:1.45}
+  .step.research{border-color:var(--yellow)}
+  .pipe-note{text-align:center;color:var(--gray);font-size:12px;font-weight:700;margin-top:16px}
+  .pipe-note b{color:var(--white)}
+
+  .statebar{margin-top:20px;border:1px dashed var(--line);padding:14px 16px;font-size:12px;color:var(--gray);font-weight:700;line-height:1.9;letter-spacing:.2px}
+  .statebar b{color:var(--white)}
+  .statebar .gate{background:var(--yellow);color:var(--black);padding:1px 7px;font-weight:900}
+
+  /* CREW */
+  .crew{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .agent{border:2px solid var(--line);background:var(--panel);padding:20px 22px}
+  .agent.lead{border-color:var(--yellow)}
+  .agent .top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+  .agent .nm{font-size:21px;font-weight:900}
+  .agent .role{font-size:11px;font-weight:800;color:var(--black);background:var(--yellow);padding:3px 8px}
+  .agent .role.dim{background:transparent;color:var(--gray);border:1px solid var(--line)}
+  .agent .id{font-size:11px;color:var(--gray);font-weight:700;margin-left:auto}
+  .agent .job{font-size:13.5px;font-weight:600;color:#D8D8D8;margin-bottom:10px}
+  .agent .io{font-size:12px;font-weight:700;color:var(--gray);border-top:1px solid var(--line);padding-top:8px}
+  .agent .io b{color:var(--yellow)}
+
+  .subcell{border:2px solid var(--yellow);padding:18px 20px;margin-top:14px;background:#1c1c14}
+  .subcell .ttl{font-weight:900;font-size:14px;color:var(--yellow);margin-bottom:4px}
+  .subcell .ds{font-size:12.5px;color:#C8C8C8;font-weight:600;margin-bottom:14px}
+  .subgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .sub{border:1px solid var(--line);background:var(--panel);padding:12px 12px}
+  .sub .sn{font-weight:900;font-size:14px}
+  .sub .sd{font-size:11.5px;color:var(--gray);font-weight:600;margin-top:4px;line-height:1.45}
+
+  /* RULES */
+  .rules{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .rule{border-left:4px solid var(--yellow);background:var(--panel);padding:16px 18px}
+  .rule.danger{border-left-color:#ff5252}
+  .rule h3{font-size:15px;font-weight:900;margin-bottom:8px}
+  .rule h3 .ic{margin-right:6px}
+  .rule ul{list-style:none;font-size:13px;font-weight:600;color:#D8D8D8}
+  .rule li{padding:4px 0 4px 16px;position:relative;line-height:1.5}
+  .rule li::before{content:"▸";position:absolute;left:0;color:var(--yellow);font-weight:900}
+  .rule.danger li::before{color:#ff5252}
+  .rule li b{color:var(--white)}
+
+  /* COST */
+  .costgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+  .costbox{border:2px solid var(--line);background:var(--panel);padding:22px 24px}
+  .costbox.dev{border-color:var(--yellow)}
+  .costbox .lab{font-size:12px;font-weight:800;color:var(--gray);letter-spacing:.5px}
+  .costbox .big{font-size:40px;font-weight:900;letter-spacing:-1px;margin:6px 0}
+  .costbox.dev .big{color:var(--yellow)}
+  .costbox .dt{font-size:13px;font-weight:600;color:#C8C8C8;line-height:1.5}
+  .costbox .dt b{color:var(--white)}
+
+  .captable{width:100%;border-collapse:collapse;margin-top:8px}
+  .captable th,.captable td{border:1px solid var(--line);padding:12px 14px;text-align:left;font-size:13.5px}
+  .captable th{background:var(--panel);color:var(--yellow);font-weight:800;font-size:12px;letter-spacing:.5px}
+  .captable td{font-weight:600;color:#D8D8D8}
+  .captable td b{color:var(--white)}
+  .captable .val{font-weight:900;color:var(--white);white-space:nowrap}
+  .caveat{margin-top:14px;font-size:12.5px;color:var(--gray);font-weight:700;border:1px dashed var(--line);padding:12px 16px}
+  .caveat b{color:var(--yellow)}
+
+  footer{margin-top:40px;border-top:2px solid var(--line);padding-top:20px;color:var(--gray);font-size:12px;font-weight:700}
+  footer b{color:var(--yellow)}
+
+  @media(max-width:760px){
+    h1{font-size:32px}
+    .pipe{grid-template-columns:1fr 1fr}
+    .crew,.rules,.costgrid{grid-template-columns:1fr}
+    .subgrid{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <nav>
+    <a href="#flow">제작 5단계</a>
+    <a href="#crew">크루(에이전트)</a>
+    <a href="#rules">반드시 지킬 것</a>
+    <a href="#cost">예상 비용</a>
+  </nav>
+
+  <header>
+    <div class="kicker">produce script · 콘텐츠 제작 동료 AI 시스템</div>
+    <h1>김짠부의 사고를<br><span class="hl">확장하는</span> AI 크루</h1>
+    <p class="sub">유튜브 크리에이터 <b style="color:#fff">김짠부</b>의 콘텐츠 제작 5단계를 AI 크루가 보조·대행하고, 학습으로 고도화된다. <b style="color:#fff">김짠부는 매 단계 '선택'만 하고, 이유는 AI가 현재 방식에 근거해 설명한다.</b></p>
+    <div class="northstar">★ 콘텐츠 북극성 — <b>"처음 듣는 사람도 편안하게 듣다 보니 이해됐다."</b></div>
+  </header>
+
+  <!-- ===== PIPELINE ===== -->
+  <section id="flow">
+    <h2>How it works</h2>
+    <div class="h2sub">제작 5단계 파이프라인</div>
+    <div class="pipe">
+      <div class="step"><div class="num">STEP 1</div><div class="nm">주제</div><div class="who">촉이</div><div class="dz">댓글·트렌드·지표에서 주제 후보 N개 + 근거 제안</div></div>
+      <div class="step"><div class="num">STEP 2</div><div class="nm">썸네일·제목</div><div class="who">훅이</div><div class="dz">제목·썸네일 문구 3안(A/B/C) + TRUS 디자인 실물</div></div>
+      <div class="step"><div class="num">STEP 3</div><div class="nm">구성</div><div class="who">구다리</div><div class="dz">섹션별 목표·순서·이해 흐름(불안완화) outline</div></div>
+      <div class="step research"><div class="num">STEP 4</div><div class="nm">리서치</div><div class="who">셜록 셀</div><div class="dz">사실 검증 + 숫자예시·비유 발굴 (병렬→조인→반론)</div></div>
+      <div class="step"><div class="num">STEP 5</div><div class="nm">스크립트</div><div class="who">짠펜</div><div class="dz">말투·쉬운설명·근거 게이트 통과한 대본</div></div>
+    </div>
+    <div class="pipe-note">총괄 = <b>반장(PD·오케스트레이터)</b> · 모든 단계를 Inngest durable 파이프라인으로 조율 · 각 단계 끝에서 <b>김짠부가 선택</b></div>
+
+    <div class="statebar">
+      <b>반장 상태머신:</b>
+      created → topic_proposed <span class="gate">선택</span> → titles_proposed <span class="gate">선택</span> → structure_proposed <span class="gate">선택</span> →
+      <b>researching</b>(셜록 셀) → research_ready → research_review <span class="gate">트리아지 승인</span> → research_approved →
+      scripting → script_ready → script_review <span class="gate">선택</span> → approved → <b>published</b>
+    </div>
+  </section>
+
+  <!-- ===== CREW ===== -->
+  <section id="crew">
+    <h2>The crew</h2>
+    <div class="h2sub">크루 — 각 에이전트의 역할</div>
+    <div class="crew">
+
+      <div class="agent lead">
+        <div class="top"><span class="nm">반장</span><span class="role">총괄 PD</span><span class="id">orchestrator</span></div>
+        <div class="job">전체 파이프라인을 조율하는 오케스트레이터. 단계 전이·rework 재호출·비용 가드·사람 게이트(선택 대기)·중단(kill switch)을 관리.</div>
+        <div class="io">상태머신 · fan-out/join · <b>max_rework=2</b> · 2단 비용캡</div>
+      </div>
+
+      <div class="agent">
+        <div class="top"><span class="nm">촉이</span><span class="role dim">주제</span><span class="id">topic_scout</span></div>
+        <div class="job">댓글 마이닝·트렌드·경쟁채널·경제캘린더·지표에서 주제 후보를 발굴. 각 후보에 "왜"의 근거를 단다.</div>
+        <div class="io">IN 댓글·metrics → <b>OUT 후보 ≥3 (+evidence)</b></div>
+      </div>
+
+      <div class="agent">
+        <div class="top"><span class="nm">훅이</span><span class="role dim">썸네일·제목</span><span class="id">hook_maker</span></div>
+        <div class="job">제목·썸네일 문구를 3안(A/B/C)으로. 레퍼런스 CTR·말투·TRUS 디자인 스펙 기반. 업로드 후 A/B 성과를 환류 학습.</div>
+        <div class="io">IN 주제·CTR·tone → <b>OUT 제목3 + 썸네일3</b></div>
+      </div>
+
+      <div class="agent">
+        <div class="top"><span class="nm">구다리</span><span class="role dim">구성</span><span class="id">structurer</span></div>
+        <div class="job">콘텐츠 구조를 짠다. 섹션별 목표·왜 이 순서인지·이해 흐름(맥락·불안완화·오개념 선제제거)을 담은 outline 산출.</div>
+        <div class="io">IN 주제·구조비율·retention → <b>OUT outline</b></div>
+      </div>
+
+      <div class="agent lead">
+        <div class="top"><span class="nm">셜록</span><span class="role">리서치 팀장</span><span class="id">sherlock_lead</span></div>
+        <div class="job">리서치 셀의 오케스트레이터. outline을 검증 대상(claims)과 설명 대상(concepts)으로 스코핑 → 전문가 팬아웃 → 리콘실 → 반론. <b style="color:var(--yellow)">아래 4인을 지휘.</b></div>
+        <div class="io">IN outline → <b>OUT scope {concepts[], claims[]}</b></div>
+      </div>
+
+      <div class="agent">
+        <div class="top"><span class="nm">짠펜</span><span class="role dim">스크립트</span><span class="id">scribe</span></div>
+        <div class="job">최종 대본 작성. 낯선 개념은 숫자예시·비유를 먼저 제시. 말투·쉬운설명·freshness·표절 가드를 모두 통과해야 함. 미충족 시 생성 차단 → 셜록 재호출.</div>
+        <div class="io">IN outline·facts·assets·tone → <b>OUT script_segments</b></div>
+      </div>
+    </div>
+
+    <!-- SHERLOCK SUB-CELL -->
+    <div class="subcell">
+      <div class="ttl">🔍 셜록 리서치 셀 — 병렬 전문가 (팬아웃 → 조인 → 반론)</div>
+      <div class="ds">스코핑 후, 세 전문가가 동시에 파고들고 → 정합성을 맞춘 뒤 → 반론으로 흔든다. 자세한 흐름은 <b>research-flow.html</b> 참고.</div>
+      <div class="subgrid">
+        <div class="sub"><div class="sn">팩트검증가</div><div class="sd">fact_verifier · claims 교차검증·출처추적·신뢰등급 → research_facts[]</div></div>
+        <div class="sub"><div class="sn">셈이</div><div class="sd">numbers · 숫자 예시 + 코드 검산(math_verified)·통계 오용 점검</div></div>
+        <div class="sub"><div class="sn">유이</div><div class="sd">analogist · 일상 비유 생성 + 왜곡 검증(distortion_checked)</div></div>
+        <div class="sub"><div class="sn">반론가</div><div class="sd">critic · 빠진 것·반대 근거 능동 탐색 → 확증편향 차단</div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== RULES ===== -->
+  <section id="rules">
+    <h2>Non-negotiable</h2>
+    <div class="h2sub">전체 프로젝트에서 반드시 지킬 것</div>
+    <div class="rules">
+
+      <div class="rule danger">
+        <h3><span class="ic">🔒</span>보안 · 민감정보 (절대 커밋 금지)</h3>
+        <ul>
+          <li><b>.env*·API 키</b>(YouTube/Claude/OpenAI/Supabase)·service role key</li>
+          <li><b>스크립트·댓글 원본</b>·DB 덤프·팀원 개인정보 — corpus는 gitignore</li>
+          <li>커밋 전 <b>git diff --staged</b>로 민감정보 확인</li>
+          <li>⚠️ 노출된 <b>OpenAI 키 rotate</b> 미완 (해결 필요)</li>
+        </ul>
+      </div>
+
+      <div class="rule">
+        <h3><span class="ic">🎯</span>제1원칙 — 선택 vs 이유</h3>
+        <ul>
+          <li>김짠부는 매 단계 <b>'선택'만</b>, 이유는 AI가 현재 방식 근거로 설명</li>
+          <li>각 제안에 <b>근거(evidence) 링크</b> 필수</li>
+          <li>선택 + 수정 이유를 <b>한 줄로 캡처</b>해 학습</li>
+        </ul>
+      </div>
+
+      <div class="rule">
+        <h3><span class="ic">✅</span>팩트체크 · 리서치 무결성</h3>
+        <ul>
+          <li>출처 명시 + 교차검증(독립 ≥2) + <b>사람 최종확인</b></li>
+          <li>인용 실재 검증(quote_excerpt), 없으면 <b>폐기</b></li>
+          <li>금융 claim = 1차 출처 강제 + <b>사람 승인 필수</b></li>
+          <li>검색 실패 = could_not_verify → 짠펜이 <b>사용 차단</b>(날조 금지)</li>
+          <li><b>100% 보장 불가 인정</b> — 면책·투자조언 경계는 운영자 책임</li>
+        </ul>
+      </div>
+
+      <div class="rule">
+        <h3><span class="ic">⏱</span>최신성 (오늘=2026-06-18)</h3>
+        <ul>
+          <li>volatility(static/slow/fast) → <b>TTL 차등</b>(금리·시세=매번 재확인)</li>
+          <li>모델 컷오프(2026-01) 이후 시변 정보는 <b>라이브 검색 강제</b></li>
+          <li>짠펜 <b>freshness 게이트</b>: stale면 차단 → 재확인</li>
+        </ul>
+      </div>
+
+      <div class="rule">
+        <h3><span class="ic">🛡</span>인젝션 방어 · lineage</h3>
+        <ul>
+          <li>신뢰불가 입력(댓글·웹·자막)은 <b>&lt;&lt;UNTRUSTED_DATA&gt;&gt;</b> 격리</li>
+          <li>에이전트별 <b>tool 화이트리스트</b> · 출력 schema 강제</li>
+          <li>대본 문장 → 근거 → 출처 <b>FK 조인 역추적</b>(배열/JSON 금지)</li>
+          <li><b>미검증 근거에 의존한 문장 = 발행 차단</b></li>
+        </ul>
+      </div>
+
+      <div class="rule">
+        <h3><span class="ic">🎨</span>TRUS Create 디자인</h3>
+        <ul>
+          <li>3색만 — Black <b>#121212</b> / Yellow <b>#F8F082</b> / White</li>
+          <li>산돌 격동고딕2 · 강렬·직설 (사색·여백 톤 금지)</li>
+          <li><b>그라데이션·그림자 금지</b></li>
+          <li>문서 우선순위: principles &gt; tech &gt; plan</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== COST ===== -->
+  <section id="cost">
+    <h2>Economics</h2>
+    <div class="h2sub">예상 비용</div>
+
+    <div class="costgrid">
+      <div class="costbox dev">
+        <div class="lab">개발 (DEVELOPMENT)</div>
+        <div class="big">$0</div>
+        <div class="dt"><b>claude -p</b>(구독·정액·공짜 무한반복) + <b>fixtures 리플레이</b>로 과금 0. 개발 중 LLM 호출은 비용 발생 안 함.</div>
+      </div>
+      <div class="costbox">
+        <div class="lab">운영 (PRODUCTION) · 편당</div>
+        <div class="big">~$5–9</div>
+        <div class="dt">목표(모델 라우팅 + 캐싱). 상한(전부 Opus + rework 2회) <b>~$18–25</b>. Anthropic API 사용. <b>※ 미측정 추정 — 첫 운영 편에서 실측.</b></div>
+      </div>
+    </div>
+
+    <table class="captable">
+      <tr><th>항목</th><th>값</th><th>설명</th></tr>
+      <tr><td><b>SOFT 캡</b> (편당)</td><td class="val">$7</td><td>초과 시 일시정지 + 사람 확인 ("계속?")</td></tr>
+      <tr><td><b>HARD 캡</b> (편당)</td><td class="val">$10</td><td>초과 시 자동 중단 + 알림 (kill switch)</td></tr>
+      <tr><td>max_rework</td><td class="val">2회 / 단계</td><td>무한 재시도로 인한 비용 폭주 차단</td></tr>
+      <tr><td>모델 라우팅</td><td class="val">haiku→sonnet→opus</td><td>분류/추출=haiku · 검증/생성=sonnet · 최종 품질 필요시만=opus</td></tr>
+      <tr><td>비용 추적</td><td class="val">cost_ledger</td><td>모든 LLM·검색·임베딩 호출 기록 → 편당 롤업. 팬아웃 전 preflight 예약으로 병렬 누수 차단</td></tr>
+    </table>
+
+    <div class="caveat">
+      <b>주요 변수</b> = 셜록 검색량 · 짠펜 rework 횟수. &nbsp;|&nbsp;
+      <b>운영 모델 결정</b> = Opus vs GPT-5.5 등은 Phase 2에서 골든 v1로 말투·비용 A/B 후 확정 (단가 변동성 → 확정 전 라이브 가격 확인). &nbsp;|&nbsp;
+      ROI로 사고 — 편당 가치 대비 비용.
+    </div>
+  </section>
+
+  <footer>
+    <div>근거: <b>CLAUDE.md</b> · <b>docs/tech.md</b>(§7 에이전트 · §8 상태머신 · §9 무결성 · §14 비용) · <b>PROJECT_STATE.md</b> · 디자인: TRUS Create</div>
+    <div style="margin-top:8px;color:#5a5a5a">생성일 2026-06-18 · 비용은 미측정 추정치이며 첫 운영 편에서 실측 예정</div>
+  </footer>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "promptHash": "282f99862ed3c3a48b30196b0beedb9e236834fac24260e7b6741b68de291fec",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.fsc.go.kr/no010101/83729?srchCtgry=&curPage=&srchKey=&srchText=&srchBeginDt=&srchEndDt=\",\"quote_excerpt\":\"모든 소득구간에서 매칭한도(월 40·50·60만 원)를 납입한도(월 70만 원)까지 확대\",\"citation_verified\":true,\"independent_origin_count\":1,\"misleading_check\":null,\"freshness\":\"aging\",\"reasoning\":\"금융위원회(fsc.go.kr) 공식 보도자료에서 '납입한도(월 70만 원)'이라는 표현이 복수 회 명확하게 확인되며, 월 70만 원 × 12개월 = 840만 원이라는 연간 수치도 수학적으로 정확하다. 그러나 실질적으로 내용을 뒷받침하는 출처는 fsc.go.kr 단일 도메인뿐이며, law.go.kr 결과들은 청년도약계좌 납입한도에 관한 관련 내용을 전혀 담고 있지 않다. 검증 규칙상 '서로 다른 발행처 2곳 이상 일치' 요건을 충족하지 못하므로 verified가 아닌 unverified로 판정한다. 아울러 해당 보도자료는 2025년 1월 시행 기준 정보이며, 현재(2026년 6월) 정책 변경 여부를 확인할 수 없어 freshness를 aging으로 처리한다.\"}",
+  "usage": {
+    "inTok": 3678,
+    "outTok": 184,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T02:07:17.867Z"
+}

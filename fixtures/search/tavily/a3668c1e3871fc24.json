@@ -1,0 +1,42 @@
+[
+  {
+    "title": "Spring Boot 기반 통합 테스트와 슬라이스 테스트: 효과적인 레이어별 코드 검증 방법",
+    "url": "https://devfancy.github.io/SpringBoot-TestCode-Integration-Testing",
+    "content": "openChatUrl(오픈채팅방Url1). togetherActivity(함께하고싶은활동1). imageName(게시글이미지1). postStatus(모집상태1). build();// when Long newPostId = postService. save(팬시_프로필. getMember(). getId(), request); Post savedPost = postRepository. findByMemberId(팬시. getId()). orElse(null);// then assertThat(newPostId). isNotNull(); assertEquals(\"프로젝트_해시테크\", savedPost. getTitle());}} [...] @ActiveProfiles(\"test\") @DataJpaTest class PostRepositoryTest{@Autowired private MemberRepository memberRepository; @Autowired private ProfileRepository profileRepository; @Autowired private PostRepository postRepository; private Member member; private Profile profile; private Post post; @BeforeEach void setUp(){member = 팬시(); memberRepository. save(member); profile = 팬시_프로필(member); profileRepository. save(profile); post = 프로젝트_해시테크(member); postRepository. save(post);} @DisplayName(\"게시글과 회원 테이블이 정상적으로 매핑이 된다.\") @Test void 게시글과_회원_테이블이_정상적으로_매핑이_된다(){// given Post foundPost = postRepository. getById(post. getId());// when & then Assertions. assertThat(foundPost. getMember(). getId()). isNotNull();} @DisplayName(\"특정 회원 ID에 해당하는 게시글을 찾는다.\") @Test void 특정_회원_ID에_해당하는_게시글을_찾는다(){// given [...] 통합 테스트 코드를 작성할 때 보통은 2가지 입장(관점)으로 작성하는 경우가 있다.\n\n1. `Classicist` - 진짜 객체로 테스트를 하자. -> 상태 검증을 통한 의존 객체의 구현보다는 실제 입/출력 값을 통해 검증하는 테스트이다.\n2. `Mockist` - 모든 걸 mocking 위주(가짜 객체) 로 테스트를 하자. -> 행위 검증을 통해 의존 객체의 특정 행동이 이루어졌는지를 검증하는 테스트이다.\n\n나의 경우 `Business Layer`에 대해 테스트 할 때, Repository의 실체 객체를 사용하여 통합 테스트를 진행하였다. 즉, `Classicist` 관점으로 작성했다.\n\n 메일 전송 혹은 AWS S3 같은 외부 시스템을 요청하거나 연결할 때는 Mocking을 사용한다. 왜냐하면 이런 외부 시스템은 우리가 개발한 게 아니기 때문이다.\n Mocking 위주로 테스트를 작성한다면 과연 실제 프로덕션 코드에서 런타임 시점에 일어날 일을 정확하게 Mocking 했다고 단언할 수 있을까에 대한 의구심이 들었다.\n 테스트를 했다고 실제 프로덕션과 100% 재현한다고 보장은 할 수 없다. 그런 리스크를 감당할 바에는 비용을 조금 들여서 실제 객체를 가져와서 테스트를 하는게 더 좋을 것 같다는 생각이 들어서 나는 이 방식을 택했다.\n\n## 슬라이스 테스트\n\n`슬라이드 테스트`는 스프링에서 특정 영역의 레이어를 테스트하는 방법 중 하나이다.\n\n즉, 특정 계층은 다른 계층에 의존하지 않기 때문에 필요한 빈들만 주입받아 독립적으로 테스트를 수행할 수 있다.",
+    "score": 0.4051433,
+    "publisher": "devfancy.github.io",
+    "published_at": null
+  },
+  {
+    "title": "슬라이스 테스트(Slice Test)",
+    "url": "https://velog.io/@be_chobo/%EC%8A%AC%EB%9D%BC%EC%9D%B4%EC%8A%A4-%ED%85%8C%EC%8A%A4%ED%8A%B8Slice-Test",
+    "content": "andExpect() 메서드를 통해 파라미터로 입력한 매처(Matcher)로 예상되는 기대 결과를 검증할 수 있습니다.  \nstatus().isCreated()를 통해 response status가 201(Created)인지 매치시키고 있습니다. 즉, 백엔드 측에 리소스인 회원 정보가 잘 생성(저장)되었는지를 검증합니다.  \nheader().string(\"Location\", is(startsWith(\"/v11/members/\")))을 통해 HTTP header에 추가된 Location의 문자열 값이 “/v11/members/”로 시작하는지 검증합니다.  \nLocation header가 예상하는 값과 일치한다라는 것은 백엔드 측에 리소스(회원 정보)가 잘 생성되었다는 것을 의미합니다. [...] # 슬라이스 테스트(Slice Test)\n\n### ⚫ 슬라이스 테스트란?\n\n하나의 애플리케이션은 계층별로 역할이 있고, 계층별로 서로 연동되기 때문에 각각의 계층 별로 잘 동작하는지 테스트를 진행한 후에 마지막으로 통합 테스트를 통해서 계층 간의 연동에 문제가 없는지 확인해야 비로소 개발자의 테스트 작업이 마무리되는 것이라고 할 수 있습니다.\n\n개발자가 각 계층에 구현해 놓은 기능들이 잘 동작하는지 특정 계층만 잘라서(Slice) 테스트하는 것을 슬라이스 테스트(Slice Test)라고 합니다.\n\n### ⚫ API 계층 테스트\n\nAPI 계층의 테스트 대상은 대부분 클라이언트의 요청을 받아들이는 핸들러인 Controller입니다. [...] assertTrue(member.getName().equals(savedMember.getName()));\nassertTrue(member.getPhone().equals(savedMember.getPhone()));\n}\n}`",
+    "score": 0.34211034,
+    "publisher": "velog.io",
+    "published_at": null
+  },
+  {
+    "title": "재테크 - 나무위키",
+    "url": "https://namu.wiki/w/%EC%9E%AC%ED%85%8C%ED%81%AC",
+    "content": "유가물(#fn-8 \"한 번 잘못 미끄러지면 휴지 조각, 상폐 신세가 돼 버리는 금융, 암호화폐 자산에 비해, 어쨌든 내 손 안에 실물을 계속 보유하게 된다는 점에서 비교적 안전한 재테크 수단으로도 볼 수 있다. 물론 물건마다 제각기 상황이 다르며, 보관에 따른 노력이 지속적으로 따른다는 것은 함정.\") - 예술품(#fn-9 \"그림, 악기, 조각상, 도자기, 장식품 등. 예술품을 재테크 수단으로만 접근하고 투자하면 나중에 후회하기 십상이며, 예술적 가치와 자산적 가치를 모두 고려해서 투자할 필요가 있다.\"), 골동품(#fn-10 \"대부분 큰 가치가 없으나, 운 좋게 한 번 잘 구매하면 수백~수천 배의 이문을 남길 수도 있다.\"), 명품(#fn-11 \"롤렉스 시계가 대표적으로, 롤렉스 제품군 중 상당수는 구매한 뒤 시간이 지나면 감가(減價)는커녕 오히려 가격이 오른다, 이외에도 몽블랑 의 컬렉터블 에디션 으로 제작된 한정판 만년필/수성펜 라인 이라던지 그외의 시계 브랜드에서 억대 소비를 해야만 살 수 있는 특정 모델, 누구나 갖고 싶지만 구할 수 없는 단종되어 더 이상 구할 수 없는 희소성 있는 모델등이 손꼽힌다.\"), 유명인의 편지나 사인, 화폐, 우표, 고서적, 고가 주류(#fn-12 \"와인, 브랜디, 코냑, 위스키, 중국술 등\"), 희귀 장난감(#fn-13 \"1980년대 일본에서 정가 수천 엔에 출시한 초합금 장난감이 현재 야후옥션에서 수십만 엔을 호가하기도 한다\"), 레고(#fn-14 \"여기는 아예 '레테크'라는 명칭이 붙으며 한때 레고를 잘 모르는 일반인들까지 뛰어들 정도로 선풍적인 인기를 끌었으나, [...] (#rfn-1) 노무라 증권의 증권용어해설집 참고할 것.(#rfn-2) # # 개인재무설계라는 학문의 동향에 대한 논문들이다. 혹시 재테크를 접근하는 학문적 관점에 관심이 있으면 참고할 것.(#rfn-3) 터키에 이어 2위(#rfn-4) 금융 투자의 일종으로 보기도 하며, 변동성 측면에서는 위 3개를 능가한다.(#rfn-5) 스포츠토토나 경마 같은 승부예측은 기대승률 대비 배당률을 재서 걸어볼 만하지 않을까 싶지만 남들이 모르는 비공개 정보라도 있지 않은 이상 도박사로서 수익을 낸다는 것은 쉬운 일이 아니다. 스포츠토토와 경마장이 이미 그러한 심리를 이용하여 사람들의 돈을 쓸어담고 있다.(#rfn-6) 일단 '현물'이라고는 써놓았으나, 실제로는 선물 \"선물(금융)\") 형태로 거래되는 일도 굉장히 많다. 특히 원자재. 실물을 획득하면 부가가치세를 납부해야 해서 증권 거래가 대부분이다.(#rfn-7) 사탕수수, 옥수수, 밀 등이 대표적(#rfn-8) 한 번 잘못 미끄러지면 휴지 조각, 상폐 신세가 돼 버리는 금융, 암호화폐 자산에 비해, 어쨌든 내 손 안에 실물을 계속 보유하게 된다는 점에서 비교적 안전한 재테크 수단으로도 볼 수 있다. 물론 물건마다 제각기 상황이 다르며, 보관에 따른 노력이 지속적으로 따른다는 것은 함정.(#rfn-9) 그림, 악기, 조각상, 도자기, 장식품 등. 예술품을 재테크 수단으로만 접근하고 투자하면 나중에 후회하기 십상이며, 예술적 가치와 자산적 가치를 모두 고려해서 투자할 필요가 있다.(#rfn-10) 대부분 큰 가치가 없으나, 운 좋게 한 번 잘 구매하면 수백~수천 배의 이문을 [...] 있다.(#rfn-10) 대부분 큰 가치가 없으나, 운 좋게 한 번 잘 구매하면 수백~수천 배의 이문을 남길 수도 있다.(#rfn-11) 롤렉스 시계가 대표적으로, 롤렉스 제품군 중 상당수는 구매한 뒤 시간이 지나면 감가(減價)는커녕 오히려 가격이 오른다, 이외에도 몽블랑 의 컬렉터블 에디션 으로 제작된 한정판 만년필/수성펜 라인 이라던지 그외의 시계 브랜드에서 억대 소비를 해야만 살 수 있는 특정 모델, 누구나 갖고 싶지만 구할 수 없는 단종되어 더 이상 구할 수 없는 희소성 있는 모델등이 손꼽힌다.(#rfn-12) 와인, 브랜디, 코냑, 위스키, 중국술 등(#rfn-13) 1980년대 일본에서 정가 수천 엔에 출시한 초합금 장난감이 현재 야후옥션에서 수십만 엔을 호가하기도 한다(#rfn-14) 여기는 아예 '레테크'라는 명칭이 붙으며 한때 레고를 잘 모르는 일반인들까지 뛰어들 정도로 선풍적인 인기를 끌었으나, 2010년대 후반부터는 재발매 등의 이슈로 다소 시들해진 상태.(#rfn-15) 포켓몬카드게임, 유희왕이 이 분야에서 가장 영향력이 있으며 영문판, 일문판 위주로 거래가 활발한 편. 초판이나 특별판은 수억원을 오가기도 한다. 특이하게 레어카드 획득의 기대심리로 단종된 미개봉판 카드팩의 가격도 정가에 수배가 오르기도 한다.(#rfn-16) 잘 키운 춘란이라면 경매에서 수억 원에 이르는 명품도 많다",
+    "score": 0.32415032,
+    "publisher": "namu.wiki",
+    "published_at": null
+  },
+  {
+    "title": "Spring Boot Slice Test",
+    "url": "https://xop4p.tistory.com/33",
+    "content": "Spring Boot 슬라이스 테스트. 슬라이스 테스트란? Test slicing is about segmenting the `ApplicationContext` that is created for your test.",
+    "score": 0.28415418,
+    "publisher": "xop4p.tistory.com",
+    "published_at": null
+  },
+  {
+    "title": "[Test] Spring Boot 환경에서의 유닛테스트와 통합테스트, 슬라이스 테스트",
+    "url": "https://joonfluence.tistory.com/786",
+    "content": "#### 슬라이스 테스트\n\n 스프링 공식 문서에 따르면, \"Test slicing is about segmenting the ApplicationContext that is created for your test. Typically, if you want to test a controller using MockMvc, surely you don't want to bother with the data layer. Instead you'd probably want to mock the service that your controller uses and validate that all the web-related interaction works as expected. This can be summarized in the example below.\" 슬라이스 테스트란 레이어를 기준으로 테스트하고자 하는 대상을 좁힘으로써, 해당 레이어에서 수행하는 역할에 대해서만 테스트하는 것을 말합니다.\n 아래 예시처럼, Controller 계층을 슬라이스 테스트하는 예시가 있습니다. 굳이 Service 계층까지 테스트할 필요가 없기 때문에 @MockBean으로 등록하고, Service 계층의 getVehicleDetails 메서드의 응답 값을 미리 지정해둘 수 있을 것입니다. [...] #### 통합 테스트\n\n 보통 통합 테스트라 함은 최종 사용자가 프로그램을 사용하는 것처럼(블랙박스 테스트), 기능 동작을 위해 필요한 모듈 전체를 테스트하는 것을 말합니다. 가령, 특정 API 테스트를 한다고하면 서버 실행 및 서버와 통신하는 DB, Cache 등 연관된 모듈 간 통신을 실제로 함으로써, 실제 실행환경과 동일하게 실행했을 때 정상 동작 되는지 보는거죠. 이를 통해, 유닛 테스트에서는 확인할 수 없는 모듈, 구성 요소간의 상호 작용과 호환성도 확인할 수 있습니다.\n\n## 슬라이스 테스트 (Slice test)\n\nSpring MVC에서 한 가지 빼놓을 수 없는 테스트가 있습니다. 바로 슬라이스 테스트입니다. 보통 Spring MVC로 웹 어플리케이션 서버를 개발하면 Entity, Dto, Repository와 Servcie, Controller로 레이어가 구분됩니다. 슬라이스 테스트에선 각 레이어를 구분해서 살펴봅니다.\n\n#### 슬라이스 테스트 [...] ```",
+    "score": 0.26889476,
+    "publisher": "joonfluence.tistory.com",
+    "published_at": null
+  }
+]

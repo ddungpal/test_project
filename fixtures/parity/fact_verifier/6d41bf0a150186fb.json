@@ -1,0 +1,12 @@
+{
+  "promptHash": "6d41bf0a150186fb5308062a3a95f610d4a142a93f5d49dfdb3b5e9aa4db6900",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://m.blog.naver.com/ehdehdrn126/224258940025\",\"quote_excerpt\":\"세전 이자는 350만 원이에요. 여기서 이자소득세 15.4%(539,000원)를 제외하면, 실제 수령액은 약 2,961,000원이 되죠.\",\"citation_verified\":true,\"independent_origin_count\":1,\"misleading_check\":\"검색결과의 계산은 클레임에서 명시된 100만 원·1,000만 원이 아닌 1억 원 기준이며, 적용 금리(정기예금 3.5%, 파킹통장 3.3%, CMA 3.0%)는 블로거가 임의로 가정한 수치임. 금리는 상품·기관·시점별로 상이하므로 특정 금리 가정 하의 계산값을 일반적 차이로 오해할 소지가 있음.\",\"freshness\":\"fresh\",\"reasoning\":\"클레임이 요구하는 100만 원·1,000만 원 기준 이자 수령액 차이 계산값을 직접 제시한 출처가 없음. 유일하게 관련 수치를 제공하는 출처(네이버 블로그, 2026.4.20)는 1억 원 기준이고, 금리도 작성자가 임의 가정한 것임. 또한 이 블로그 단 1곳만 관련 계산을 제시하고 있어 서로 다른 발행처 2곳 이상 일치라는 verified 조건을 충족하지 못함. 나머지 결과(유튜브 자막 단편, 네이버페이 상품목록, 국세청·법제처·기재부 페이지)는 해당 계산값과 무관함.\"}",
+  "usage": {
+    "inTok": 3286,
+    "outTok": 192,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T06:20:10.768Z"
+}

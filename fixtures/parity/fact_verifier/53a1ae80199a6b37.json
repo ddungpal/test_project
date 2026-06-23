@@ -1,0 +1,12 @@
+{
+  "promptHash": "53a1ae80199a6b37be0664a4b418060e1a9dafb4e8c2c14420055e0b27917233",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"광고 최고 금리는 모든 우대조건 동시 충족 시에만 적용되므로, 실제 적용 금리는 훨씬 낮을 수 있다는 점에서 소비자 오인 가능성(체리피킹/조건 미충족)이 내재하나, 이는 claim 자체의 사실 여부와 별개로, 검색결과가 더미여서 판정 불가.\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과 3건 모두 '[MOCK 검색결과 — 실제 사실 아님]' 표식이 명시되어 있는 개발용 더미 데이터다. 판정 규칙에 따라 MOCK 결과는 실제 사실로 인정할 수 없으므로, claim을 뒷받침하거나 반박하는 실질적 근거가 전혀 없다. 유효한 실제 출처가 0건이므로 could_not_verify로 판정한다.\"}",
+  "usage": {
+    "inTok": 705,
+    "outTok": 135,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-18T15:18:40.283Z"
+}

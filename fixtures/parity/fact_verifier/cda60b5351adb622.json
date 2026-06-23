@@ -1,0 +1,12 @@
+{
+  "promptHash": "cda60b5351adb6228a90508e3fe829119bdbf11360fdae1a147e2534a495cf68",
+  "roleId": "fact_verifier",
+  "model": "sonnet",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://www.instagram.com/p/DXE0GkqgZFD\",\"quote_excerpt\":\"케이뱅크 → 세후 194,580원\\n카카오뱅크 → 세후 169,200원\\n토스뱅크 → 세후 135,360원\",\"citation_verified\":false,\"independent_origin_count\":1,\"misleading_check\":\"①claim은 '2026 하반기(7~12월)' 기준이나, 오늘(2026.06.23) 현재 하반기는 미개시 상태로 해당 기간 금리 데이터 자체가 존재하지 않음. ②검색결과 내 유일하게 수치를 제시한 인스타그램 출처(2026년 4월)는 연이율(%)이 아닌 '1,000만원 기준 세후 연간 이자금액(원)'으로, claim이 요구하는 '금리 수치(%)'와 형식이 다름. ③파킹통장 금리는 수시 변동 상품이므로 4월 수치를 하반기에 그대로 적용할 수 없음.\",\"freshness\":\"aging\",\"reasoning\":\"오늘(2026.06.23) 기준 '2026 하반기'(7월 이후)는 아직 시작되지 않았으므로 해당 기간의 실제 적용 금리 데이터가 원천적으로 존재하지 않는다. 검색결과 중 가장 최신 수치는 개인 인스타그램 계정(@happimoney_official, 2026년 4월 기준)에서 확인된 상반기 데이터이며, 이는 연이율(%)이 아닌 세후 이자금액(원) 형식으로 제공되어 claim의 '금리 수치' 요건과 형식이 다르다. 해당 출처는 blog 등급(인스타그램 개인 계정) 단 1곳뿐으로, verified 판정에 필요한 서로 다른 발행처 2곳 이상의 일치 요건을 충족하지 못한다. 카카오뱅크·케이뱅크·토스뱅크 공식 고시 자료나 언론 보도를 통한 구체적 금리 수치도 검색결과 내에 존재하지 않는다. 따라서 claim에 명시된 조건(2026 하반기)에 부합하는 근거를 찾을 수 없어 could_not_verify로 판정한다.\"}",
+  "usage": {
+    "inTok": 2446,
+    "outTok": 255,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-23T06:20:09.864Z"
+}
