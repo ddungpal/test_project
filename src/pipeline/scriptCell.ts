@@ -8,6 +8,7 @@ import { getRun, transitionRun, setProgress, type Supa } from "./runState.js";
 import { bumpRework, abortRun, MAX_REWORK, flushLedger } from "./runGuards.js";
 import { getSelectedStagePayload, getToneProfile } from "./context.js";
 import { buildCorpusShingles, containment, PLAGIARISM_THRESHOLD, PLAGIARISM_BLOCK_THRESHOLD } from "./scriptGuards.js";
+import { parseAxStages, resolveToneInjection } from "./axFlag.js";
 import { scribeStep } from "../agents/scribe/step.js";
 
 export interface ScriptStageDeps {
@@ -90,7 +91,9 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
   }));
   const assetsInput = assets.map((a, idx) => ({ idx, concept: a.concept, kind: a.kind, numeric_example: a.numeric_example, analogy: a.analogy }));
   await setProgress(supa, runId, "1/2·대본 작성 (짠펜)");
-  const scribe = await scribeStep(llm, runId, { tone: tone?.components ?? null, outline: structure, facts: factsInput, assets: assetsInput });
+  // AX 단계 전환(§14): 기본(AX_STAGES 미설정)=빈 Set → tone?.components ?? null 그대로(바이트 불변·픽스처 보존).
+  const toneInjection = resolveToneInjection("script", tone?.components ?? null, parseAxStages());
+  const scribe = await scribeStep(llm, runId, { tone: toneInjection, outline: structure, facts: factsInput, assets: assetsInput });
   const segments = [...scribe.segments].sort((a, b) => a.ord - b.ord);
 
   // 3) 표절 가드 — 코퍼스 대비 포함도.
