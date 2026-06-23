@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "tune-live-refresh",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "2/3 PASS",
+      "started_at": "2026-06-24T01:53:07+0900",
+      "summary": "LiveRefresh 폴백 8s→20s + 작업중(active)만 폴링. Realtime 불변. tc/build 그린",
+      "completed_at": "2026-06-24T02:03:47+0900"
     }
   ],
   "created_at": "2026-06-24T01:44:48+0900"
