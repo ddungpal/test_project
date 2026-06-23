@@ -13,11 +13,11 @@
     {
       "dir": "thumbnail-ab-learning",
       "status": "running",
-      "progress": "1/3",
-      "running_step": "1 (ab-ingest)",
-      "attempt": 1,
-      "elapsed_seconds": 600,
-      "heartbeat_at": "2026-06-24T01:08:05+0900"
+      "progress": "2/3",
+      "running_step": "2 (style-loop-verify)",
+      "attempt": 2,
+      "elapsed_seconds": 0,
+      "heartbeat_at": "2026-06-24T01:09:26+0900"
     }
   ]
 }

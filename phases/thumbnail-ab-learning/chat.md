@@ -19,3 +19,7 @@
 [Joy] 오 맥스 Step1 ab-ingest 올라왔네! 내가 바로 git diff 보고 typecheck/test 직접 돌려볼게 ☕
 [Joy] 다 봤어! typecheck exit0, test 154통과(신규 abIngest 7개 포함). watch_share_pct를 ctr_pct 슬롯에 넣고 payload.metric으로 박은 거 굿굿, rank/is_winner도 judgeComponent 재계산 쓰고 파일 is_winner는 warn만 하네. onConflict도 ingest.ts랑 똑같고 스텁도 produced/in_production 유효값. 범위도 신규 2파일만, src 안 건드림. 통과 🎉
 [리드] 깔끔하네. Step 1 완료 처리한다. ab_variants 진실 출처가 이제 채워질 준비 됐어 — 실제 --commit 적재는 사람이 dry-run으로 매칭 확인 후 직접 돌리는 거 잊지 말고. 수고했어 다들. 다음은 Step 2 style-loop-verify.
+
+=== Step 2: style-loop-verify ===
+
+=== Step 2: style-loop-verify (재시도 2) ===
