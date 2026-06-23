@@ -19,20 +19,25 @@ import chat_view
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def _phase_dirs():
+    """chat.md를 가진 phase 디렉토리 이름 목록(이름순)."""
+    base = ROOT / "phases"
+    if not base.is_dir():
+        return []
+    return sorted(d.name for d in base.iterdir() if d.is_dir() and (d / "chat.md").exists())
+
+
 def _detect_running_phase():
-    """phases/index.json에서 running phase를, 없으면 마지막 phase를 반환."""
-    top = ROOT / "phases" / "index.json"
-    if not top.exists():
+    """가장 최근에 갱신된 chat.md의 phase를 반환(=실제로 가장 최근 활동한 phase).
+
+    top-index의 status="running"에 의존하지 않는다 — 새 phase가 top-index에
+    등록 안 됐거나 하네스가 끝나면 부정확하기 때문(과거 폴백이 '마지막 항목'이라
+    엉뚱한 완료 phase를 봤다). chat.md mtime이 단일 진실 소스다.
+    """
+    candidates = _phase_dirs()
+    if not candidates:
         return None
-    try:
-        data = json.loads(top.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
-        return None
-    phases = data.get("phases", [])
-    for p in phases:
-        if p.get("status") == "running":
-            return p.get("dir")
-    return phases[-1].get("dir") if phases else None
+    return max(candidates, key=lambda name: (ROOT / "phases" / name / "chat.md").stat().st_mtime)
 
 
 def main():
@@ -44,15 +49,23 @@ def main():
         sys.exit(1)
 
     chat = ROOT / "phases" / phase / "chat.md"
+    # 디렉토리/대화파일 존재 검증 — 오타 시 조용히 빈 화면 대신 명확히 알린다.
+    if not chat.exists():
+        avail = _phase_dirs()
+        print(f"⚠ '{phase}' 의 chat.md가 없습니다 (오타?).", file=sys.stderr)
+        if avail:
+            print(f"  사용 가능한 phase: {', '.join(avail)}", file=sys.stderr)
+        sys.exit(1)
+
     color = sys.stdout.isatty()
-    print(f"💬 팀 대화창 — {phase}  (Ctrl-C 종료)\n")
+    print(f"💬 팀 대화창 — {phase}  (Ctrl-C 종료)\n", flush=True)
 
     stop = threading.Event()
 
     def emit(line):
         rendered = chat_view.render_chat_line(line, color=color)
         if rendered:
-            print(rendered)
+            print(rendered, flush=True)  # 파이프/리다이렉트에서도 즉시 보이게
 
     try:
         chat_view.follow(str(chat), stop, emit, start_count=0)
