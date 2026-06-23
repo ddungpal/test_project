@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "hook-style-inject",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "summary": "훅이 prepare 조건부 style_profile 주입(active 없으면 해시 불변·parity 보존). loadActiveThumbnailStyle 추가",
+      "started_at": "2026-06-23T22:13:58+0900",
+      "completed_at": "2026-06-23T22:21:27+0900"
     },
     {
       "step": 2,
