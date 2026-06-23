@@ -4,9 +4,11 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-23(밤) · 단계: **구글 로그인·촉이 수준별 주제(V1) 완료·푸쉬. 다음 재개점=썸네일(스타일 일치 + A/B 학습) — 설계 합의됨, 구현 미착수. tsc0/vitest130. 브랜치 `feat/phase3-dashboard`. migration 17~21 적용.**_
+_Last updated: 2026-06-24 · 단계: **썸네일 Phase A(스타일 일치)·B(A/B 학습) 코드 완료 + `--from` 검수본 커밋 경로 추가 → `style_profiles(thumbnail_copy) v1` active(완화본 환류 확인). 학습 루프 5/5 닫힘. 부수 버그 수정: watch.py 자동감지·learn-ab-style provenance best-effort. tsc0/vitest160. 브랜치 `feat-thumbnail-style-activate`(푸시됨). 다음 재개점=Phase C(YouTube OAuth 성과 자동수집) 또는 배포 게이트. 상세=`docs/roadmap-next.md`.**_
 
-## ▶▶ 다음 재개점 — 썸네일 (스타일 일치 + A/B/C 학습) — 설계 합의·구현 미착수
+> ✅ **썸네일 트랙 활성화 완료(2026-06-24)** — 아래 설계 메모는 이력. 현재 상태/다음은 `docs/roadmap-next.md`(Phase A·B ✅ / C·D·E 남음)가 단일 출처.
+
+## ▶▶ (이력) 썸네일 재개점 설계 메모 — Phase A·B로 구현·활성화 완료됨
 **사용자 지적**: ①생성 썸네일이 김짠부 실제 스타일과 안 닮음(현 캔버스=초안) ②A/B/C 성과로 어떤 썸네일이 좋았는지 학습하는 경로가 없음.
 **코드 현황(검토 완료)**: 훅이(`hook_maker/prepare.ts`)는 과거 '제목'만 레퍼런스(썸네일 디자인 레퍼런스 없음)·출력은 layout텍스트+copy뿐. ThumbnailCanvas=검정+노랑+카피 '초안'(실사진 없음). A/B 인프라(`ab_variants`[thumbnail]·`abVerdict.judgeComponent`·회고 `buildAbSummaries`)는 **존재**하나, **`style_profiles`(thumbnail_copy·patterns jsonb)+`profile_training_sources`는 테이블만 있고 앱코드 미사용(미구현)** + **썸네일 A/B CTR 입력 경로 없음**(YouTube Analytics는 변형별 CTR 미제공→Studio "테스트 및 비교"=수동). **공통 빠진 조각=style_profiles가 비어있음**(= 김짠부 썸네일 스타일의 집).
 **합의 설계**:
