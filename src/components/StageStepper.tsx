@@ -46,7 +46,7 @@ export function StageStepper({ state, progressNote }: { state: RunState; progres
           {prog.isWorking ? "● " : prog.phase === "done" ? "✓ " : "▷ "}
           {prog.statusLabel}
         </span>
-        {prog.isWorking && <LiveRefresh />}
+        {prog.isWorking && <LiveRefresh active={prog.isWorking} />}
       </div>
 
       {sub && (

@@ -18,11 +18,11 @@
     {
       "dir": "perf-optimization",
       "status": "running",
-      "progress": "0/2",
-      "running_step": "0 (parallelize-queries)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-24T01:52:48+0900"
+      "progress": "1/2",
+      "running_step": "1 (tune-live-refresh)",
+      "attempt": 2,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-06-24T02:03:13+0900"
     }
   ]
 }

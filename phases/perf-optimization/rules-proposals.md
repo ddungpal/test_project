@@ -1,0 +1,1 @@
+- 제안: step 구현 완료 시 코드 변경뿐 아니라 phases/<phase>/index.json의 해당 step status를 completed로 바꾸고 summary를 기재하며 step<N>-output.json이 실제 구현결과를 담도록 갱신한다 (근거: 코드는 변경됐으나 index.json status가 pending으로 남고 output.json이 "진행여부 골라줘" 브리핑만 담은 stale 상태로 방치되는 실수를 막는다)
