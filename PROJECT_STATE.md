@@ -4,11 +4,18 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-24 · 단계: **썸네일 Phase A·B 코드 완료 + `style_profiles(thumbnail_copy) v1` active(학습 루프 5/5 닫힘). Phase C(YouTube 성과 자동수집) **코드 부분 완료**: 토큰 파싱 순수분리(parseTokenResponse·requireOauthEnv) + collectPerformance end-to-end·멱등 통합테스트(mock 백엔드·fake Supa). 어댑터/collect/cron는 원래부터 구현돼 있었음. 부수 수정: watch.py 자동감지·learn-ab-style provenance best-effort·하네스 헤드리스 브리핑 플레이크(CLAUDE_HARNESS 가드). tsc0/vitest168. 브랜치 `feat-youtube-analytics-oauth`(푸시됨). 다음 재개점=Phase C 실연결(사용자 OAuth 1회) 또는 Phase D(AX 말투내재화)/배포 게이트. 상세=`docs/roadmap-next.md`.**_
+_Last updated: 2026-06-24(세션종료) · 단계: **Phase A·B·C·D 코드 전부 완료, vitest206 그린. 썸네일 스타일 `v1` active(학습루프 5/5). Phase C(성과 자동수집)·D(AX 말투내재화) 코드 골격 완성 — 실가동은 사람·데이터 게이트. 부수 수정 다수(watch.py·learn-ab provenance·하네스 브리핑 플레이크 CLAUDE_HARNESS 가드). 다음 재개점=Phase E(배포 게이트) 또는 브랜치 정리(PR 머지로 일원화). 상세=`docs/roadmap-next.md`.**_
 
-> ✅ **썸네일 트랙(Phase A·B) + Phase C 코드 완료(2026-06-24)** — 아래 설계 메모는 이력. 현재 상태/다음은 `docs/roadmap-next.md`(Phase A·B ✅ · C 코드✅/실연결은 사용자 OAuth 게이트 · D·E 남음)가 단일 출처.
->
-> **Phase C 실연결(사람 게이트)**: 채널 OAuth 인증 → `.env` `YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN` → `PERFORMANCE_SOURCE=youtube` + `PERFORMANCE_FIXTURES=record` 1회 녹화 → 이후 replay($0). **코드 변경 없이 켜짐.**
+## ▶ 다음 작업 (NEXT — 2026-06-24 세션종료 시점)
+- **Phase E — 배포 게이트(사용자 액션)**: owner 비번 변경 · 브라우저 최종검증(`DEV_OWNER_BYPASS=0`) · **스택 브랜치 정리**(아래) · Vercel 운영 env(`LLM_BACKEND=api`·`LLM_FIXTURES=off`·캡·바이패스 미설정) · Inngest 프로덕션 · **OpenAI/구글 키 rotate**(채팅 노출분 미폐기).
+- **(병렬·사람게이트) Phase C 실연결**: 채널 OAuth → `.env` `YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN` → `PERFORMANCE_SOURCE=youtube`+`PERFORMANCE_FIXTURES=record` 1회 → 이후 replay($0). **코드 변경 없이 켜짐.**
+- **(병렬·사람게이트) Phase D 실전환**: 김짠부가 한 단계 "이제 됐다" + 신호데이터(채택률·eval) 축적 → `AX_STAGES=<stage>`로 그 단계 AX 전환(롤백 가능).
+- **(deferred·코드) 하네스 top-index 자동등록**: 새 phase가 `phases/index.json`에 미등록(watch는 mtime기반이라 무방, 저우선).
+
+### 스택 브랜치 (2026-06-24, 각 브랜치가 이전 작업 누적·전부 푸시됨)
+`feat-thumbnail-style-activate` → `feat-youtube-analytics-oauth` → **`feat-ax-tone-internalize`(최신·전부 포함)**. PR 머지로 일원화 필요(Phase E). 메인=`main`, 진짜 리포=`github.com/ddungpal/test_project`.
+
+> 아래는 이력(완료된 설계 메모) — 현재 상태/다음은 `docs/roadmap-next.md`(Phase A·B·C·D ✅코드 / C·D 실가동·E 남음)가 단일 출처.
 
 ## ▶▶ (이력) 썸네일 재개점 설계 메모 — Phase A·B로 구현·활성화 완료됨
 **사용자 지적**: ①생성 썸네일이 김짠부 실제 스타일과 안 닮음(현 캔버스=초안) ②A/B/C 성과로 어떤 썸네일이 좋았는지 학습하는 경로가 없음.
