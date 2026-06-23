@@ -294,7 +294,10 @@ async function commitFromReviewed(fromPath: string) {
     .single();
   if (se) throw new Error(`style_profiles insert 실패: ${se.message}`);
 
-  // provenance — 검수본 videos 의 영상별 weight 로(§13.2). videos 없으면 건너뜀(위 경고).
+  // provenance — 검수본 videos 의 영상별 weight 로(§13.2). best-effort:
+  //   학습 소스(ab-results.json 영상)는 DB 행이 아니라 출처 FK(edition/ab_variant/metric)가 없다 →
+  //   pts_has_source(FK≥1) 제약을 만족 못 함. 환류는 style_profiles 만 읽으므로(provenance 미참조)
+  //   provenance 실패는 draft 저장을 막지 않는다 — 경고만 하고 계속(부분기록 방지: style_profiles 는 이미 저장됨).
   let provenanceCount = 0;
   if (videos.length) {
     const provenance = videos.map((v) => ({
@@ -305,8 +308,11 @@ async function commitFromReviewed(fromPath: string) {
       weight: v.weight,
     }));
     const { error: pe } = await supa.from("profile_training_sources").insert(provenance);
-    if (pe) throw new Error(`provenance insert 실패: ${pe.message}`);
-    provenanceCount = provenance.length;
+    if (pe) {
+      console.warn(`⚠️ provenance 생략 — 출처 FK 없음(코퍼스 영상은 DB 행 아님): ${pe.message}`);
+    } else {
+      provenanceCount = provenance.length;
+    }
   }
 
   console.log(`\n✅ 저장 — style_profiles(thumbnail_copy) v${sp.version} (${sp.status}, id=${sp.id}) · provenance ${provenanceCount}편`);
