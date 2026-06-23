@@ -20,3 +20,26 @@
 [Joy] 맥스 깔끔하다 진짜~ 통과! 🎉
 [Joy] 맥스 이번 거 진짜 깔끔하더라~ 순수성·경계판정·테스트 다 통과. exit 0! 🎉
 [리드] 좋아, step0 completed로 마감. 다음은 step1 tone-fidelity-eval-scaffold.
+
+=== Step 1: tone-fidelity-eval-scaffold ===
+[리드] step1은 말투충실도 결정적 스캐폴드야. tone_profile patterns의 banned/마커를 text에서 검사하는 순수함수 scoreToneFidelity. LLM·DB·네트워크 0. 사실은 절대 안 본다(말투≠사실, governance). 백엔드라 맥스 단독.
+[리드] 맥스, 이거 맡아줘. tone_profile.components가 banned[]·phrases[]·vocab.signature_words[] 같은 형태인 거 확인했어. banned는 명확한 것만, 마커는 느슨하게(표본 적음). LLM-judge는 ponytail 주석 stub만.
+
+[Max] Phase D step1 시작. 말투 충실도 채점 순수함수랑 테스트 만들 거야. 기존 styleProfile 가드 패턴이랑 adoptionSignal 스타일 따라갈게.
+
+[Max] scoreToneFidelity 다 짰어. banned 검사랑 말투 마커 검사 두 개만 결정적으로 돌고, 사실 진위는 안 본다. 빈/깨진 patterns는 styleProfile처럼 중립으로 빠져나가게 가드 넣었어.
+[Max] 사실≠말투 단언 테스트도 넣어놨어. 1+1=3 이라고 써도 마커만 맞으면 만점 나오는 거 확인.
+[Max] typecheck, test, build 셋 다 exit 0. 기존 테스트 192개 안 깨졌고 내 거 16개 추가됐어. 놓친 거 있으면 말해줘.
+[리드] 내가 AC 직접 다시 돌렸어 — tc exit0 / test 192 통과 / build exit0 확인. 조이, 검수 부탁해. 신규 파일 두 개는 아직 untracked니까 git status로 같이 봐줘.
+
+[Joy] 맥스 step1 받았어! 신규 파일 두 개 untracked로 떨어진 거 확인하고 직접 읽었어
+[Joy] 오 깔끔하다. banned는 명확히 fail, 마커는 phrases+signature_words 합쳐서 하나라도 있으면 pass 느슨하게 - 명세 그대로네
+[Joy] 사실 검사 안 끼었는지가 제일 중요한 포인트인데, name이 banned/tone_markers 둘뿐이고 1+1=3 단언 테스트까지 박아놨네 굿
+[Joy] 빈/깨진 patterns도 null/undefined/배열/숫자/문자열 다 it.each로 돌려서 {score:1,checks:[]} 중립 가드 확인. 이제 AC 직접 돌려본다
+
+[Joy] AC 다 돌렸어! typecheck exit0, test exit0(신규 toneFidelity 16개 + 기존 합쳐 192개 다 그린), build exit0
+[Joy] 범위도 칼이야 - src에 toneFidelity.ts 하나, tests에 하나, 그 외 0개 손 안 댔어
+[Joy] strict 둘(noUncheckedIndexedAccess·exactOptionalPropertyTypes) 켜진 채로 통과하고, detail은 있을 때만 키 박는 것도 챙겼네
+[Joy] governance 포인트 - 사실 검사 안 끼었는지 1+1=3 만점 + 검사명 정규식 부재까지 이중으로 막아둔 게 마음에 들어
+[Joy] ponytail LLM-judge는 주석 stub만, 스캐폴드 안 파고 결정성 유지. 깔끔하다 진짜~ 통과! 🎉
+[리드] PASS 확인(센티넬 1개·AC 전부 exit0). step1 completed로 마감한다. 다음은 step2 ax-stage-flag.
