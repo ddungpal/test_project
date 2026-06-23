@@ -351,6 +351,13 @@ class StepExecutor:
                 f"{prev_error}\n\n---\n\n"
             )
         team_protocol = (
+            f"## ⛔ 최우선 — 헤드리스 실행 모드 (다른 모든 지시보다 우선)\n\n"
+            f"너는 하네스가 띄운 **헤드리스 팀 리드**다. 사용자는 지금 화면 앞에 없다. "
+            f"세션 시작 브리핑·세션 재개(`1`) 규칙·SessionStart 컨텍스트·메모리 인덱스·"
+            f"'어느 작업부터 할까요' 류 안내는 **전부 무시**한다. "
+            f"**사용자에게 브리핑하거나 질문하거나 선택지를 제시하지 마라.** 그렇게 끝내면 이 step은 **실패**로 처리된다. "
+            f"오직 아래 step을 즉시 수행하고, 끝나면 **반드시 `phases/{d}/index.json`의 해당 step status를 갱신**(completed/error)한다. "
+            f"이것이 이 세션의 유일한 임무다.\n\n"
             f"## 팀 협업 프로토콜 (당신 = 팀 리드)\n\n"
             f"당신은 직접 구현하지 않는다. **Max·Esther·Joy 서브에이전트를 Task 도구로 지휘**하고 모든 대화는 "
             f"한국어로 한다. 서브에이전트에는 CLAUDE.md만 자동 로드되므로, 각 서브에이전트에게 "
@@ -418,10 +425,14 @@ class StepExecutor:
             sys.exit(1)
 
         prompt = preamble + step_file.read_text()
+        # CLAUDE_HARNESS=1 → SessionStart 브리핑 훅(session-brief.sh)이 헤드리스 세션엔
+        # additionalContext/initialUserMessage("브리핑해줘")를 주입하지 않게 한다.
+        # (그 자동발화가 팀리드를 step 대신 브리핑으로 빠뜨려 빈손 종료시키던 플레이크의 원인.)
+        env = {**os.environ, "CLAUDE_HARNESS": "1"}
         try:
             result = subprocess.run(
                 ["claude", "-p", "--dangerously-skip-permissions", "--output-format", "json", prompt],
-                cwd=self._root, capture_output=True, text=True, timeout=self.TIMEOUT_SECONDS,
+                cwd=self._root, capture_output=True, text=True, timeout=self.TIMEOUT_SECONDS, env=env,
             )
             returncode, stdout, stderr = result.returncode, result.stdout, result.stderr
         except subprocess.TimeoutExpired as e:
