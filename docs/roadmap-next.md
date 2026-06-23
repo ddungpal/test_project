@@ -48,7 +48,24 @@
 2. **학습**: `LLM_BACKEND=claude-p LLM_FIXTURES=record npx tsx scripts/learn-ab-style.ts`(dry-run) → 산출 `corpus/thumbnails/ab-style-proposed-*.json` **검수** → `--commit`으로 `style_profiles(thumbnail_copy)` **draft** 저장.
 3. **(선택) 성과 영속화**: `npx tsx scripts/ingest-ab.ts`(dry-run→`--commit`)로 `ab_variants` 적재(진실 출처·회고용).
 4. **승급**: 검수 후 `npx tsx scripts/activate-style.ts [version]` → 해당 draft를 `active`(기존 active는 자동 retired). **과적합 방지: 유효 신호<5건이면 활성화 보류.**
-5. **환류**: 다음 런부터 훅이 `prepare`가 active 스타일을 자동 주입(`appendThumbnailStyle`). active 없으면 프롬프트 불변(픽스처 보존). 검증=`tests/styleProfile.test.ts` + `parity:replay`.
+5. **환류**: 다음 런부터 훅이 `prepare`가 active 스타일을 자동 주입(`appendThumbnailStyle`). active 없으면 프롬프트 불변(픽스처 보존). 검증=`tests/styleProfile.test.ts`·`tests/hookMakerPrepareWiring.test.ts`(배선) + `parity:replay`.
+
+#### 썸네일 스타일 활성화 (사람 게이트)
+검수본을 draft로 커밋한 뒤 사람이 직접 active로 승급하는 절차. **2·3단계는 라이브 Supabase를 변경**하므로 사용자가 직접/감독 하에 실행한다(사람 게이트). 에이전트/하네스가 단독으로 돌리지 않는다.
+
+```bash
+set -a; . ./.env; set +a
+# 1) 검수본을 그대로 draft로 커밋 (LLM 미호출 — step0의 --from 경로)
+LLM_BACKEND=claude-p npx tsx scripts/learn-ab-style.ts \
+  --from corpus/thumbnails/ab-style-proposed-2026-06-23-16-18-50.json --commit
+# 2) 방금 만든 version 확인 후 active 승급 (기존 active는 자동 retired)
+npx tsx scripts/activate-style.ts <version>
+# 3) 확인: 다음 훅이 실행부터 system에 "김짠부 썸네일 스타일 사양" 주입 / loadActiveThumbnailStyle이 1행 반환
+```
+
+- **active는 component_type별 1개**(partial unique). `activate-style.ts`가 새 version을 active로 올릴 때 기존 active를 자동 retired 처리한다.
+- **되돌리기(롤백)**: 이전 version을 다시 `npx tsx scripts/activate-style.ts <이전 version>`으로 승급하면 된다(현 active는 자동 retired).
+- **1단계는 LLM을 호출하지 않는다** — 사람이 검수·완화한 산출물 파일을 그대로 draft로 적재(step0 `--from`). 파일 경로는 실제 검수본 이름으로 교체.
 
 ---
 
