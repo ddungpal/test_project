@@ -43,6 +43,13 @@
 
 **산출**: A/B 성과 → 이긴 스타일 학습 → 다음 썸네일 제안 반영. 루프 닫힘.
 
+### 운영 절차 — 썸네일 스타일 학습 루프 (사람 게이트)
+1. **A/B 데이터 추가**: Studio 테스트 및 비교 결과 스크린샷 → `corpus/thumbnails/ab-screenshots/` → 구조화 `corpus/thumbnails/ab-results.json`(검토).
+2. **학습**: `LLM_BACKEND=claude-p LLM_FIXTURES=record npx tsx scripts/learn-ab-style.ts`(dry-run) → 산출 `corpus/thumbnails/ab-style-proposed-*.json` **검수** → `--commit`으로 `style_profiles(thumbnail_copy)` **draft** 저장.
+3. **(선택) 성과 영속화**: `npx tsx scripts/ingest-ab.ts`(dry-run→`--commit`)로 `ab_variants` 적재(진실 출처·회고용).
+4. **승급**: 검수 후 `npx tsx scripts/activate-style.ts [version]` → 해당 draft를 `active`(기존 active는 자동 retired). **과적합 방지: 유효 신호<5건이면 활성화 보류.**
+5. **환류**: 다음 런부터 훅이 `prepare`가 active 스타일을 자동 주입(`appendThumbnailStyle`). active 없으면 프롬프트 불변(픽스처 보존). 검증=`tests/styleProfile.test.ts` + `parity:replay`.
+
 ---
 
 ## Phase C — 성과 자동수집 실연결  〔phase dir: `youtube-analytics-oauth`〕

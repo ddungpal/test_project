@@ -12,12 +12,8 @@
     },
     {
       "dir": "thumbnail-ab-learning",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (style-loop-verify)",
-      "attempt": 2,
-      "elapsed_seconds": 0,
-      "heartbeat_at": "2026-06-24T01:09:26+0900"
+      "status": "completed",
+      "completed_at": "2026-06-24T01:20:00+0900"
     }
   ]
 }
