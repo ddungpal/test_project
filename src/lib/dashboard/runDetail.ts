@@ -49,31 +49,80 @@ export async function getRunDetail(runId: string): Promise<RunDetail | null> {
   if (re) throw new Error(`런 조회 실패: ${re.message}`);
   if (!run) return null;
 
-  // 서브진행(migration 15) — 별도 best-effort 조회(컬럼 미적용이어도 본 조회는 안 깨지게).
+  // 그룹 A(run 이후 독립 병렬): 서브진행·content·content_links·proposals.
+  //   progressNote는 best-effort(컬럼 미적용이어도 본 조회 안 깨지게) → Promise.all 안에서 reject 안 되게 가드.
+  const [pnRes, contentRes, linksRes, proposalsRes] = await Promise.all([
+    supa
+      .from("production_runs")
+      .select("progress_note")
+      .eq("id", runId)
+      .maybeSingle()
+      .then((r) => r, () => ({ data: null, error: { message: "progress_note 조회 실패" } as { message: string } })),
+    supa.from("contents").select("topic, title").eq("id", run.content_id).maybeSingle(),
+    supa
+      .from("content_links")
+      .select("to_content_id, relation, intent, created_at")
+      .eq("from_content_id", run.content_id)
+      .order("created_at", { ascending: true }),
+    supa
+      .from("stage_proposals")
+      .select("id, stage, candidates, created_at")
+      .eq("run_id", runId)
+      .order("created_at", { ascending: false }),
+  ]);
+
+  // 서브진행(migration 15) — 별도 best-effort 조회.
   let progressNote: string | null = null;
   {
-    const { data: pn, error: pne } = await supa.from("production_runs").select("progress_note").eq("id", runId).maybeSingle();
+    const { data: pn, error: pne } = pnRes;
     if (!pne && pn) progressNote = (pn as { progress_note: string | null }).progress_note;
   }
 
-  const { data: content, error: ce } = await supa
-    .from("contents")
-    .select("topic, title")
-    .eq("id", run.content_id)
-    .maybeSingle();
+  const { data: content, error: ce } = contentRes;
   if (ce) throw new Error(`contents 조회 실패: ${ce.message}`);
 
-  // 참조 기존편(씨앗 모드 content_links) — 대상 content 라벨 코드 조인.
-  const { data: links, error: le } = await supa
-    .from("content_links")
-    .select("to_content_id, relation, intent, created_at")
-    .eq("from_content_id", run.content_id)
-    .order("created_at", { ascending: true });
+  const { data: links, error: le } = linksRes;
   if (le) throw new Error(`content_links 조회 실패: ${le.message}`);
+
+  const { data: proposals, error: pe } = proposalsRes;
+  if (pe) throw new Error(`제안 조회 실패: ${pe.message}`);
+
+  const latestByStage = new Map<Stage, { id: string; candidates: CandidateView[]; sources: ProposalSource[] }>();
+  for (const p of proposals ?? []) {
+    if (latestByStage.has(p.stage)) continue; // 이미 최신(내림차순 첫 항목)
+    latestByStage.set(p.stage, { id: p.id, candidates: (p.candidates as unknown as CandidateView[]) ?? [], sources: [] });
+  }
+
+  // 그룹 B(그룹 A 결과 파생, 서로 독립 → 병렬): refContents(←links)·srcRows(←latestIds)·selections(←proposalIds).
+  //   각 입력 배열이 비면 쿼리를 건너뛰던 가드 유지(빈 입력 시 null로 resolve). srcRows는 best-effort.
+  const toIds = links && links.length > 0 ? [...new Set(links.map((l) => l.to_content_id))] : [];
+  const latestIds = [...latestByStage.values()].map((v) => v.id);
+  const proposalIds = (proposals ?? []).map((p) => p.id);
+
+  const [refContentsRes, srcRowsRes, selsRes] = await Promise.all([
+    toIds.length > 0
+      ? supa.from("contents").select("id, title, topic").in("id", toIds)
+      : Promise.resolve(null),
+    latestIds.length > 0
+      ? supa
+          .from("stage_proposals")
+          .select("id, sources")
+          .in("id", latestIds)
+          .then((r) => r, () => ({ data: null, error: { message: "sources 조회 실패" } as { message: string } }))
+      : Promise.resolve(null),
+    proposalIds.length > 0
+      ? supa
+          .from("stage_selections")
+          .select("proposal_id, chosen_idx, edited_payload, selection_reason, created_at")
+          .in("proposal_id", proposalIds)
+          .order("created_at", { ascending: false })
+      : Promise.resolve(null),
+  ]);
+
+  // 참조 기존편(씨앗 모드 content_links) — 대상 content 라벨 코드 조인.
   let references: RunDetail["references"] = [];
   if (links && links.length > 0) {
-    const toIds = [...new Set(links.map((l) => l.to_content_id))];
-    const { data: refContents, error: rce } = await supa.from("contents").select("id, title, topic").in("id", toIds);
+    const { data: refContents, error: rce } = refContentsRes ?? { data: null, error: null };
     if (rce) throw new Error(`참조 contents 조회 실패: ${rce.message}`);
     const labelById = new Map((refContents ?? []).map((c) => [c.id, c.title || c.topic || "(제목 미정)"]));
     references = links.map((l) => ({
@@ -83,41 +132,19 @@ export async function getRunDetail(runId: string): Promise<RunDetail | null> {
     }));
   }
 
-  // 단계별 최신 proposal(같은 단계 재시도 시 마지막 것).
-  const { data: proposals, error: pe } = await supa
-    .from("stage_proposals")
-    .select("id, stage, candidates, created_at")
-    .eq("run_id", runId)
-    .order("created_at", { ascending: false });
-  if (pe) throw new Error(`제안 조회 실패: ${pe.message}`);
-
-  const latestByStage = new Map<Stage, { id: string; candidates: CandidateView[]; sources: ProposalSource[] }>();
-  for (const p of proposals ?? []) {
-    if (latestByStage.has(p.stage)) continue; // 이미 최신(내림차순 첫 항목)
-    latestByStage.set(p.stage, { id: p.id, candidates: (p.candidates as unknown as CandidateView[]) ?? [], sources: [] });
-  }
-
   // 검색 출처(migration 16) — 별도 best-effort 조회(컬럼 미적용이어도 본 조회 안 깨지게). 최신 proposal에만 부착.
-  {
-    const latestIds = [...latestByStage.values()].map((v) => v.id);
-    if (latestIds.length > 0) {
-      const { data: srcRows, error: sre } = await supa.from("stage_proposals").select("id, sources").in("id", latestIds);
-      if (!sre) {
-        const byId = new Map((srcRows ?? []).map((r) => [r.id, (r as { sources: ProposalSource[] | null }).sources ?? []]));
-        for (const v of latestByStage.values()) v.sources = byId.get(v.id) ?? [];
-      }
+  if (latestIds.length > 0) {
+    const { data: srcRows, error: sre } = srcRowsRes ?? { data: null, error: null };
+    if (!sre) {
+      const byId = new Map((srcRows ?? []).map((r) => [r.id, (r as { sources: ProposalSource[] | null }).sources ?? []]));
+      for (const v of latestByStage.values()) v.sources = byId.get(v.id) ?? [];
     }
   }
 
   // 선택(stage_selections) — 이 run의 proposal들에 한정.
-  const proposalIds = (proposals ?? []).map((p) => p.id);
   const selByProposal = new Map<string, StageSelectionView>();
   if (proposalIds.length > 0) {
-    const { data: sels, error: se } = await supa
-      .from("stage_selections")
-      .select("proposal_id, chosen_idx, edited_payload, selection_reason, created_at")
-      .in("proposal_id", proposalIds)
-      .order("created_at", { ascending: false });
+    const { data: sels, error: se } = selsRes ?? { data: null, error: null };
     if (se) throw new Error(`선택 조회 실패: ${se.message}`);
     for (const s of sels ?? []) {
       if (selByProposal.has(s.proposal_id)) continue;

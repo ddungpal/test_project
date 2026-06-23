@@ -25,30 +25,40 @@ export async function getScriptView(runId: string): Promise<SegmentView[]> {
   const segIds = segs.map((s) => s.id);
 
   // lineage: segment ↔ fact / asset (조인 테이블 → 대상 텍스트 조회 후 코드 조인).
-  const { data: sfLinks, error: fle } = await supa
-    .from("script_segment_facts")
-    .select("segment_id, fact_id")
-    .in("segment_id", segIds);
+  //   sfLinks·saLinks는 둘 다 segIds만 입력 → 서로 독립, 병렬.
+  const [sfRes, saRes] = await Promise.all([
+    supa.from("script_segment_facts").select("segment_id, fact_id").in("segment_id", segIds),
+    supa.from("script_segment_explanation_assets").select("segment_id, asset_id").in("segment_id", segIds),
+  ]);
+
+  const { data: sfLinks, error: fle } = sfRes;
   if (fle) throw new Error(`segment_facts 조회 실패: ${fle.message}`);
 
-  const { data: saLinks, error: ale } = await supa
-    .from("script_segment_explanation_assets")
-    .select("segment_id, asset_id")
-    .in("segment_id", segIds);
+  const { data: saLinks, error: ale } = saRes;
   if (ale) throw new Error(`segment_assets 조회 실패: ${ale.message}`);
 
   const factIds = [...new Set((sfLinks ?? []).map((l) => l.fact_id))];
   const assetIds = [...new Set((saLinks ?? []).map((l) => l.asset_id))];
 
+  // factById·assetById는 서로 독립(각각 factIds/assetIds만) → 병렬. 빈 입력 시 쿼리 스킵 가드 유지.
+  const [factsRes, assetsRes] = await Promise.all([
+    factIds.length
+      ? supa.from("research_facts").select("id, claim").in("id", factIds)
+      : Promise.resolve(null),
+    assetIds.length
+      ? supa.from("explanation_assets").select("id, concept, kind").in("id", assetIds)
+      : Promise.resolve(null),
+  ]);
+
   const factById = new Map<string, { id: string; claim: string }>();
   if (factIds.length) {
-    const { data, error } = await supa.from("research_facts").select("id, claim").in("id", factIds);
+    const { data, error } = factsRes ?? { data: null, error: null };
     if (error) throw new Error(`fact 조회 실패: ${error.message}`);
     for (const f of data ?? []) factById.set(f.id, { id: f.id, claim: f.claim });
   }
   const assetById = new Map<string, { id: string; concept: string; kind: "number" | "analogy" }>();
   if (assetIds.length) {
-    const { data, error } = await supa.from("explanation_assets").select("id, concept, kind").in("id", assetIds);
+    const { data, error } = assetsRes ?? { data: null, error: null };
     if (error) throw new Error(`asset 조회 실패: ${error.message}`);
     for (const a of data ?? []) assetById.set(a.id, { id: a.id, concept: a.concept, kind: a.kind });
   }

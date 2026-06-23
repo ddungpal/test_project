@@ -45,20 +45,26 @@ export interface ResearchView {
 export async function getResearchView(runId: string): Promise<ResearchView> {
   const supa = createAdminClient();
 
-  const { data: facts, error: fe } = await supa
-    .from("research_facts")
-    .select(
-      "id, claim, verification_status, source_tier, is_financial, freshness, volatility, primary_source_url, quote_excerpt, independent_origin_count, citation_verified, misleading_check, escalated_to_human, human_approved, as_of_date, source_published_at, data_reference_period, created_at",
-    )
-    .eq("run_id", runId)
-    .order("created_at", { ascending: true });
+  // facts·assets는 둘 다 runId만 입력 → 서로 독립, 병렬.
+  const [factsRes, assetsRes] = await Promise.all([
+    supa
+      .from("research_facts")
+      .select(
+        "id, claim, verification_status, source_tier, is_financial, freshness, volatility, primary_source_url, quote_excerpt, independent_origin_count, citation_verified, misleading_check, escalated_to_human, human_approved, as_of_date, source_published_at, data_reference_period, created_at",
+      )
+      .eq("run_id", runId)
+      .order("created_at", { ascending: true }),
+    supa
+      .from("explanation_assets")
+      .select("id, concept, kind, numeric_example, analogy, source_fact_id, math_verified, distortion_checked, created_at")
+      .eq("run_id", runId)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  const { data: facts, error: fe } = factsRes;
   if (fe) throw new Error(`research_facts 조회 실패: ${fe.message}`);
 
-  const { data: assets, error: ae } = await supa
-    .from("explanation_assets")
-    .select("id, concept, kind, numeric_example, analogy, source_fact_id, math_verified, distortion_checked, created_at")
-    .eq("run_id", runId)
-    .order("created_at", { ascending: true });
+  const { data: assets, error: ae } = assetsRes;
   if (ae) throw new Error(`explanation_assets 조회 실패: ${ae.message}`);
 
   const factViews: FactView[] = (facts ?? []).map((f) => ({
