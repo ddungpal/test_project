@@ -3,8 +3,24 @@
 //   winner/loser 를 정확히 분리, ② verdictWeight 가중 순서(decisive>marginal>inconclusive),
 //   ③ judgeComponent 재계산이 winner 와 일치(판정 권위).
 import { describe, it, expect } from "vitest";
-import { buildAbStyleInput, verdictWeight, type AbResultVideo } from "../scripts/learn-ab-style.js";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import {
+  buildAbStyleInput,
+  loadReviewedArtifact,
+  verdictWeight,
+  type AbResultVideo,
+} from "../scripts/learn-ab-style.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
+
+/** tmp 파일에 JSON 을 쓰고 경로 반환(loadReviewedArtifact 는 파일 IO 만, DB·LLM 미접근). */
+function writeTmpJson(obj: unknown): string {
+  const dir = mkdtempSync(join(tmpdir(), "ab-style-reviewed-"));
+  const path = join(dir, "artifact.json");
+  writeFileSync(path, JSON.stringify(obj));
+  return path;
+}
 
 const THRESHOLDS = { decisiveMargin: 0.1, marginalMargin: 0.03 };
 
@@ -132,6 +148,99 @@ describe("buildAbStyleInput (prep 순수 헬퍼)", () => {
     const loserCopies = isa?.losers.map((l) => l.copy);
     expect(loserCopies).toContain("이것만 알면 ISA 이해");
     expect(loserCopies).toContain("ETF 팔기 전 꼭 알아야 한다 / 500,000,000원");
+  });
+});
+
+describe("loadReviewedArtifact (--from 검수본 로드 순수 헬퍼)", () => {
+  // 검수본 실제 형태(ab-style-proposed-*.json) 축약 — copy/visual/banned 구비.
+  const REVIEWED = {
+    source_ref: "ab-results:videos=5,signal=4.0 @2026-06-23-16-18-50",
+    provider: "claude-p",
+    videos: [
+      { topic: "ISA 3년", verdict: "decisive", weight: 1 },
+      { topic: "신용카드", verdict: "marginal", weight: 0.5 },
+    ],
+    patterns: {
+      copy: {
+        hook_patterns: ["딱 이만큼만 넘으세요"], // 사람이 완화한 표현
+        structure: { description: "2단 구성", main_copy_notes: "짧고 강한 한 호흡", small_box_notes: "상품명·조건" },
+        emphasis_words: ["딱", "무조건"],
+        length_notes: "짧은 한 줄",
+      },
+      visual: {
+        face: "여성 얼굴 + 손동작",
+        layout_archetypes: ["인물 + 노랑 카피"],
+        color_usage: "검정 배경 + 노랑 텍스트",
+        number_treatment: "구어체 단위(10억)",
+        devices: ["손동작", "노랑 강조"],
+      },
+      banned: ["교육·설명조 카피", "리스트·순위형"],
+    },
+  };
+
+  it("정상 산출물 → patterns(copy/visual/banned) 보존 + videos/source_ref 유지", () => {
+    const path = writeTmpJson(REVIEWED);
+    const art = loadReviewedArtifact(path);
+
+    // 사람이 손본 완화 표현이 그대로 보존된다(핵심).
+    expect(art.patterns.copy.hook_patterns).toEqual(["딱 이만큼만 넘으세요"]);
+    expect(art.patterns.copy.structure.description).toBe("2단 구성");
+    expect(art.patterns.copy.emphasis_words).toEqual(["딱", "무조건"]);
+    expect(art.patterns.visual.face).toBe("여성 얼굴 + 손동작");
+    expect(art.patterns.visual.layout_archetypes).toEqual(["인물 + 노랑 카피"]);
+    expect(art.patterns.visual.devices).toEqual(["손동작", "노랑 강조"]);
+    expect(art.patterns.banned).toEqual(["교육·설명조 카피", "리스트·순위형"]);
+
+    expect(art.videos).toHaveLength(2);
+    expect(art.videos[0]).toEqual({ topic: "ISA 3년", verdict: "decisive", weight: 1 });
+    expect(art.source_ref).toBe("ab-results:videos=5,signal=4.0 @2026-06-23-16-18-50");
+  });
+
+  it("빈 가능 배열 필드는 ?? [] 로 정규화하고, 비어 있어도 throw 하지 않는다", () => {
+    const minimal = {
+      source_ref: "x",
+      videos: [],
+      patterns: {
+        copy: { structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" }, length_notes: "l" },
+        visual: { face: "f", color_usage: "c", number_treatment: "n" },
+        banned: [],
+      },
+    };
+    const art = loadReviewedArtifact(writeTmpJson(minimal));
+    expect(art.patterns.copy.hook_patterns).toEqual([]);
+    expect(art.patterns.copy.emphasis_words).toEqual([]);
+    expect(art.patterns.visual.layout_archetypes).toEqual([]);
+    expect(art.patterns.visual.devices).toEqual([]);
+    expect(art.patterns.banned).toEqual([]);
+  });
+
+  it("patterns(copy/visual/banned) 없는 JSON → throw", () => {
+    const noPatterns = writeTmpJson({ source_ref: "x", videos: [] });
+    expect(() => loadReviewedArtifact(noPatterns)).toThrow("검수본에 patterns(copy/visual/banned) 없음");
+
+    // banned 키 누락도 throw(copy/visual 만 있고 banned 없음).
+    const noBanned = writeTmpJson({
+      patterns: {
+        copy: { structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" }, length_notes: "l" },
+        visual: { face: "f", color_usage: "c", number_treatment: "n" },
+      },
+    });
+    expect(() => loadReviewedArtifact(noBanned)).toThrow("검수본에 patterns(copy/visual/banned) 없음");
+  });
+
+  it("videos 없는 JSON → videos:[] + source_ref 자동생성(throw 안 함)", () => {
+    const noVideos = {
+      patterns: {
+        copy: { structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" }, length_notes: "l" },
+        visual: { face: "f", color_usage: "c", number_treatment: "n" },
+        banned: [],
+      },
+    };
+    const path = writeTmpJson(noVideos);
+    const art = loadReviewedArtifact(path);
+    expect(art.videos).toEqual([]);
+    // source_ref 없으면 from:<basename> @<stamp> 자동생성.
+    expect(art.source_ref).toMatch(/^from:artifact\.json @/);
   });
 });
 

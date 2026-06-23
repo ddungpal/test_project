@@ -13,7 +13,7 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { callLLM } from "../src/llm/callLLM.js";
 import { CostGuard, InMemoryCostLedger } from "../src/llm/costGuard.js";
@@ -22,9 +22,22 @@ import { FixtureMissError } from "../src/llm/fixtures.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
 import type { AbVariantKey } from "../src/performance/types.js";
 import type { AbDecisiveness } from "../src/domain/enums.js";
-import { STYLE_EXTRACTION_SCHEMA, type StyleExtractionOutput } from "../src/agents/style_extractor/schema.js";
+import {
+  STYLE_EXTRACTION_SCHEMA,
+  type StyleExtractionOutput,
+  type ThumbnailStylePatterns,
+} from "../src/agents/style_extractor/schema.js";
 
 const COMMIT = process.argv.includes("--commit");
+/** `--from <path>` — 검수·완화한 산출물 파일을 LLM 재호출 없이 그대로 draft INSERT 하는 경로. */
+function parseFromArg(argv: string[]): string | undefined {
+  const i = argv.indexOf("--from");
+  if (i === -1) return undefined;
+  const p = argv[i + 1];
+  if (!p || p.startsWith("--")) throw new Error("--from 뒤에 산출물 파일 경로가 필요합니다");
+  return p;
+}
+const FROM_PATH = parseFromArg(process.argv);
 const OUT_DIR = "corpus/thumbnails";
 const AB_RESULTS_PATH = "corpus/thumbnails/ab-results.json";
 const RUN_ID = "ab-style-learn"; // 비용 귀속 키(production_run 아님 — 학습 작업).
@@ -139,6 +152,76 @@ export function buildAbStyleInput(videos: AbResultVideo[]): AbStyleInputVideo[] 
   return out;
 }
 
+/** 검수본 videos 한 줄(provenance·weight 용). */
+export interface ReviewedArtifactVideo {
+  topic: string;
+  verdict: AbDecisiveness;
+  weight: number;
+}
+
+/** loadReviewedArtifact 반환 형태 — DB INSERT 입력으로 그대로 사용. */
+export interface ReviewedArtifact {
+  patterns: ThumbnailStylePatterns;
+  videos: ReviewedArtifactVideo[];
+  source_ref: string;
+}
+
+/**
+ * 검수·완화한 산출물 파일(ab-style-proposed-*.json)을 읽어 patterns 를 그대로 수령한다.
+ *   사람이 손본 완화 표현을 LLM 재호출 없이 draft 로 INSERT 하기 위한 순수 헬퍼(파일 IO 만, DB·LLM 미접근 → 테스트 import 안전).
+ *   기존 main() 의 `?? []` 정규화를 동일 적용해 빈 가능 배열을 안전 수령한다(빈 배열이어도 throw 금지).
+ */
+export function loadReviewedArtifact(path: string): ReviewedArtifact {
+  const raw = readFileSync(path, "utf8");
+  const parsed = JSON.parse(raw) as Record<string, unknown>;
+
+  const rawP = parsed.patterns as
+    | { copy?: ThumbnailStylePatterns["copy"]; visual?: ThumbnailStylePatterns["visual"]; banned?: string[] }
+    | undefined;
+  if (
+    typeof rawP !== "object" ||
+    rawP === null ||
+    typeof rawP.copy !== "object" ||
+    rawP.copy === null ||
+    typeof rawP.visual !== "object" ||
+    rawP.visual === null ||
+    !("banned" in rawP)
+  ) {
+    throw new Error("검수본에 patterns(copy/visual/banned) 없음");
+  }
+
+  // 기존 main() 과 동일한 ?? [] 정규화(hook_patterns·emphasis_words·layout_archetypes·devices·banned).
+  const patterns: ThumbnailStylePatterns = {
+    copy: {
+      hook_patterns: rawP.copy?.hook_patterns ?? [],
+      structure: rawP.copy.structure,
+      emphasis_words: rawP.copy?.emphasis_words ?? [],
+      length_notes: rawP.copy.length_notes,
+    },
+    visual: {
+      face: rawP.visual.face,
+      layout_archetypes: rawP.visual?.layout_archetypes ?? [],
+      color_usage: rawP.visual.color_usage,
+      number_treatment: rawP.visual.number_treatment,
+      devices: rawP.visual?.devices ?? [],
+    },
+    banned: rawP.banned ?? [],
+  };
+
+  const rawVideos = parsed.videos;
+  const videos: ReviewedArtifactVideo[] = Array.isArray(rawVideos)
+    ? (rawVideos as ReviewedArtifactVideo[])
+    : [];
+
+  const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+  const source_ref =
+    typeof parsed.source_ref === "string" && parsed.source_ref.length > 0
+      ? parsed.source_ref
+      : `from:${basename(path)} @${stamp}`;
+
+  return { patterns, videos, source_ref };
+}
+
 /** ab-results.json 로드 → videos 배열. */
 function loadAbResults(): AbResultVideo[] {
   const raw = readFileSync(AB_RESULTS_PATH, "utf8");
@@ -163,7 +246,81 @@ export const AB_STYLE_SYSTEM = [
   "- 한국어로 작성한다.",
 ].join("\n");
 
+/**
+ * `--from` 경로 — 검수본 patterns 를 LLM 재호출 없이 그대로 style_profiles(draft) 로 INSERT.
+ *   DB INSERT 규약은 기존 LLM 경로와 동일(version=max+1, status='draft', component_type='thumbnail_copy',
+ *   provenance 는 검수본 videos 의 weight). `--commit` 없으면 미리보기만.
+ */
+async function commitFromReviewed(fromPath: string) {
+  console.log(`📄 검수본에서 커밋: ${fromPath} (LLM 미호출)`);
+
+  const { patterns, videos, source_ref } = loadReviewedArtifact(fromPath);
+
+  console.log(`\n— patterns (검수본 그대로) —`);
+  console.log(JSON.stringify(patterns, null, 2));
+  console.log(`\n   source_ref: ${source_ref}`);
+  if (videos.length) {
+    console.log(`   provenance 대상 ${videos.length}편:`);
+    videos.forEach((v) => console.log(`   - ${v.topic} [${v.verdict} · w=${v.weight}]`));
+  } else {
+    console.warn(`⚠️ 검수본에 videos 없음 — provenance INSERT 건너뜀(style_profiles 만 저장).`);
+  }
+
+  if (!COMMIT) {
+    console.log(`\nℹ️ 미리보기(미반영). 위 patterns 를 --commit 으로 style_profiles(draft) 저장.`);
+    return;
+  }
+
+  // DB 저장 — style_profiles(draft, version=max+1, component_type='thumbnail_copy') + provenance(영상별 weight).
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) throw new Error("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 미설정");
+  const supa = createClient(url, key, { auth: { persistSession: false } });
+
+  const { data: maxRow, error: me } = await supa
+    .from("style_profiles")
+    .select("version")
+    .eq("component_type", "thumbnail_copy")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (me) throw new Error(`version 조회 실패: ${me.message}`);
+  const version = (maxRow?.version ?? 0) + 1;
+
+  const { data: sp, error: se } = await supa
+    .from("style_profiles")
+    .insert({ component_type: "thumbnail_copy", version, patterns, status: "draft" })
+    .select("id, version, status")
+    .single();
+  if (se) throw new Error(`style_profiles insert 실패: ${se.message}`);
+
+  // provenance — 검수본 videos 의 영상별 weight 로(§13.2). videos 없으면 건너뜀(위 경고).
+  let provenanceCount = 0;
+  if (videos.length) {
+    const provenance = videos.map((v) => ({
+      profile_type: "thumbnail_copy" as const,
+      style_profile_id: sp.id,
+      edition_id: null,
+      ab_variant_id: null,
+      weight: v.weight,
+    }));
+    const { error: pe } = await supa.from("profile_training_sources").insert(provenance);
+    if (pe) throw new Error(`provenance insert 실패: ${pe.message}`);
+    provenanceCount = provenance.length;
+  }
+
+  console.log(`\n✅ 저장 — style_profiles(thumbnail_copy) v${sp.version} (${sp.status}, id=${sp.id}) · provenance ${provenanceCount}편`);
+  console.log(`   source_ref: ${source_ref}`);
+  console.log(`   다음: 검수 후 activate-style.ts 로 'active' 승격하면 훅이가 사용. (현재 draft)`);
+}
+
 async function main() {
+  // --from: 검수본 그대로 커밋(LLM 미호출). 기존 LLM 학습 경로와 분리.
+  if (FROM_PATH) {
+    await commitFromReviewed(FROM_PATH);
+    return;
+  }
+
   // 1) ab-results.json 로드 + 결정적 prep(순수 함수).
   const videos = loadAbResults();
   const inputVideos = buildAbStyleInput(videos);
