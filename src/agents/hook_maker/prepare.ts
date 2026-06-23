@@ -4,12 +4,14 @@ import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
 import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
+import { loadActiveThumbnailStyle, appendThumbnailStyle, type ActiveThumbnailStyle } from "../shared/styleProfile.js";
 
 export interface HookMakerInput {
   topic: string;
   tone: { id: string; version: number; components: unknown } | null;
   reference_titles: { id: string; text: string }[]; // 과거 완성 제목(corpus) — 톤 레퍼런스
   learned_insights?: LearnedInsight[]; // 환류(슬라이스 4): 승인된 'title'·'thumbnail' 학습 규칙 — 있을 때만(픽스처 해시 보존)
+  style_profile?: ActiveThumbnailStyle; // PhaseA: active 썸네일 스타일 사양 — 있을 때만(없으면 해시 불변)
 }
 
 export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ system: string; input: HookMakerInput; schema: JsonSchema }> {
@@ -37,5 +39,12 @@ export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ sys
   // 환류(슬라이스 4) — 승인된 'title'·'thumbnail' 학습 규칙을 주입. 있을 때만(없으면 기존 해시 보존).
   const learned = await loadApprovedInsights(supa, ["title", "thumbnail"]);
   if (learned.length) input.learned_insights = learned;
-  return { system: appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), input, schema: HOOK_MAKER_SCHEMA };
+
+  // PhaseA Step1 — active 썸네일 스타일 사양 주입. 있을 때만(없으면 input/system 불변 → 픽스처 해시 보존).
+  const style = await loadActiveThumbnailStyle(supa);
+  if (style) input.style_profile = style;
+
+  // system 합성: learned_insights → style_profile 순. 둘 다 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
+  const system = appendThumbnailStyle(appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), style);
+  return { system, input, schema: HOOK_MAKER_SCHEMA };
 }
