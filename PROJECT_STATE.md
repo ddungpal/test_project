@@ -4,9 +4,11 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-24 · 단계: **썸네일 Phase A(스타일 일치)·B(A/B 학습) 코드 완료 + `--from` 검수본 커밋 경로 추가 → `style_profiles(thumbnail_copy) v1` active(완화본 환류 확인). 학습 루프 5/5 닫힘. 부수 버그 수정: watch.py 자동감지·learn-ab-style provenance best-effort. tsc0/vitest160. 브랜치 `feat-thumbnail-style-activate`(푸시됨). 다음 재개점=Phase C(YouTube OAuth 성과 자동수집) 또는 배포 게이트. 상세=`docs/roadmap-next.md`.**_
+_Last updated: 2026-06-24 · 단계: **썸네일 Phase A·B 코드 완료 + `style_profiles(thumbnail_copy) v1` active(학습 루프 5/5 닫힘). Phase C(YouTube 성과 자동수집) **코드 부분 완료**: 토큰 파싱 순수분리(parseTokenResponse·requireOauthEnv) + collectPerformance end-to-end·멱등 통합테스트(mock 백엔드·fake Supa). 어댑터/collect/cron는 원래부터 구현돼 있었음. 부수 수정: watch.py 자동감지·learn-ab-style provenance best-effort·하네스 헤드리스 브리핑 플레이크(CLAUDE_HARNESS 가드). tsc0/vitest168. 브랜치 `feat-youtube-analytics-oauth`(푸시됨). 다음 재개점=Phase C 실연결(사용자 OAuth 1회) 또는 Phase D(AX 말투내재화)/배포 게이트. 상세=`docs/roadmap-next.md`.**_
 
-> ✅ **썸네일 트랙 활성화 완료(2026-06-24)** — 아래 설계 메모는 이력. 현재 상태/다음은 `docs/roadmap-next.md`(Phase A·B ✅ / C·D·E 남음)가 단일 출처.
+> ✅ **썸네일 트랙(Phase A·B) + Phase C 코드 완료(2026-06-24)** — 아래 설계 메모는 이력. 현재 상태/다음은 `docs/roadmap-next.md`(Phase A·B ✅ · C 코드✅/실연결은 사용자 OAuth 게이트 · D·E 남음)가 단일 출처.
+>
+> **Phase C 실연결(사람 게이트)**: 채널 OAuth 인증 → `.env` `YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN` → `PERFORMANCE_SOURCE=youtube` + `PERFORMANCE_FIXTURES=record` 1회 녹화 → 이후 replay($0). **코드 변경 없이 켜짐.**
 
 ## ▶▶ (이력) 썸네일 재개점 설계 메모 — Phase A·B로 구현·활성화 완료됨
 **사용자 지적**: ①생성 썸네일이 김짠부 실제 스타일과 안 닮음(현 캔버스=초안) ②A/B/C 성과로 어떤 썸네일이 좋았는지 학습하는 경로가 없음.
