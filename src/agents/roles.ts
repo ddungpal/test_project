@@ -23,6 +23,7 @@ export const ROLES = {
   scribe: { roleId: "scribe", name: "짠펜", defaultModel: "opus", tools: [] }, // web/fetch 없음(§10). 골든 A/B(2026-06-23): Opus 4.8 > GPT-5.5 → 말투 품질 우선 opus.
   // 학습 작업(파이프라인 단계 아님) — corpus 위에서 1회 도는 말투 추출(§12). 짠펜이 의존하는 자산 생성.
   tone_extractor: { roleId: "tone_extractor", name: "말투추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus
+  style_extractor: { roleId: "style_extractor", name: "스타일추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus. 파이프라인 단계 아님.
   // 학습 루프 회고(Phase 4) — 발행 후 성과+선택+반응을 인과로 복기→인사이트 draft. 편당 1회·저빈도·고가치 → opus.
   retrospectivist: { roleId: "retrospectivist", name: "회고", defaultModel: "opus", tools: [] },
 } as const satisfies Record<string, AgentRole>;

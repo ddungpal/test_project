@@ -4,6 +4,15 @@
       "dir": "harness-smoke",
       "status": "completed",
       "completed_at": "2026-06-23T21:43:10+0900"
+    },
+    {
+      "dir": "thumbnail-style",
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (style-extractor)",
+      "attempt": 1,
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-06-23T22:13:11+0900"
     }
   ]
 }

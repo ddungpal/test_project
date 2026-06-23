@@ -29,6 +29,8 @@ corpus/raw/
 corpus/parsed/
 # 말투 추출 검수 스크래치(스크립트 인용 포함·재생성 가능). 진짜 산출물은 DB tone_profile.
 corpus/tone/
+# 썸네일 시각 스타일 라벨(김짠부 콘텐츠 파생 학습자료). 진짜 산출물은 DB style_profiles.
+corpus/thumbnails/
 
 # fixtures: 리플레이 캐시는 OK, 민감 응답은 제외
 fixtures/**/sensitive/
