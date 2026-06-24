@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "title-thumbnail-agents",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-24T20:11:30+0900",
+      "summary": "훅이=제목3개 전용(썸네일 출력 thumbnail_layout/main/boxes/copy/style_conformance 제거·ref_similarity 유지·minItems/maxItems 3·style_profile 입력 제거·learned [\"title\"]만) + 새 thumbnail_maker(roles opus, 선택된 제목 getSelectedStagePayload(\"title_thumb\")+loadActiveThumbnailStyle A/B스타일로 썸네일3개·main[2]/boxes[2]·thumbnail_copy 파생·ref_similarity·style_conformance 주석, referenceGuard/styleConformance는 hook_maker것 import 재사용·중복0) + thumbnailStage Inngest(run/thumbnails.requested client.ts 추가·hookStage 미러 onFailure thumbnail/concurrency1/retries2·functions/index 등록) + requestThumbnails 서버액션(requireOwner+send). 픽스처 신규형 eval(훅이 제목전용 블록+thumbnail_maker 블록)+golden-thumbnail.json 손작성으로 오프라인 $0 유지(라이브 재녹화 0). 빈배열 required 함정 없음. UI/confirm/regenerate는 step2/3 미침범. tc/test(294)/build 그린",
+      "completed_at": "2026-06-24T20:28:13+0900"
     },
     {
       "step": 2,
