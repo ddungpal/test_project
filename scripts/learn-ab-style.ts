@@ -71,6 +71,15 @@ export interface AbStyleVariant {
   visual: string;
 }
 
+/**
+ * inconclusive 영상의 '등가 신호'(LLM 전달용 약신호).
+ *   A/B 가 동등했던(우열 못 가린) 차원 — positive 학습엔 넣지 않되, "그 차이를 과하게 학습하지 말라"는 신호로 보존.
+ */
+export interface EquivalentSignal {
+  topic: string;
+  note: string;
+}
+
 /** prep 입력 한 영상(LLM 전달용). 재계산된 decisiveness 기준. */
 export interface AbStyleInputVideo {
   topic: string;
@@ -82,10 +91,16 @@ export interface AbStyleInputVideo {
 }
 
 /**
- * §13.2 가중치 — A/B 결정력 → 학습 가중.
- *   decisive 1.0 / marginal 0.5 / inconclusive 0(학습 보류). relative_lift_pct 는 선택적 미세조정 인자(현재 미사용 가능).
+ * lift 미세조정 상수(§13.2 보강).
+ *   가중 = base × (1 + clamp(lift, 0, LIFT_CAP)/LIFT_SCALE). lift 0/미지정 → base(하위호환).
+ *   - LIFT_CAP: lift 정규화 상한(%). 이 이상은 같은 신호로 본다(소표본 과적합·폭주 방지).
+ *   - LIFT_SCALE: lift→배수 변환 스케일. CAP/SCALE 이 base 대비 최대 증폭률(15/60=0.25 → 최대 +25%).
  */
-export function verdictWeight(verdict: AbDecisiveness, _relativeLiftPct?: number): number {
+export const LIFT_CAP = 15;
+export const LIFT_SCALE = 60;
+
+/** decisive/marginal 의 기본 가중(lift 무시 시 정확히 이 값). inconclusive 는 항상 0. */
+function baseWeight(verdict: AbDecisiveness): number {
   switch (verdict) {
     case "decisive":
       return 1.0;
@@ -94,6 +109,22 @@ export function verdictWeight(verdict: AbDecisiveness, _relativeLiftPct?: number
     default:
       return 0;
   }
+}
+
+/**
+ * §13.2 가중치 — A/B 결정력 → 학습 가중(+ relative_lift_pct 미세조정).
+ *   decisive 1.0 / marginal 0.5 / inconclusive 0(학습 보류)를 base 로,
+ *   lift 가 주어지면 base × (1 + clamp(lift,0,CAP)/SCALE) 로 단조 미세조정한다.
+ *   - lift 미지정/0/음수 → base 와 정확히 동일(하위호환). inconclusive 는 lift 무관 항상 0.
+ *   - clamp 상한(CAP)으로 폭주 방지: 매우 큰 lift 도 base×(1+CAP/SCALE) 를 넘지 않는다.
+ *   결정적·단조(높은 lift → 높은 weight, 단 상한 이하). 순수 함수.
+ */
+export function verdictWeight(verdict: AbDecisiveness, relativeLiftPct?: number): number {
+  const base = baseWeight(verdict);
+  if (base === 0) return 0; // inconclusive: lift 무관 항상 0.
+  if (relativeLiftPct === undefined) return base; // 하위호환: 미지정이면 정확히 base.
+  const lift = Math.min(Math.max(relativeLiftPct, 0), LIFT_CAP); // [0, CAP] 로 클램프(음수→0).
+  return base * (1 + lift / LIFT_SCALE);
 }
 
 /** copy_top/copy_main/copy_box/copy_sub 중 있는 것만 합쳐 의미 있는 한 문자열로. */
@@ -116,8 +147,26 @@ function recomputeVerdict(video: AbResultVideo): { decisiveness: AbDecisiveness;
 }
 
 /**
+ * inconclusive 영상만 '등가 신호'로 추출(positive 학습에서 제외하되 약신호로 보존).
+ *   buildAbStyleInput 이 positive(decisive/marginal)만 반환하는 것과 상보적 — 같은 영상이 양쪽에 들지 않는다.
+ *   판정 권위는 judgeComponent 재계산(파일 verdict 무관). 순수 함수(테스트 import용, console 출력 없음 — buildAbStyleInput 이 경고 담당).
+ */
+export function buildEquivalentSignals(videos: AbResultVideo[]): EquivalentSignal[] {
+  const out: EquivalentSignal[] = [];
+  for (const video of videos) {
+    const { decisiveness } = recomputeVerdict(video);
+    if (decisiveness !== "inconclusive") continue; // positive 는 buildAbStyleInput 담당.
+    out.push({
+      topic: video.topic,
+      note: "A/B 동등(우열 못 가림) — 이 차원은 성과 차이 없음. 이 차이를 과하게 학습하지 말 것.",
+    });
+  }
+  return out;
+}
+
+/**
  * 결정적 prep — 각 영상을 winner/losers 로 분해하고 재계산된 decisiveness 로 가중.
- *   inconclusive 영상은 통째 스킵(보수적 — §13.2 학습 보류).
+ *   inconclusive 영상은 통째 스킵(보수적 — §13.2 학습 보류). 단 그 등가신호는 buildEquivalentSignals 가 별도 보존.
  *   판정 권위는 judgeComponent 재계산. 파일 verdict 와 다르면 console.warn 만(throw 금지). 순수 함수(테스트 import용).
  */
 export function buildAbStyleInput(videos: AbResultVideo[]): AbStyleInputVideo[] {
@@ -167,6 +216,25 @@ export interface ReviewedArtifact {
 }
 
 /**
+ * 신규 옵셔널 신뢰도 필드(confidence·tentative_notes)를 안전 수령한다.
+ *   - 누락/무효 confidence 는 키 자체를 생략(exactOptionalPropertyTypes — undefined 명시 할당 금지).
+ *   - tentative_notes 는 배열이면 ?? [] 처럼 안전 수령, 아니면 생략. throw 하지 않는다(하위호환).
+ */
+function normalizeConfidence(rawP: {
+  confidence?: unknown;
+  tentative_notes?: unknown;
+}): Pick<ThumbnailStylePatterns, "confidence" | "tentative_notes"> {
+  const out: Pick<ThumbnailStylePatterns, "confidence" | "tentative_notes"> = {};
+  if (rawP.confidence === "high" || rawP.confidence === "tentative") {
+    out.confidence = rawP.confidence;
+  }
+  if (Array.isArray(rawP.tentative_notes)) {
+    out.tentative_notes = rawP.tentative_notes.filter((n): n is string => typeof n === "string");
+  }
+  return out;
+}
+
+/**
  * 검수·완화한 산출물 파일(ab-style-proposed-*.json)을 읽어 patterns 를 그대로 수령한다.
  *   사람이 손본 완화 표현을 LLM 재호출 없이 draft 로 INSERT 하기 위한 순수 헬퍼(파일 IO 만, DB·LLM 미접근 → 테스트 import 안전).
  *   기존 main() 의 `?? []` 정규화를 동일 적용해 빈 가능 배열을 안전 수령한다(빈 배열이어도 throw 금지).
@@ -176,7 +244,13 @@ export function loadReviewedArtifact(path: string): ReviewedArtifact {
   const parsed = JSON.parse(raw) as Record<string, unknown>;
 
   const rawP = parsed.patterns as
-    | { copy?: ThumbnailStylePatterns["copy"]; visual?: ThumbnailStylePatterns["visual"]; banned?: string[] }
+    | {
+        copy?: ThumbnailStylePatterns["copy"];
+        visual?: ThumbnailStylePatterns["visual"];
+        banned?: string[];
+        confidence?: ThumbnailStylePatterns["confidence"];
+        tentative_notes?: string[];
+      }
     | undefined;
   if (
     typeof rawP !== "object" ||
@@ -191,6 +265,7 @@ export function loadReviewedArtifact(path: string): ReviewedArtifact {
   }
 
   // 기존 main() 과 동일한 ?? [] 정규화(hook_patterns·emphasis_words·layout_archetypes·devices·banned).
+  //   신규 옵셔널(confidence·tentative_notes)은 normalizeConfidence 로 안전 수령(누락 시 키 자체 생략 — exactOptionalPropertyTypes).
   const patterns: ThumbnailStylePatterns = {
     copy: {
       hook_patterns: rawP.copy?.hook_patterns ?? [],
@@ -206,6 +281,7 @@ export function loadReviewedArtifact(path: string): ReviewedArtifact {
       devices: rawP.visual?.devices ?? [],
     },
     banned: rawP.banned ?? [],
+    ...normalizeConfidence(rawP),
   };
 
   const rawVideos = parsed.videos;
@@ -240,6 +316,8 @@ export const AB_STYLE_SYSTEM = [
   "- 이긴 것들의 공통 표현 방식(후킹·프레이밍·시각 연출)을 뽑아 copy/visual 패턴으로 채운다.",
   "- 진 것 대비 무엇이 달랐는지를 banned(약점·피해야 할 표현)에 적는다 — 진 표현은 banned 의 근거다.",
   "- weight 가 높은(decisive) 영상의 표현을 더 강한 신호로 본다. 가중치를 학습에 반영한다.",
+  "- 여러 영상에서 반복 등장하는 승리 패턴은 high-confidence 로, 1~2 사례뿐인 패턴은 tentative 로 분류한다. tentative 패턴은 tentative_notes 에 '저표본 경고'로 적고, 전반적으로 표본이 적으면 confidence 를 'tentative' 로 둔다.",
+  "- equivalent_signals 는 A/B 가 동등했던(우열 못 가린) 차원 — 그 차이를 과하게 학습하지 말라는 신호다. 이 차원의 차이는 banned·강신호로 단정하지 않는다.",
   "- 추측 금지. 입력에 실재하는 표현만 적고, 예시는 입력에서 그대로 인용한다(날조 시 무효).",
   "- copy(메인카피↔작은박스 구성·후킹·강조어)와 visual(인물·레이아웃·색·숫자·장치)을 구분해 채운다.",
   "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
@@ -335,15 +413,18 @@ async function main() {
   const winners = inputVideos.map((v) => ({ topic: v.topic, weight: v.weight, ...v.winner }));
   const losers = inputVideos.flatMap((v) => v.losers.map((l) => ({ topic: v.topic, ...l })));
   const signalCount = inputVideos.reduce((s, v) => s + v.weight, 0);
+  // inconclusive 영상은 통째 버리지 않고 '등가 신호'로 보존(positive 학습 제외, 약신호만 전달).
+  const equivalentSignals = buildEquivalentSignals(videos);
 
-  console.log(`🖼️ 학습 영상 ${inputVideos.length}편(전체 ${videos.length} 중 inconclusive 제외) / 가중 신호량 ${signalCount.toFixed(1)}`);
-  inputVideos.forEach((v) => console.log(`   - ${v.topic} [${v.verdict} · w=${v.weight}]`));
+  console.log(`🖼️ 학습 영상 ${inputVideos.length}편(전체 ${videos.length} 중 inconclusive 제외) / 가중 신호량 ${signalCount.toFixed(2)} / 등가신호 ${equivalentSignals.length}편`);
+  inputVideos.forEach((v) => console.log(`   - ${v.topic} [${v.verdict} · w=${v.weight.toFixed(2)}]`));
 
   const input = {
     creator: "김짠부",
-    note: "아래는 A/B 테스트로 성과가 확인된 썸네일들이다. '이긴' 표현 방식을 학습하라.",
+    note: "아래는 A/B 테스트로 성과가 확인된 썸네일들이다. '이긴' 표현 방식을 학습하라. equivalent_signals 는 A/B 가 동등했던 차원이니 과하게 학습하지 말라.",
     winners,
     losers,
+    equivalent_signals: equivalentSignals,
   };
 
   // 2) callLLM 1회 — opus(style_extractor 기본). 비용가드·fixtures·schema 강제는 callLLM이 담당.
@@ -366,8 +447,9 @@ async function main() {
   }
 
   // 빈 가능 배열 필드는 ?? [] 기본값으로 안전 수령(스키마 required 제외 필드).
+  //   신규 옵셔널(confidence·tentative_notes)도 normalizeConfidence 로 안전 수령(누락 허용).
   const rawP = out.data.patterns;
-  const patterns = {
+  const patterns: ThumbnailStylePatterns = {
     copy: {
       hook_patterns: rawP.copy?.hook_patterns ?? [],
       structure: rawP.copy.structure,
@@ -382,6 +464,7 @@ async function main() {
       devices: rawP.visual?.devices ?? [],
     },
     banned: rawP.banned ?? [],
+    ...normalizeConfidence(rawP),
   };
   const evidence_summary = out.data.evidence_summary;
 

@@ -1,0 +1,8 @@
+{
+  "project": "produce script",
+  "phase": "ab-style-relearn-loop",
+  "goal": "A/B 스타일 학습을 지속 루프로: 새 A/B 표본이 마지막 style_profile 학습 이후 늘면 재학습 draft를 자동 제안(사람이 검수·activate). 현재는 2026-06-23 1회 학습 후 고정. 회고 sweep(retrospectiveSweep) 멱등 패턴 복제 — 순수 eligibleForStyleRelearn + styleRelearnSweep + Inngest 함수(수동 트리거 'style/relearn.requested' + 선택 cron). draft만 생성(status=draft), 활성화=사람게이트. 멱등. DB는 sweep만, LLM은 learn-ab-style(claude-p $0).",
+  "steps": [
+    { "step": 0, "name": "style-relearn-sweep", "status": "pending" }
+  ]
+}

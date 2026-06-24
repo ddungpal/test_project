@@ -29,6 +29,10 @@ export interface ThumbnailStylePatterns {
   };
   /** 김짠부가 (거의) 쓰지 않는 표현/스타일 — 훅이 금칙어. */
   banned: string[];
+  /** 전반 신뢰도(저표본 경계). high=여러 영상 반복 승리, tentative=1~2 사례·소표본. 옵셔널(누락 허용). */
+  confidence?: "high" | "tentative";
+  /** 저표본·소수 사례 경고(tentative 패턴 메모). 빈 배열 가능 → required 제외. */
+  tentative_notes?: string[];
 }
 
 export interface StyleExtractionOutput {
@@ -48,6 +52,7 @@ export const STYLE_EXTRACTION_SCHEMA: JsonSchema = {
     patterns: {
       type: "object",
       additionalProperties: false,
+      // confidence·tentative_notes 는 옵셔널(저표본 표기) — required 에 넣지 않는다(빈배열/누락 허용 규칙).
       required: ["copy", "visual"], // copy/visual 객체는 필수. 그 안의 배열 필드는 required 아님.
       properties: {
         copy: {
@@ -83,6 +88,8 @@ export const STYLE_EXTRACTION_SCHEMA: JsonSchema = {
           },
         },
         banned: strArray,
+        confidence: { type: "string", enum: ["high", "tentative"] }, // 옵셔널 — required 제외.
+        tentative_notes: strArray, // 옵셔널 빈 가능 배열 — required 제외.
       },
     },
     evidence_summary: { type: "string" },

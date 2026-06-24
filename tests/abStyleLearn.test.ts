@@ -8,8 +8,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   buildAbStyleInput,
+  buildEquivalentSignals,
   loadReviewedArtifact,
   verdictWeight,
+  LIFT_CAP,
   type AbResultVideo,
 } from "../scripts/learn-ab-style.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
@@ -110,9 +112,75 @@ describe("verdictWeight (§13.2 가중)", () => {
     expect(verdictWeight("marginal")).toBeGreaterThan(verdictWeight("inconclusive"));
   });
 
-  it("relative_lift_pct 인자는 선택적이며 기본 가중을 바꾸지 않는다", () => {
-    expect(verdictWeight("decisive", 12.4)).toBe(1.0);
-    expect(verdictWeight("marginal", 9.0)).toBe(0.5);
+  it("lift 미지정/0 이면 정확히 기존 1.0/0.5/0 과 동일하다(하위호환)", () => {
+    expect(verdictWeight("decisive")).toBe(1.0);
+    expect(verdictWeight("marginal")).toBe(0.5);
+    expect(verdictWeight("inconclusive")).toBe(0);
+    expect(verdictWeight("decisive", 0)).toBe(1.0);
+    expect(verdictWeight("marginal", 0)).toBe(0.5);
+    expect(verdictWeight("inconclusive", 0)).toBe(0);
+  });
+
+  it("높은 lift 는 더 큰 weight 를 낸다(단조 — decisive/marginal 모두)", () => {
+    // decisive: lift 클수록 weight 큼.
+    expect(verdictWeight("decisive", 14.5)).toBeGreaterThan(verdictWeight("decisive", 12.4));
+    expect(verdictWeight("decisive", 12.4)).toBeGreaterThan(verdictWeight("decisive"));
+    // marginal: 같은 단조.
+    expect(verdictWeight("marginal", 9.0)).toBeGreaterThan(verdictWeight("marginal", 4.0));
+    expect(verdictWeight("marginal", 4.0)).toBeGreaterThan(verdictWeight("marginal"));
+  });
+
+  it("매우 큰 lift 도 상한(CAP)을 넘지 않는다", () => {
+    const cappedDecisive = verdictWeight("decisive", LIFT_CAP);
+    expect(verdictWeight("decisive", 1000)).toBe(cappedDecisive);
+    expect(verdictWeight("decisive", 9999)).toBeLessThanOrEqual(cappedDecisive);
+    // decisive 상한 weight 는 기본 1.0 초과지만 폭주하지 않는다(2.0 미만).
+    expect(cappedDecisive).toBeGreaterThan(1.0);
+    expect(cappedDecisive).toBeLessThan(2.0);
+  });
+
+  it("inconclusive 는 lift 가 아무리 커도 항상 0(positive 학습 제외)", () => {
+    expect(verdictWeight("inconclusive", 50)).toBe(0);
+    expect(verdictWeight("inconclusive", 1000)).toBe(0);
+  });
+
+  it("음수 lift 는 기본 가중으로 클램프된다(가드)", () => {
+    expect(verdictWeight("decisive", -5)).toBe(1.0);
+    expect(verdictWeight("marginal", -5)).toBe(0.5);
+  });
+});
+
+describe("buildEquivalentSignals (inconclusive 등가신호 순수 헬퍼)", () => {
+  it("inconclusive 영상만 등가신호로 보존하고 decisive/marginal 은 제외한다", () => {
+    const signals = buildEquivalentSignals(VIDEOS);
+    const topics = signals.map((s) => s.topic).sort();
+    // inconclusive 4편(재계산 기준): ETF 적립식·ISA 세금·ISA S&P·결혼.
+    expect(topics).toEqual(["ETF 적립식", "ISA S&P", "ISA 세금", "결혼"].sort());
+    // decisive/marginal 은 등가신호에 없다.
+    expect(signals.find((s) => s.topic === "ISA 3년")).toBeUndefined();
+    expect(signals.find((s) => s.topic === "신용카드")).toBeUndefined();
+  });
+
+  it("각 등가신호는 topic 과 note(동등 의미) 를 가진다", () => {
+    const signals = buildEquivalentSignals(VIDEOS);
+    for (const s of signals) {
+      expect(typeof s.topic).toBe("string");
+      expect(s.topic.length).toBeGreaterThan(0);
+      expect(typeof s.note).toBe("string");
+      expect(s.note.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("빈 입력에 안전하다(빈 배열 반환, throw 없음)", () => {
+    expect(buildEquivalentSignals([])).toEqual([]);
+  });
+
+  it("positive(buildAbStyleInput) 와 등가신호는 서로소다(겹치는 topic 없음)", () => {
+    const positives = new Set(buildAbStyleInput(VIDEOS).map((v) => v.topic));
+    const signals = buildEquivalentSignals(VIDEOS);
+    for (const s of signals) {
+      expect(positives.has(s.topic)).toBe(false);
+    }
   });
 });
 
@@ -127,13 +195,19 @@ describe("buildAbStyleInput (prep 순수 헬퍼)", () => {
     expect(out.find((v) => v.topic === "결혼")).toBeUndefined();
   });
 
-  it("재계산된 verdict 와 가중치가 영상별로 정확하다", () => {
+  it("재계산된 verdict 와 가중치가 영상별로 정확하다(lift 미세조정 반영)", () => {
     const out = buildAbStyleInput(VIDEOS);
     const byTopic = new Map(out.map((v) => [v.topic, v]));
     expect(byTopic.get("ISA 3년")?.verdict).toBe("decisive");
-    expect(byTopic.get("ISA 3년")?.weight).toBe(1.0);
     expect(byTopic.get("신용카드")?.verdict).toBe("marginal");
-    expect(byTopic.get("신용카드")?.weight).toBe(0.5);
+    // weight 는 base(decisive 1.0 / marginal 0.5)에 relative_lift_pct 미세조정이 곱해진다.
+    //   ISA 3년 lift=12.4 → 1.0×(1+12.4/60)≈1.207. 신용카드 lift=9.0 → 0.5×(1+9/60)=0.575.
+    expect(byTopic.get("ISA 3년")?.weight).toBe(verdictWeight("decisive", 12.4));
+    expect(byTopic.get("ISA 3년")?.weight).toBeGreaterThan(1.0);
+    expect(byTopic.get("신용카드")?.weight).toBe(verdictWeight("marginal", 9.0));
+    expect(byTopic.get("신용카드")?.weight).toBeGreaterThan(0.5);
+    // decisive 는 여전히 marginal 보다 강한 신호다(lift 미세조정 후에도 순서 보존).
+    expect(byTopic.get("ISA 3년")?.weight).toBeGreaterThan(byTopic.get("신용카드")!.weight);
   });
 
   it("winner 와 losers 를 정확히 분리하고 copy 를 합친다", () => {
