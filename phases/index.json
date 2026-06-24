@@ -57,7 +57,12 @@
     },
     {
       "dir": "ab-style-relearn-loop",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (style-relearn-sweep)",
+      "attempt": 1,
+      "elapsed_seconds": 780,
+      "heartbeat_at": "2026-06-24T17:30:12+0900"
     }
   ]
 }

@@ -201,6 +201,82 @@ export function buildAbStyleInput(videos: AbResultVideo[]): AbStyleInputVideo[] 
   return out;
 }
 
+/** rawP(LLM 산출 patterns)를 ThumbnailStylePatterns 로 안전 정규화(빈 가능 배열 ?? [] + 옵셔널 신뢰도). */
+export function normalizePatterns(rawP: StyleExtractionOutput["patterns"]): ThumbnailStylePatterns {
+  return {
+    copy: {
+      hook_patterns: rawP.copy?.hook_patterns ?? [],
+      structure: rawP.copy.structure,
+      emphasis_words: rawP.copy?.emphasis_words ?? [],
+      length_notes: rawP.copy.length_notes,
+    },
+    visual: {
+      face: rawP.visual.face,
+      layout_archetypes: rawP.visual?.layout_archetypes ?? [],
+      color_usage: rawP.visual.color_usage,
+      number_treatment: rawP.visual.number_treatment,
+      devices: rawP.visual?.devices ?? [],
+    },
+    banned: rawP.banned ?? [],
+    ...normalizeConfidence(rawP),
+  };
+}
+
+/** learnAbStylePatterns 반환 — draft INSERT·검수 산출에 필요한 학습 결과(LLM 1회 호출 결과). */
+export interface AbStyleLearnResult {
+  patterns: ThumbnailStylePatterns;
+  evidence_summary: string;
+  /** inconclusive 제외 후 실제 학습에 쓴 영상(provenance·source_ref 용). */
+  inputVideos: AbStyleInputVideo[];
+  signalCount: number;
+  provider: string;
+  promptHash: string;
+  costUsd: number;
+}
+
+/**
+ * A/B 스타일 학습 핵심(LLM 1회) — videos → buildAbStyleInput → callLLM → patterns 정규화.
+ *   main() 과 styleRelearnSweep 이 공유하는 순수에 가까운 학습 본체(파일 IO·DB 미접근, callLLM 만).
+ *   ★ 비용가드·fixtures 는 config 그대로(claude-p=$0). 학습 가능한 영상 0편이면 throw.
+ */
+export async function learnAbStylePatterns(
+  videos: AbResultVideo[],
+  config = loadConfig(),
+): Promise<AbStyleLearnResult> {
+  const inputVideos = buildAbStyleInput(videos);
+  if (!inputVideos.length) throw new Error("학습 가능한 영상 0편 — 전부 inconclusive 이거나 winner 부재");
+
+  const winners = inputVideos.map((v) => ({ topic: v.topic, weight: v.weight, ...v.winner }));
+  const losers = inputVideos.flatMap((v) => v.losers.map((l) => ({ topic: v.topic, ...l })));
+  const signalCount = inputVideos.reduce((s, v) => s + v.weight, 0);
+  const equivalentSignals = buildEquivalentSignals(videos);
+
+  const input = {
+    creator: "김짠부",
+    note: "아래는 A/B 테스트로 성과가 확인된 썸네일들이다. '이긴' 표현 방식을 학습하라. equivalent_signals 는 A/B 가 동등했던 차원이니 과하게 학습하지 말라.",
+    winners,
+    losers,
+    equivalent_signals: equivalentSignals,
+  };
+
+  const ledger = new InMemoryCostLedger();
+  const costGuard = new CostGuard({ softCapUsd: config.softCapUsd, hardCapUsd: config.hardCapUsd, sink: ledger });
+  const out = await callLLM<StyleExtractionOutput>(
+    { roleId: "style_extractor", system: AB_STYLE_SYSTEM, input, schema: STYLE_EXTRACTION_SCHEMA, runId: RUN_ID, maxTokens: 4096 },
+    { config, costGuard },
+  );
+
+  return {
+    patterns: normalizePatterns(out.data.patterns),
+    evidence_summary: out.data.evidence_summary,
+    inputVideos,
+    signalCount,
+    provider: out.provider,
+    promptHash: out.promptHash,
+    costUsd: out.costUsd,
+  };
+}
+
 /** 검수본 videos 한 줄(provenance·weight 용). */
 export interface ReviewedArtifactVideo {
   topic: string;
@@ -220,7 +296,7 @@ export interface ReviewedArtifact {
  *   - 누락/무효 confidence 는 키 자체를 생략(exactOptionalPropertyTypes — undefined 명시 할당 금지).
  *   - tentative_notes 는 배열이면 ?? [] 처럼 안전 수령, 아니면 생략. throw 하지 않는다(하위호환).
  */
-function normalizeConfidence(rawP: {
+export function normalizeConfidence(rawP: {
   confidence?: unknown;
   tentative_notes?: unknown;
 }): Pick<ThumbnailStylePatterns, "confidence" | "tentative_notes"> {
@@ -407,68 +483,24 @@ async function main() {
 
   // 1) ab-results.json 로드 + 결정적 prep(순수 함수).
   const videos = loadAbResults();
-  const inputVideos = buildAbStyleInput(videos);
-  if (!inputVideos.length) throw new Error("학습 가능한 영상 0편 — 전부 inconclusive 이거나 winner 부재");
-
-  const winners = inputVideos.map((v) => ({ topic: v.topic, weight: v.weight, ...v.winner }));
-  const losers = inputVideos.flatMap((v) => v.losers.map((l) => ({ topic: v.topic, ...l })));
-  const signalCount = inputVideos.reduce((s, v) => s + v.weight, 0);
-  // inconclusive 영상은 통째 버리지 않고 '등가 신호'로 보존(positive 학습 제외, 약신호만 전달).
-  const equivalentSignals = buildEquivalentSignals(videos);
-
-  console.log(`🖼️ 학습 영상 ${inputVideos.length}편(전체 ${videos.length} 중 inconclusive 제외) / 가중 신호량 ${signalCount.toFixed(2)} / 등가신호 ${equivalentSignals.length}편`);
-  inputVideos.forEach((v) => console.log(`   - ${v.topic} [${v.verdict} · w=${v.weight.toFixed(2)}]`));
-
-  const input = {
-    creator: "김짠부",
-    note: "아래는 A/B 테스트로 성과가 확인된 썸네일들이다. '이긴' 표현 방식을 학습하라. equivalent_signals 는 A/B 가 동등했던 차원이니 과하게 학습하지 말라.",
-    winners,
-    losers,
-    equivalent_signals: equivalentSignals,
-  };
-
-  // 2) callLLM 1회 — opus(style_extractor 기본). 비용가드·fixtures·schema 강제는 callLLM이 담당.
   const config = loadConfig();
-  const ledger = new InMemoryCostLedger();
-  const costGuard = new CostGuard({ softCapUsd: config.softCapUsd, hardCapUsd: config.hardCapUsd, sink: ledger });
 
+  // 2) 학습 본체(buildAbStyleInput→callLLM→patterns 정규화)는 styleRelearnSweep 과 공유하는 learnAbStylePatterns 로.
   console.log(`\n🧠 A/B 성과 스타일 학습 중… (backend=${config.backend} · fixtures=${config.fixtures})`);
-  let out;
+  let learned;
   try {
-    out = await callLLM<StyleExtractionOutput>(
-      { roleId: "style_extractor", system: AB_STYLE_SYSTEM, input, schema: STYLE_EXTRACTION_SCHEMA, runId: RUN_ID, maxTokens: 4096 },
-      { config, costGuard },
-    );
+    learned = await learnAbStylePatterns(videos, config);
   } catch (e) {
     if (e instanceof FixtureMissError) {
       console.error(`\n⚠️ fixture 없음 — 첫 실행은 LLM_FIXTURES=record 로 돌려 실호출(claude-p=$0)하고 fixture를 만드세요.`);
     }
     throw e;
   }
+  const { patterns, evidence_summary, inputVideos, signalCount } = learned;
 
-  // 빈 가능 배열 필드는 ?? [] 기본값으로 안전 수령(스키마 required 제외 필드).
-  //   신규 옵셔널(confidence·tentative_notes)도 normalizeConfidence 로 안전 수령(누락 허용).
-  const rawP = out.data.patterns;
-  const patterns: ThumbnailStylePatterns = {
-    copy: {
-      hook_patterns: rawP.copy?.hook_patterns ?? [],
-      structure: rawP.copy.structure,
-      emphasis_words: rawP.copy?.emphasis_words ?? [],
-      length_notes: rawP.copy.length_notes,
-    },
-    visual: {
-      face: rawP.visual.face,
-      layout_archetypes: rawP.visual?.layout_archetypes ?? [],
-      color_usage: rawP.visual.color_usage,
-      number_treatment: rawP.visual.number_treatment,
-      devices: rawP.visual?.devices ?? [],
-    },
-    banned: rawP.banned ?? [],
-    ...normalizeConfidence(rawP),
-  };
-  const evidence_summary = out.data.evidence_summary;
-
-  console.log(`✅ 학습 완료 · ${out.provider} · ${out.latencyMs}ms · $${out.costUsd.toFixed(4)}`);
+  console.log(`🖼️ 학습 영상 ${inputVideos.length}편(전체 ${videos.length} 중 inconclusive 제외) / 가중 신호량 ${signalCount.toFixed(2)}`);
+  inputVideos.forEach((v) => console.log(`   - ${v.topic} [${v.verdict} · w=${v.weight.toFixed(2)}]`));
+  console.log(`✅ 학습 완료 · ${learned.provider} · $${learned.costUsd.toFixed(4)}`);
   console.log(`\n— 근거 요약 —\n${evidence_summary}\n`);
   console.log("— patterns —");
   console.log(JSON.stringify(patterns, null, 2));
@@ -479,8 +511,8 @@ async function main() {
   const source_ref = `ab-results:videos=${inputVideos.length},signal=${signalCount.toFixed(1)} @${stamp}`;
   const artifact = {
     source_ref,
-    provider: out.provider,
-    promptHash: out.promptHash,
+    provider: learned.provider,
+    promptHash: learned.promptHash,
     videos: inputVideos.map((v) => ({ topic: v.topic, verdict: v.verdict, weight: v.weight })),
     patterns,
     evidence_summary,

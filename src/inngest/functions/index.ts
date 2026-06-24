@@ -7,5 +7,6 @@ import { scriptStageFn } from "./scriptStage.js";
 import { discoveryCronFn } from "./discoveryCron.js";
 import { retrospectiveCronFn } from "./retrospectiveCron.js";
 import { performanceCronFn } from "./performanceCron.js";
+import { styleRelearnCronFn } from "./styleRelearnCron.js";
 
-export const functions = [topicStageFn, hookStageFn, structureStageFn, researchStageFn, scriptStageFn, discoveryCronFn, retrospectiveCronFn, performanceCronFn];
+export const functions = [topicStageFn, hookStageFn, structureStageFn, researchStageFn, scriptStageFn, discoveryCronFn, retrospectiveCronFn, performanceCronFn, styleRelearnCronFn];

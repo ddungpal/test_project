@@ -22,6 +22,8 @@ type PipelineEvents = {
   "performance/collected": { data: { contentId?: string } };
   // 회고 sweep 수동 트리거(개발 검증·운영 보정).
   "retro/sweep.requested": { data: Record<string, never> };
+  // A/B 스타일 재학습 sweep 수동 트리거(개발 검증·운영 보정) — 표본 증가분을 재학습 draft 로(activate 는 사람).
+  "style/relearn.requested": { data: Record<string, never> };
   // 성과 수집 수동 트리거(개발 검증·운영 보정). 실수집은 PERFORMANCE_SOURCE=youtube + OAuth.
   "performance/collect.requested": { data: Record<string, never> };
 };
