@@ -4,7 +4,14 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-24(세션종료) · 단계: **Phase A·B·C·D 코드 전부 완료, vitest206 그린. 썸네일 스타일 `v1` active(학습루프 5/5). Phase C(성과 자동수집)·D(AX 말투내재화) 코드 골격 완성 — 실가동은 사람·데이터 게이트. 부수 수정 다수(watch.py·learn-ab provenance·하네스 브리핑 플레이크 CLAUDE_HARNESS 가드). 다음 재개점=Phase E(배포 게이트) 또는 브랜치 정리(PR 머지로 일원화). 상세=`docs/roadmap-next.md`.**_
+_Last updated: 2026-06-24(오후 세션) · 단계: **Phase A·B·C·D 코드 완료 + 이번 오후 하네스로 phase 3개 추가 완료(아래 세션 로그). vitest 237 그린. 라이브 dev로 유저테스트 중. 다음 재개점=Phase E(배포 게이트)·브랜치 정리(PR 머지). 상세=`docs/roadmap-next.md`.**_
+
+> ⚠️ 라이브 dev 운영 메모(이번 세션 학습):
+> - **dev 기동**: `pnpm dev`/`pnpm inngest:dev` 래퍼는 pnpm 빌드스크립트 승인 게이트(sharp/protobufjs)에서 막힘 → 바이너리 직접 사용: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest`.
+> - **포트 고정 필수**: 3000이 차면 next가 조용히 3001로 밀리고 Inngest가 죽은 포트를 때려 모든 런이 'Unable to reach SDK URL'로 침묵 실패. `next dev -p 3000`로 고정·`npm run preflight`로 점검(아래 dev-pipeline-port-guard phase).
+> - **`next build`는 떠 있는 dev `.next`를 깬다** → 검증 빌드는 dev stop → build → restart 순서로. 깨지면 dev 재시작이면 복구.
+> - **$0 유지**: `.env` `LLM_BACKEND=claude-p` + 새 런 시 `SEARCH_BACKEND=mock`(tavily 과금 회피). 실리서치 보려면 `tavily`.
+> - 다른 프로젝트(auto-research-agent)가 PM2로 3000 선점할 수 있음 → `npx pm2@7.0.1 stop ara-web ara-worker`로 비움.
 
 ## ▶ 다음 작업 (NEXT — 2026-06-24 세션종료 시점)
 - **Phase E — 배포 게이트(사용자 액션)**: owner 비번 변경 · 브라우저 최종검증(`DEV_OWNER_BYPASS=0`) · **스택 브랜치 정리**(아래) · Vercel 운영 env(`LLM_BACKEND=api`·`LLM_FIXTURES=off`·캡·바이패스 미설정) · Inngest 프로덕션 · **OpenAI/구글 키 rotate**(채팅 노출분 미폐기).
@@ -12,10 +19,19 @@ _Last updated: 2026-06-24(세션종료) · 단계: **Phase A·B·C·D 코드 전
 - **(병렬·사람게이트) Phase D 실전환**: 김짠부가 한 단계 "이제 됐다" + 신호데이터(채택률·eval) 축적 → `AX_STAGES=<stage>`로 그 단계 AX 전환(롤백 가능).
 - **(deferred·코드) 하네스 top-index 자동등록**: 새 phase가 `phases/index.json`에 미등록(watch는 mtime기반이라 무방, 저우선).
 
-### 스택 브랜치 (2026-06-24, 각 브랜치가 이전 작업 누적·전부 푸시됨)
-`feat-thumbnail-style-activate` → `feat-youtube-analytics-oauth` → **`feat-ax-tone-internalize`(최신·전부 포함)**. PR 머지로 일원화 필요(Phase E). 메인=`main`, 진짜 리포=`github.com/ddungpal/test_project`.
+### 스택 브랜치 (2026-06-24 오후, 각 브랜치가 이전 작업 누적)
+`feat-thumbnail-style-activate` → `feat-youtube-analytics-oauth` → `feat-ax-tone-internalize`(여기까지 푸시됨) → **`feat-dev-pipeline-port-guard` → `feat-hook-thumbnail-revamp` → `feat-stage-regenerate`(최신·전부 포함)**. ⚠️ **오후 phase 3개 브랜치는 로컬 only(미푸시 — `execute.py`에 `--push` 안 줌)**. PR 머지로 일원화 필요(Phase E). 메인=`main`, 진짜 리포=`github.com/ddungpal/test_project`.
 
 > 아래는 이력(완료된 설계 메모) — 현재 상태/다음은 `docs/roadmap-next.md`(Phase A·B·C·D ✅코드 / C·D 실가동·E 남음)가 단일 출처.
+
+## 📜 세션 로그 (2026-06-24 오후) — 라이브 유저테스트 + 하네스 phase 3개 (전부 로컬, 미푸시)
+**유저테스트 중 발견한 이슈를 하네스(`python3 scripts/execute.py <phase>`, claude-p $0)로 phase화해 처리. 각 phase 2~3 step, Max·Joy 팀 루프 1라운드 PASS, AC(tc/test/build) 그린. vitest 206→237.**
+
+- **`dev-pipeline-port-guard`** ✅(`feat-dev-pipeline-port-guard`): 위 '라이브 dev 운영 메모'의 포트 침묵-fallback 클래스 방지. `src/dev/preflight.ts`(순수 `diagnoseDevPipeline`: inngest-down/app-not-serving/url-mismatch) + `scripts/dev-preflight.ts`(`npm run preflight`) + `package.json` dev/inngest:dev 포트 고정 + `APP_URL` env. **라이브 url-mismatch 탐지는 비활성**(`inngestRegisteredUrls: []` — Inngest dev API 경로 불확실, 포트고정이 실질 커버). 후속 여지: Inngest dev API 연동.
+- **`hook-thumbnail-revamp`** ✅(`feat-hook-thumbnail-revamp`): 훅이 썸네일 개선. ①출력 `thumbnail_copy:string` → **`thumbnail_main[2]`+`thumbnail_boxes[2]`**(메인문구2+작은박스2, 김짠부 실제 구조) + 파생 `thumbnail_copy` back-compat(회고가 읽음) ②`referenceGuard.maxReferenceSimilarity`(scriptGuards.containment 재사용)로 레퍼런스 베낌 `ref_similarity` 주석 → UI 경고배지(anti-dup) ③ThumbnailCanvas 구조 렌더(레거시 문자열 폴백)·EditFields 개별입력 ④`runProposalStage` 단계도 자동 새로고침(`RequestStageButton`이 생성 중 `LiveRefresh`). eval 신규형만 보게 + 골든픽스처 1개 손작성(레거시 9개 재녹화 회피·오프라인 유지).
+- **`stage-regenerate`** ✅(`feat-stage-regenerate`): 제안 단계 **'다시 생성'**(후보 불만족·로직 업데이트 반영). `decideStageEntry` 순수판정 + `runProposalStage` `force` → **상태 전이 없이**(proposedState 유지·DB 전이 트리거 migration 회피) 새 제안 행 INSERT(최신-우선 읽기로 자동 노출). `RegenerateButton`(confirm + 생성중 LiveRefresh 60s 상한), proposal 분기에만 노출(선택 후 미노출=다운스트림 무효화 방지). topic/titles/structure만(research/script는 다른 셀). **DB 전이 그래프는 트리거(migration 08)가 강제 → 역전이는 migration 필요·오프라인 불가라 회피한 게 핵심 판단.**
+
+**하네스 운영 학습**: `git add -A` 커밋이라 record-mode stray fixture(슬라이스·UI 테스트가 남긴 hook_maker/topic_scout json)가 각 step 커밋에 섞임(무해, eval은 신규형만 봄). phase 만들 때 **스키마 변경이 eval.test·기존 픽스처와 얽히면** "eval을 신규형만 보게 + 골든 손작성"으로 오프라인 유지가 정석.
 
 ## ▶▶ (이력) 썸네일 재개점 설계 메모 — Phase A·B로 구현·활성화 완료됨
 **사용자 지적**: ①생성 썸네일이 김짠부 실제 스타일과 안 닮음(현 캔버스=초안) ②A/B/C 성과로 어떤 썸네일이 좋았는지 학습하는 경로가 없음.
