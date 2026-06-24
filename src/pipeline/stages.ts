@@ -22,6 +22,7 @@ export const STAGE_DESCRIPTORS = {
     proposedState: "topic_proposed",
     selectedState: "topic_selected",
   },
+  // title_thumb = 역사적 이름, 현재 '제목 전용'(rename 금지). 썸네일은 아래 thumbnail로 분리.
   title_thumb: {
     stage: "title_thumb",
     roleId: "hook_maker",
@@ -29,10 +30,17 @@ export const STAGE_DESCRIPTORS = {
     proposedState: "titles_proposed",
     selectedState: "titles_selected",
   },
+  thumbnail: {
+    stage: "thumbnail",
+    roleId: "thumbnail_maker", // 신규 역할(roles.ts 추가는 step1) — roleId 안정·영구
+    fromState: "titles_selected",
+    proposedState: "thumbnails_proposed",
+    selectedState: "thumbnails_selected",
+  },
   structure: {
     stage: "structure",
     roleId: "structurer",
-    fromState: "titles_selected",
+    fromState: "thumbnails_selected",
     proposedState: "structure_proposed",
     selectedState: "structure_selected",
   },
@@ -71,9 +79,13 @@ export const PIPELINE = {
     stage: "title_thumb", shape: "linear", roleIds: ["hook_maker"], event: "run/title.requested",
     enters: "topic_selected", produces: "titles_proposed", proposal: STAGE_DESCRIPTORS.title_thumb,
   },
+  thumbnail: {
+    stage: "thumbnail", shape: "linear", roleIds: ["thumbnail_maker"], event: "run/thumbnails.requested",
+    enters: "titles_selected", produces: "thumbnails_proposed", proposal: STAGE_DESCRIPTORS.thumbnail,
+  },
   structure: {
     stage: "structure", shape: "linear", roleIds: ["structurer"], event: "run/structure.requested",
-    enters: "titles_selected", produces: "structure_proposed", proposal: STAGE_DESCRIPTORS.structure,
+    enters: "thumbnails_selected", produces: "structure_proposed", proposal: STAGE_DESCRIPTORS.structure,
   },
   research: {
     stage: "research", shape: "fanout",

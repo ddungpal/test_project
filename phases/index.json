@@ -64,6 +64,15 @@
       "dir": "regenerate-distinct",
       "status": "completed",
       "completed_at": "2026-06-24T19:02:15+0900"
+    },
+    {
+      "dir": "title-thumbnail-split",
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (state-machine-split)",
+      "attempt": 1,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-06-24T20:10:46+0900"
     }
   ]
 }

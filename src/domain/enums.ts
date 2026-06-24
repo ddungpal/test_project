@@ -8,6 +8,8 @@ export const RUN_STATES = [
   "topic_selected",
   "titles_proposed",
   "titles_selected",
+  "thumbnails_proposed",
+  "thumbnails_selected",
   "structure_proposed",
   "structure_selected",
   "researching",
@@ -31,7 +33,9 @@ export const ALLOWED_TRANSITIONS: Record<RunState, readonly RunState[]> = {
   topic_proposed: ["topic_selected", "aborted"],
   topic_selected: ["titles_proposed", "aborted"],
   titles_proposed: ["titles_selected", "aborted"],
-  titles_selected: ["structure_proposed", "aborted"],
+  titles_selected: ["thumbnails_proposed", "aborted"], // 제목 확정 → 썸네일 단계로(기존 structure_proposed에서 변경)
+  thumbnails_proposed: ["thumbnails_selected", "aborted"],
+  thumbnails_selected: ["structure_proposed", "aborted"],
   structure_proposed: ["structure_selected", "aborted"],
   structure_selected: ["researching", "aborted"],
   researching: ["research_ready", "paused_soft_cap", "aborted"],
@@ -51,7 +55,8 @@ export function canTransition(from: RunState, to: RunState): boolean {
   return ALLOWED_TRANSITIONS[from].includes(to);
 }
 
-export const STAGES = ["topic", "title_thumb", "structure", "research", "script"] as const;
+// title_thumb = 역사적 이름, 현재 '제목 전용'(rename 금지 — 17파일·픽스처·eval 광역 파손). thumbnail은 신규 추가.
+export const STAGES = ["topic", "title_thumb", "thumbnail", "structure", "research", "script"] as const;
 export type Stage = (typeof STAGES)[number];
 
 export const VERIFICATION_STATUS = ["verified", "conflicting", "unverified", "could_not_verify"] as const;

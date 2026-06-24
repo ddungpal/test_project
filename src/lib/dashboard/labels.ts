@@ -9,6 +9,8 @@ export const STATE_LABEL: Record<RunState, string> = {
   topic_selected: "주제 선택됨",
   titles_proposed: "제목·썸네일 제안됨",
   titles_selected: "제목·썸네일 선택됨",
+  thumbnails_proposed: "썸네일 제안됨",
+  thumbnails_selected: "썸네일 선택됨",
   structure_proposed: "구성 제안됨",
   structure_selected: "구성 선택됨",
   researching: "리서치 진행중",

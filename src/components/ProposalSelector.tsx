@@ -22,6 +22,7 @@ import { SourceLinks } from "./SourceLinks";
 const SELECT: Record<ProposalStage, (sel: SelectInput) => Promise<{ state: string }>> = {
   topic: selectTopic,
   title_thumb: selectTitles,
+  thumbnail: selectTitles, // TODO(step1): 전용 selectThumbnails 액션으로 교체. 지금은 타입 충족용 임시 위임.
   structure: selectStructure,
 };
 

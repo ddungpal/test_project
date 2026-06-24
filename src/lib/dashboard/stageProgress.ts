@@ -23,7 +23,9 @@ const STATE_MAP: Record<RunState, { step: number; phase: Phase }> = {
   topic_proposed: { step: 0, phase: "await_select" },
   topic_selected: { step: 1, phase: "await_start" },
   titles_proposed: { step: 1, phase: "await_select" },
-  titles_selected: { step: 2, phase: "await_start" },
+  titles_selected: { step: 1, phase: "await_start" }, // 제목 확정 — 같은 스텝(제목·썸네일)에서 썸네일 시작 대기
+  thumbnails_proposed: { step: 1, phase: "await_select" }, // 썸네일은 5단 스테퍼상 제목 스텝(1)에 흡수
+  thumbnails_selected: { step: 2, phase: "await_start" }, // 썸네일 확정 → 구성 시작 대기
   structure_proposed: { step: 2, phase: "await_select" },
   structure_selected: { step: 3, phase: "await_start" },
   researching: { step: 3, phase: "working" },

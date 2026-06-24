@@ -27,6 +27,12 @@ export interface TitlePayload {
   ref_similarity?: number; // 제목이 레퍼런스를 베낀 정도(0~1)
   style_conformance?: { banned_hits: string[]; winning_score: number }; // A/B 학습 스타일 부합도(banned 위반·winning 점수) — 휴리스틱
 }
+// 썸네일 단계(신규) 산출물 — 정확히 3개(A/B/C 변형)를 확정하는 단계. 제목 단계와 분리.
+export interface ThumbnailPayload {
+  thumbnail_main: string[]; // 메인문구
+  thumbnail_boxes: string[]; // 작은 박스
+  thumbnail_layout?: string; // 레이아웃 힌트
+}
 export interface StructureSection {
   section: string;
   goal: string;
@@ -57,7 +63,7 @@ export interface ProposalSource {
 }
 
 /** 제안→선택을 노출하는 단계(연구·스크립트는 별도 셀/검수 UI). */
-export const PROPOSAL_STAGES = ["topic", "title_thumb", "structure"] as const;
+export const PROPOSAL_STAGES = ["topic", "title_thumb", "thumbnail", "structure"] as const;
 export type ProposalStage = (typeof PROPOSAL_STAGES)[number];
 
 export function isProposalStage(s: Stage): s is ProposalStage {
@@ -66,6 +72,7 @@ export function isProposalStage(s: Stage): s is ProposalStage {
 
 export const STAGE_TITLE: Record<ProposalStage, string> = {
   topic: "주제",
-  title_thumb: "제목 · 썸네일",
+  title_thumb: "제목 · 썸네일", // 역사적 라벨 — title_thumb는 현재 제목 전용이나 레거시 표기 유지
+  thumbnail: "썸네일",
   structure: "구성",
 };

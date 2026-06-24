@@ -1,7 +1,7 @@
 // Phase 2 모듈 단위 테스트 — 상태머신·검증가드·단계계약·검색어댑터의 핵심 로직을 실제로 검증.
 // (DB·LLM 없이 도는 순수 로직만. 통합 경로는 scripts/run-topic-slice.ts.)
 import { describe, it, expect } from "vitest";
-import { canTransition, ALLOWED_TRANSITIONS, RUN_STATES, isVerifiedValid, type RunState } from "../src/domain/enums.js";
+import { canTransition, ALLOWED_TRANSITIONS, RUN_STATES, STAGES, isVerifiedValid, type RunState } from "../src/domain/enums.js";
 import { STAGE_DESCRIPTORS } from "../src/pipeline/stages.js";
 import { checkArithmetic, quoteIsReal } from "../src/pipeline/researchReconcile.js";
 import { searchHash, pickSearchBackend } from "../src/search/search.js";
@@ -38,6 +38,21 @@ describe("상태머신(enums)", () => {
     expect(canTransition("scripting", "researching")).toBe(true);
     expect(canTransition("paused_soft_cap", "researching")).toBe(true);
   });
+  it("썸네일 단계 분리: 제목→썸네일→구성 경로(기존 제목→구성 직행 차단)", () => {
+    expect(canTransition("titles_selected", "thumbnails_proposed")).toBe(true);
+    expect(canTransition("titles_selected", "structure_proposed")).toBe(false); // 이제 막힘 — 썸네일 경유
+    expect(canTransition("thumbnails_proposed", "thumbnails_selected")).toBe(true);
+    expect(canTransition("thumbnails_selected", "structure_proposed")).toBe(true);
+  });
+  it("새 썸네일 상태가 RUN_STATES·STAGES에 등록됨", () => {
+    expect(RUN_STATES).toContain("thumbnails_proposed");
+    expect(RUN_STATES).toContain("thumbnails_selected");
+    expect(STAGES).toContain("thumbnail");
+  });
+  it("ALLOWED_TRANSITIONS 키 집합이 RUN_STATES와 1:1(누락/잉여 없음)", () => {
+    const keys = Object.keys(ALLOWED_TRANSITIONS).sort();
+    expect(keys).toEqual([...RUN_STATES].sort());
+  });
 });
 
 describe("verified 합격 가드(isVerifiedValid §5·§9)", () => {
@@ -70,9 +85,13 @@ describe("단계 디스크립터 ↔ 상태머신 정합성(stages)", () => {
       expect(canTransition(d.proposedState as RunState, d.selectedState as RunState), `${d.stage}: ${d.proposedState}→${d.selectedState}`).toBe(true);
     }
   });
-  it("단계 체인이 끊김 없이 이어짐(topic→title_thumb→structure)", () => {
+  it("단계 체인이 끊김 없이 이어짐(topic→title_thumb→thumbnail→structure)", () => {
     expect(STAGE_DESCRIPTORS.topic.selectedState).toBe(STAGE_DESCRIPTORS.title_thumb.fromState);
-    expect(STAGE_DESCRIPTORS.title_thumb.selectedState).toBe(STAGE_DESCRIPTORS.structure.fromState);
+    expect(STAGE_DESCRIPTORS.title_thumb.selectedState).toBe(STAGE_DESCRIPTORS.thumbnail.fromState);
+    expect(STAGE_DESCRIPTORS.thumbnail.selectedState).toBe(STAGE_DESCRIPTORS.structure.fromState);
+  });
+  it("structure 단계는 썸네일 확정 후 진입(fromState=thumbnails_selected)", () => {
+    expect(STAGE_DESCRIPTORS.structure.fromState).toBe("thumbnails_selected");
   });
 });
 
