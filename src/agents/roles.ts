@@ -11,15 +11,19 @@ export interface AgentRole {
   tools: readonly ("web" | "fetch" | "code")[];
 }
 
+// ★ 모델 정책(2026-06-24): 전 역할 opus 통일 — 품질 우선. defaultModel="opus" 티어는 백엔드에서
+//   '별칭'으로 해석돼 **항상 최신 Opus를 자동 추적**한다(claude-p: `--model opus` / api: MODEL_ID `claude-opus-4-8`,
+//   둘 다 날짜 핀 없음). Anthropic이 Opus를 업그레이드하면 코드 변경 없이 새 버전이 적용된다.
+//   (특정 역할만 더 싼 티어로 내리려면 그 역할의 defaultModel만 sonnet/haiku로 바꾸면 됨.)
 export const ROLES = {
-  topic_scout: { roleId: "topic_scout", name: "촉이", defaultModel: "sonnet", tools: ["web"] },
-  hook_maker: { roleId: "hook_maker", name: "훅이", defaultModel: "sonnet", tools: [] },
-  structurer: { roleId: "structurer", name: "구다리", defaultModel: "sonnet", tools: [] },
-  sherlock_lead: { roleId: "sherlock_lead", name: "셜록", defaultModel: "sonnet", tools: ["web", "fetch"] },
-  fact_verifier: { roleId: "fact_verifier", name: "팩트검증가", defaultModel: "sonnet", tools: ["web", "fetch"] },
-  numbers: { roleId: "numbers", name: "셈이", defaultModel: "sonnet", tools: ["code"] },
-  analogist: { roleId: "analogist", name: "유이", defaultModel: "haiku", tools: [] },
-  critic: { roleId: "critic", name: "반론", defaultModel: "sonnet", tools: ["web", "fetch"] },
+  topic_scout: { roleId: "topic_scout", name: "촉이", defaultModel: "opus", tools: ["web"] },
+  hook_maker: { roleId: "hook_maker", name: "훅이", defaultModel: "opus", tools: [] },
+  structurer: { roleId: "structurer", name: "구다리", defaultModel: "opus", tools: [] },
+  sherlock_lead: { roleId: "sherlock_lead", name: "셜록", defaultModel: "opus", tools: ["web", "fetch"] },
+  fact_verifier: { roleId: "fact_verifier", name: "팩트검증가", defaultModel: "opus", tools: ["web", "fetch"] },
+  numbers: { roleId: "numbers", name: "셈이", defaultModel: "opus", tools: ["code"] },
+  analogist: { roleId: "analogist", name: "유이", defaultModel: "opus", tools: [] },
+  critic: { roleId: "critic", name: "반론", defaultModel: "opus", tools: ["web", "fetch"] },
   scribe: { roleId: "scribe", name: "짠펜", defaultModel: "opus", tools: [] }, // web/fetch 없음(§10). 골든 A/B(2026-06-23): Opus 4.8 > GPT-5.5 → 말투 품질 우선 opus.
   // 학습 작업(파이프라인 단계 아님) — corpus 위에서 1회 도는 말투 추출(§12). 짠펜이 의존하는 자산 생성.
   tone_extractor: { roleId: "tone_extractor", name: "말투추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus

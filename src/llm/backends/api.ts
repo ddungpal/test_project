@@ -5,8 +5,11 @@
 import { randomBytes } from "node:crypto";
 import type { LlmBackendDriver, LlmUsage, ModelTier } from "../types.js";
 
+// 티어→api 모델 ID. opus/sonnet은 **날짜 핀 없는 별칭**이라 해당 라인의 최신 스냅샷을 자동 추적
+//   (Anthropic이 Opus 업그레이드 시 코드 변경 없이 적용). 메이저 버전 점프(4-8→다음)만 이 한 줄을 올린다.
+//   claude-p 백엔드는 `--model opus` 별칭이라 메이저 점프까지 완전 자동.
 const MODEL_ID: Record<ModelTier, string> = {
-  haiku: "claude-haiku-4-5-20251001",
+  haiku: "claude-haiku-4-5-20251001", // haiku는 날짜 핀(현재 미사용 — 전 역할 opus). 쓰려면 별칭으로 교체.
   sonnet: "claude-sonnet-4-6",
   opus: "claude-opus-4-8",
 };
