@@ -5,20 +5,32 @@ import { useRouter } from "next/navigation";
 import { regenerateStage } from "@/app/actions/topicRun";
 import { LiveRefresh } from "@/components/LiveRefresh";
 
-// 폴링 상한 — 재생성은 상태 전이가 없어(같은 proposedState 유지) 버튼이 자동 언마운트되지 않는다.
-//   새 proposal이 들어오면 LiveRefresh가 갱신하지만, 영영 안 들어오면 폴링이 무한히 돈다. 60초 지나면 끄고 안내만.
-const POLL_LIMIT_MS = 60000;
+// 안전 상한 — 완료는 proposalId 변경으로 감지하지만, 워커가 영영 끝나지 않을(실패) 때를 대비한 폴링 무한루프 방지.
+//   ★ 고정 시간 cutoff을 '완료 판정'으로 쓰지 마라: opus 등 느린 모델은 단계 생성이 3분+ 걸려(실측 185s),
+//     짧은 cutoff면 새 후보 도착 전에 폴링이 끊긴다. 그래서 상한은 넉넉히 두고 진짜 종료는 proposalId로 감지한다.
+const POLL_LIMIT_MS = 300000; // 5분(안전망). 정상 종료는 proposalId 변경이 담당.
 
 // '다시 생성'(§8.2) — 현재 후보를 버리고 force로 같은 단계를 다시 돌린다. regenerateStage(force) 호출.
 //   보조 행동(확정보다 약한 위계) + 실수 클릭 방지 confirm. proposedState 분기에서만 노출(다운스트림 무효화 방지).
-export function RegenerateButton({ runId, stage }: { runId: string; stage: "topic" | "titles" | "structure" }) {
+//   ★ 완료 감지: 재생성은 상태 전이 없이 새 stage_proposals 행만 INSERT(같은 proposedState 유지)라 state 신호가 없다.
+//     대신 새 proposal의 id가 화면(props)에 도착하면 = 재생성 완료. 그때 폴링을 끈다(생성 시간 무관·robust).
+export function RegenerateButton({ runId, stage, proposalId }: { runId: string; stage: "topic" | "titles" | "structure"; proposalId: string }) {
   const [error, setError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const [startId, setStartId] = useState<string | null>(null); // 제출 시점 proposalId(null=유휴). 이게 바뀌면 완료.
   const [timedOut, setTimedOut] = useState(false);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+  const submitted = startId !== null;
 
-  // 제출 후 상한 시간 지나면 폴링 중단(무한 폴링 방지). 새 후보가 들어와 router.refresh되면 이 컴포넌트도 재마운트되며 정리됨.
+  // 완료 감지 — router.refresh 폴링으로 새 proposal이 도착하면 proposalId prop이 startId와 달라진다 → 폴링 종료.
+  useEffect(() => {
+    if (startId !== null && proposalId !== startId) {
+      setStartId(null);
+      setTimedOut(false);
+    }
+  }, [proposalId, startId]);
+
+  // 안전 상한 — 워커 실패 등으로 영영 새 후보가 안 오면 폴링을 멈추고 안내만(무한 폴링 방지).
   useEffect(() => {
     if (!submitted) return;
     const t = setTimeout(() => setTimedOut(true), POLL_LIMIT_MS);
@@ -31,10 +43,10 @@ export function RegenerateButton({ runId, stage }: { runId: string; stage: "topi
     startTransition(async () => {
       try {
         await regenerateStage(runId, stage);
-        setSubmitted(true);
+        setStartId(proposalId); // 현재 proposalId 기록 → 새 행 도착해 바뀌면 완료
         router.refresh();
       } catch (e) {
-        setSubmitted(false);
+        setStartId(null);
         setError(e instanceof Error ? e.message : "재생성 실패");
       }
     });

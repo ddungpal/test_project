@@ -93,7 +93,7 @@ function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; r
           candidates={sv.proposal.candidates}
           sources={sv.proposal.sources}
         />
-        {regenStage && <RegenerateButton runId={runId} stage={regenStage} />}
+        {regenStage && <RegenerateButton runId={runId} stage={regenStage} proposalId={sv.proposal.proposalId} />}
       </div>
     );
   } else if (stage === "topic" && runState === "created") {
