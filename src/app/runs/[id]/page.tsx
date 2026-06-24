@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import { getRunDetail, type StageView } from "@/lib/dashboard/runDetail";
 import { getResearchView, type ResearchView } from "@/lib/dashboard/researchView";
 import { getScriptView, getCostView, type SegmentView, type CostView } from "@/lib/dashboard/scriptView";
-import { STAGE_DESCRIPTORS } from "@/pipeline/stages";
+import { STAGE_DESCRIPTORS, type StageDescriptor } from "@/pipeline/stages";
 import { STATE_LABEL, runTone } from "@/lib/dashboard/labels";
 import { PROPOSAL_STAGES, STAGE_TITLE, type ProposalStage } from "@/lib/dashboard/proposalTypes";
 import { RELATION_LABEL } from "@/lib/dashboard/seedTypes";
@@ -11,6 +11,7 @@ import { ProposalSelector } from "@/components/ProposalSelector";
 import { RegenerateButton } from "@/components/RegenerateButton";
 import { CandidateBody } from "@/components/CandidateBody";
 import { RequestStageButton } from "@/components/RequestStageButton";
+import { ThumbnailStudio } from "@/components/ThumbnailStudio";
 import { RefreshButton } from "@/components/RefreshButton";
 import { EnterReviewButton } from "@/components/EnterReviewButton";
 import { ResearchReview } from "@/components/ResearchReview";
@@ -60,6 +61,11 @@ function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; r
   const stage = sv.stage as ProposalStage;
   const desc = STAGE_DESCRIPTORS[stage];
 
+  // 썸네일 단계는 전용 UI(ThumbnailStudio·confirmThumbnails) — 제네릭 ProposalSelector/RegenerateButton 경로를 안 탄다.
+  if (stage === "thumbnail") {
+    return <ThumbnailStageSection runId={runId} sv={sv} runState={runState} desc={desc} />;
+  }
+
   let body: React.ReactNode;
   if (sv.selection) {
     // 선택됨 — 확정안(수정본 우선) 요약.
@@ -99,8 +105,9 @@ function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; r
   } else if (stage === "topic" && runState === "created") {
     body = <WaitingNote text="촉이가 주제 생성 중… (inngest:dev 가동 필요)" />;
   } else if (runState === desc.fromState) {
+    // title_thumb는 제목 전용(썸네일은 thumbnail 전용 분기가 처리). structure만 남는 제네릭 경로.
     const next = stage === "title_thumb" ? "titles" : "structure";
-    const label = stage === "title_thumb" ? "제목·썸네일 만들기" : "구성 만들기";
+    const label = stage === "title_thumb" ? "제목 만들기" : "구성 만들기";
     body = (
       <div className="flex flex-col gap-2">
         <RequestStageButton runId={runId} next={next} label={label} />
@@ -114,6 +121,68 @@ function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; r
   return (
     <section className="mt-8">
       <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">{STAGE_TITLE[stage]}</h2>
+      <div className="mt-3">{body}</div>
+    </section>
+  );
+}
+
+// 썸네일 단계 전용 — 생성(titles_selected) → 스튜디오(thumbnails_proposed) → 확정 요약(thumbnails_selected).
+//   단일 선택이 아니라 A/B/C 3개 세트를 다루므로 ProposalSelector/RegenerateButton 대신 ThumbnailStudio를 쓴다.
+function ThumbnailStageSection({
+  runId,
+  sv,
+  runState,
+  desc,
+}: {
+  runId: string;
+  sv: StageView;
+  runState: RunState;
+  desc: StageDescriptor;
+}) {
+  let body: React.ReactNode;
+  if (sv.selection) {
+    // 확정됨 — 확정한 3개를 읽기전용 요약(editedPayload 배열 우선, 없으면 proposal candidates 폴백).
+    const edited = Array.isArray(sv.selection.editedPayload) ? (sv.selection.editedPayload as unknown[]) : null;
+    const items: { idx: number; payload: unknown }[] =
+      edited != null
+        ? edited.map((payload, idx) => ({ idx, payload }))
+        : (sv.proposal?.candidates ?? []).map((c) => ({ idx: c.idx, payload: c.payload }));
+    body = (
+      <div className="border border-trus-white/15 p-4">
+        <span className="text-xs font-bold text-trus-yellow">3개 확정 — A/B/C</span>
+        {items.length === 0 ? (
+          <p className="mt-2 text-xs text-trus-white/30">확정된 썸네일을 불러올 수 없습니다.</p>
+        ) : (
+          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {items.map((it) => (
+              <div key={it.idx} className="border border-trus-white/15 p-3">
+                <span className="mb-2 flex h-5 w-5 items-center justify-center border border-trus-yellow text-xs font-black text-trus-yellow">
+                  {String.fromCharCode(65 + it.idx)}
+                </span>
+                <CandidateBody stage="thumbnail" payload={it.payload} />
+              </div>
+            ))}
+          </div>
+        )}
+        {sv.selection.reason && <p className="mt-2 text-xs text-trus-white/50">이유: {sv.selection.reason}</p>}
+      </div>
+    );
+  } else if (runState === desc.proposedState && sv.proposal) {
+    body = <ThumbnailStudio runId={runId} proposalId={sv.proposal.proposalId} candidates={sv.proposal.candidates} />;
+  } else if (runState === desc.fromState) {
+    body = (
+      <div className="flex flex-col gap-2">
+        <RequestStageButton runId={runId} next="thumbnail" label="썸네일 만들기" />
+        <p className="text-xs text-trus-white/40">확정한 제목으로 썸네일 3개(A/B/C)를 만듭니다 — 잠시 후 새로고침하세요.</p>
+      </div>
+    );
+  } else {
+    body = <p className="text-sm text-trus-white/30">이전 단계 완료 후 진행됩니다.</p>;
+  }
+
+  return (
+    <section className="mt-8">
+      <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">{STAGE_TITLE.thumbnail}</h2>
       <div className="mt-3">{body}</div>
     </section>
   );

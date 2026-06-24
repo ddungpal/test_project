@@ -79,3 +79,36 @@
 [Joy] 전체재생성은 기존 force 경로(regenerateStage)에 thumbnail union만 끼웠고 신규 스키마 0, 개별은 thumbnailStageSpec prepare/toCandidates 그대로 재사용. UI/confirm/tsx 침범 0이라 step3도 안건드렸어
 [Joy] 결론 통과! runProposalStage run-in-place를 진짜 충실하게 미러했네. 무전이 in-place·2칸 완전보존·낙관잠금 다 맞아. 맥스 깔끔했어 🎉
 [리드] 좋아, 조이 PASS 확인. AC 셋 다 exit 0이고 센티넬도 깔끔해. step2 완료 — 전체 다시생성(force run-in-place)·개별 다시생성(1칸 교체·나머지 보존·무전이 in-place) 다 들어갔어. 다음은 step3 UI야. 둘 다 수고했어!
+
+=== Step 3: title-thumbnail-ui ===
+
+[리드] 자 마지막 step이다 — 프론트엔드. 제목 단계를 제목전용으로 정리하고(CandidateBody title_thumb 썸네일 제거), 새 ThumbnailStudio(썸네일 3카드·카드별 개별 다시생성·전체 다시생성·3개 확정)랑 confirmThumbnails 게이트, page.tsx thumbnail 분기를 붙인다. step0~2 백엔드·데이터는 절대 안 건드려.
+[리드] UI가 핵심이라 맥스랑 에스더 둘 다 부른다. 맥스가 confirmThumbnails 게이트+액션(백엔드)이랑 컴포넌트 배선 먼저 깔고, 에스더가 ThumbnailStudio 비주얼(TRUS 3색·radius0·그림자/그라데 금지·3카드 그리드)을 다듬는다.
+[리드] 맥스, 먼저 맡아줘. confirmThumbnails 게이트+액션이랑 CandidateBody 정리(title_thumb 썸네일 제거+thumbnail 분기), ThumbnailStudio 배선, page.tsx 분기까지. 비주얼 다듬기는 에스더가 이어받을 거야. 디테일은 step 본문에 다 박혀있어.
+
+[Max] 오케이 맡을게. step0~2 백엔드랑 gate/CandidateBody/ProposalSelector/page.tsx 다 읽었어. 백엔드는 안 건드리고 confirm 게이트 하나랑 프론트만 손볼게.
+
+[리드] 맥스 배선 다 끝났고 AC 셋 다 exit 0 확인했어(test 304). 에스더, ThumbnailStudio 비주얼 좀 다듬어줄래? 기능·배선은 그대로 두고 TRUS 톤(3색·radius0·그림자/그라데 금지)이랑 3카드 그리드 가독성만.
+[리드] 에스더 다듬기 끝났고 내가 AC 전체 다시 돌렸어 — typecheck 0, test 304 통과, build 0.
+[리드] 조이, 검수 부탁해. 맥스+에스더 diff 전체랑 AC 결과 봐줘. 특히 confirmThumbnails가 AI 0회·게이트로 thumbnails_proposed→selected·3개 보존인지, CandidateBody title_thumb가 제목전용으로 줄고 thumbnail 분기가 structure 폴백 앞에 있는지, ThumbnailStudio 완료감지가 고정cutoff 아니라 proposalId 변경인지·idx(0,1,2) 정확한지, step0~2 백엔드 침범 0인지, 에스더 비주얼이 기능/배선 안 건드렸는지(TRUS 3색·radius0).
+[Max] confirmThumbnailSet은 selectProposal 스코프검증 패턴 그대로 미러하고 chosen_idx는 0 센티넬, edited_payload에 3개 후보 payload 배열 넣을 거야. 학습/요약 경로가 배열 edited_payload에 크래시하는지도 봤는데 adoptionSignal·retrospectivist 다 != null/JSON.stringify로 방어돼 있어서 괜찮아.
+
+[Max] 다 짰어. confirmThumbnailSet 게이트랑 confirmThumbnails 액션 붙였고, CandidateBody는 title_thumb를 제목+칩만 남기고 thumbnail 분기 새로 넣었어. ThumbnailStudio는 RegenerateButton의 proposalId 변경 감지 패턴 그대로 가져와서 개별/전체/확정 다 처리하게 했어.
+[Max] page.tsx는 thumbnail만 전용 분기(ThumbnailStageSection)로 빼서 제네릭 ProposalSelector 경로를 안 타게 했고, title_thumb 버튼은 "제목 만들기"로 정리했어. ProposalSelector thumbnail 엔트리는 도달불가 주석으로 바꿨고.
+[Max] AC 셋 다 exit 0이야. typecheck 0, test 304개 그린(confirmThumbnails 단위테스트 4개 추가), build 0. 처음에 desc 타입이 thumbnail로 너무 좁혀져서 한 번 깨졌는데 StageDescriptor로 받게 고쳤어.
+[Max] 비주얼 미세조정은 에스더한테 넘기면 될 것 같아. 구조랑 기능, TRUS 톤은 맞춰놨어. 놓친 거 있으면 말해줘.
+[Esther] 음.. 썸네일 스튜디오 비주얼 다듬기 시작할게. Max가 기능은 다 짜놨으니까 나는 클래스랑 마크업만 손댈 거야. 기존 ProposalSelector랑 RegenerateButton 톤 다 봤어, TRUS 3색 규칙 머릿속에 들어왔고.
+[Esther] 카드마다 위에 A/B/C 노란 채운 뱃지 박고 헤더랑 본문 사이에 구분선 그었어. 카드 경계도 border-2로 또렷하게. 생성 중일 땐 그 카드 테두리가 노랗게 살아나고 본문은 살짝 흐려져서 어디가 작업 중인지 한눈에 보여. 하단은 전체 다시생성(왼쪽 아웃라인)이랑 확정(오른쪽 노란 채움)을 좌우로 갈라놨어. 이제 타입체크랑 빌드 돌릴게.
+[Esther] 타입체크 빌드 둘 다 깨끗하게 통과했어. 기능은 손 하나 안 댔고 색은 TRUS 3색만, 그림자 그라데이션 없고 모서리도 다 각져있어. 이건 자신 있어, A/B/C 위계랑 진행 상태가 훨씬 또렷해졌을 거야.
+[Joy] 마지막 step이네 두근두근. 일단 AC 세 개 돌려놓고 diff 처음부터 정독할게
+[Joy] gate부터 봤어 confirmThumbnailSet 진짜 callLLM도 inngest.send도 안 부르네. transitionRun만 돌고 selectProposal 스코프검증 패턴 그대로 미러했어 굿
+[Joy] state 가드(thumbnails_proposed 아니면 throw)랑 후보 3개 미만 throw 다 박혀있고 edited_payload에 3개 payload 배열 보존 chosen_idx는 0 센티넬 깔끔
+[Joy] CandidateBody 좋다 title_thumb에서 썸네일 메인박스 다 떼고 제목이랑 칩만 남겼어. 새 thumbnail 분기가 맨끝 structure 폴백 바로 앞에 있어서 thumbnail이 structure로 안 떨어져
+[Joy] unknown 방어도 빵빵해 Array.isArray에 typeof까지 둘러서 레거시 데이터 와도 안 죽어
+[Joy] ThumbnailStudio 완료감지 고정cutoff 아니고 proposalId 변경(startId) 패턴이야 POLL_LIMIT은 5분 안전망. idx 0/1/2 정확히 regenerateThumbnailSlot에 넘기고 전체는 regenerateThumbnails 확정은 confirmThumbnails. 진행중 카드 노란테두리로 표시되고 자동거부 필터 하나도 없어 전부 보여줘
+[Joy] page.tsx도 thumbnail은 맨앞에서 가드로 전용분기 빠져나가서 제네릭 ProposalSelector 안 타. REGEN_STAGE에 thumbnail 빠져있고(Studio가 처리) 기존 topic/title_thumb/structure 경로 안깨졌어
+[Joy] 에스더 비주얼도 딱 클래스 마크업만 만졌어 TRUS 3색 border-2 radius0 그림자그라데 없음. 로직 핸들러 props 완료감지 하나도 안 건드렸네 위계 또렷하고 좋아
+[Joy] step0~2 침범 0 확인 백엔드 에이전트 thumbnailSlot 마이그레이션 전부 그대로. 기존 테스트 삭제약화도 없고 confirmThumbnails 테스트 4개만 추가됐어
+[Joy] Max 주장 검증 — adoptionSignal은 edited_payload != null만 보니 배열와도 안죽고 retrospectivist summarizeChoicePayload도 배열이면 JSON.stringify로 떨어져서 크래시 없어 굿
+[Joy] AC 셋 다 직접 돌렸어 typecheck exit0 test exit0 build exit0! 결론 통과 둘 다 깔끔하게 끝냈다 수고했어
+[리드] 좋아, 조이 PASS 확인. AC 셋 다 exit 0이고 센티넬도 깔끔해. step3 완료 — 제목 제목전용 정리·ThumbnailStudio(3카드·개별/전체 다시생성·3개 확정)·confirmThumbnails 게이트(AI 0회)·page.tsx 분기 다 들어갔어. 에스더 비주얼도 TRUS 톤 딱 맞췄고. step0~2 백엔드 안 건드렸어. 셋 다 수고했어! 이걸로 title-thumbnail-split 페이즈 4 step 전부 완료다. 🎉

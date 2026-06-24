@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { requestTitles, requestStructure, requestResearch, requestScript } from "@/app/actions/topicRun";
+import { requestTitles, requestThumbnails, requestStructure, requestResearch, requestScript } from "@/app/actions/topicRun";
 import { LiveRefresh } from "@/components/LiveRefresh";
 
 // 폴링 상한 — 단계가 영영 완료 안 되면 버튼이 안 사라져 폴링이 무한히 돈다. 3분 지나면 끄고 안내만 표시.
@@ -10,10 +10,11 @@ const POLL_LIMIT_MS = 180000;
 
 // 다음 단계 시작(§8.2 단계경계 버튼) — request 액션(이벤트 발행) → 해당 에이전트 durable 실행.
 //   selected/approved 상태에서만 노출. 누르면 *_proposed로 진행(또는 researching/scripting).
-type NextStage = "titles" | "structure" | "research" | "script";
+type NextStage = "titles" | "thumbnail" | "structure" | "research" | "script";
 
 const ACTION: Record<NextStage, (runId: string) => Promise<void>> = {
   titles: requestTitles,
+  thumbnail: requestThumbnails,
   structure: requestStructure,
   research: requestResearch,
   script: requestScript,

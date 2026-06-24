@@ -6,7 +6,7 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { inngest } from "../../inngest/client.js";
-import { selectProposal, type SelectInput } from "../../pipeline/gate.js";
+import { selectProposal, confirmThumbnailSet, type SelectInput } from "../../pipeline/gate.js";
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
@@ -146,10 +146,19 @@ export async function selectTitles(sel: SelectInput): Promise<{ state: string }>
   return { state: res.state };
 }
 
-// 썸네일 단계(§8.2): 제목 확정 후 썸네일메이커 트리거. select/confirm/UI는 범위 밖(step3).
+// 썸네일 단계(§8.2): 제목 확정 후 썸네일메이커 트리거.
 export async function requestThumbnails(runId: string): Promise<void> {
   await requireOwner();
   await inngest.send({ name: "run/thumbnails.requested", data: { runId } });
+}
+
+// 썸네일 '3개 세트 확정'(사람 게이트) — 단일 선택이 아니라 A/B/C 3개를 그대로 확정. AI 0회(상태전환+기록).
+export async function confirmThumbnails(runId: string): Promise<{ state: string }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  const res = await confirmThumbnailSet(supa, runId);
+  await auditLog(supa, { actorId: ownerId, action: "stage_selected", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
+  return { state: res.state };
 }
 
 export async function requestStructure(runId: string): Promise<void> {
