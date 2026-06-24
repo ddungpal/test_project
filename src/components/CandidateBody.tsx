@@ -6,6 +6,7 @@ import {
   AUDIENCE_LEVEL_LABEL,
 } from "@/lib/dashboard/proposalTypes";
 import { REFERENCE_SIMILARITY_FLAG } from "@/agents/hook_maker/referenceGuard";
+import { STYLE_CONFORMANCE_BANNED_FLAG } from "@/agents/hook_maker/styleConformance";
 
 // 후보/선택 payload 표시(읽기) — 순수 컴포넌트(서버=요약, 클라=선택기 공용).
 //   payload는 jsonb→unknown(LLM 산출·사람 수정) — 형태 보장 없음. 방어적으로 가드(누락 시 폴백, 크래시 금지).
@@ -29,6 +30,13 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
     const p = (payload ?? {}) as Partial<TitlePayload>;
     // 레퍼런스 유사도 임계 이상이면 '거의 베낌' 의심 → 경고 칩. 임계값은 referenceGuard에서 단일 출처.
     const refFlagged = p.ref_similarity != null && p.ref_similarity >= REFERENCE_SIMILARITY_FLAG;
+
+    // A/B 학습 스타일 부합도(step0 주석). payload는 unknown 기반 → ?.·??로 방어.
+    //   표시 전용 — banned여도 후보는 그대로 보이고 선택 가능(김짠부 '선택만' 철학).
+    const bannedHits = p.style_conformance?.banned_hits ?? [];
+    const winningScore = p.style_conformance?.winning_score ?? 0;
+    const bannedFlagged = bannedHits.length >= STYLE_CONFORMANCE_BANNED_FLAG;
+    const winningPct = Math.round(winningScore * 100);
 
     // payload는 jsonb→unknown(형태 보장 없음) → 접근 전부 ?.·?? ""로 방어.
     const isStructured = Array.isArray(p.thumbnail_main); // 신규 배열 구조 여부
@@ -81,6 +89,17 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
             <span className="ml-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow">
               ⚠ 레퍼런스와 유사
             </span>
+          )}
+          {bannedFlagged && (
+            <span
+              title={bannedHits[0]}
+              className="ml-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow"
+            >
+              ⚠ A/B 패배 패턴
+            </span>
+          )}
+          {winningScore > 0 && (
+            <div className="mt-1 text-[10px] text-trus-white/45">A/B 부합 {winningPct}%</div>
           )}
         </div>
       </div>
