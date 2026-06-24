@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>제작 동료 AI — 진행 보고서</title>
+<style>
+  :root{
+    --bg:#121212; --yellow:#F8F082; --white:#FFFFFF;
+    --dim:rgba(255,255,255,.55); --line:rgba(255,255,255,.16);
+    --ydim:rgba(248,240,130,.16); --track:rgba(255,255,255,.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:var(--bg);}
+  body{
+    font-family:'Sandoll GyeokdongGothic2','Pretendard',-apple-system,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
+    color:var(--white); -webkit-font-smoothing:antialiased;
+    display:flex; justify-content:center; padding:46px 24px;
+  }
+  .page{width:980px; max-width:100%;}
+
+  .top{display:flex; justify-content:space-between; align-items:flex-end; border-bottom:3px solid var(--yellow); padding-bottom:18px;}
+  .brand{font-size:13px; letter-spacing:.32em; color:var(--yellow); font-weight:800;}
+  .title{font-size:32px; font-weight:900; line-height:1.1; margin-top:8px; letter-spacing:-.01em;}
+  .meta{text-align:right; font-size:12px; color:var(--dim); line-height:1.7;}
+  .pill{display:inline-block; border:2px solid var(--yellow); color:var(--yellow); font-weight:800; font-size:12px; padding:5px 12px; letter-spacing:.06em;}
+
+  .hero{display:flex; align-items:center; gap:40px; margin-top:32px;}
+  .pct{font-size:128px; font-weight:900; line-height:.84; color:var(--yellow); letter-spacing:-.04em; min-width:300px;}
+  .pct span{font-size:50px; vertical-align:16px; margin-left:2px;}
+  .herotxt{flex:1;}
+  .herolabel{font-size:15px; font-weight:800; letter-spacing:.2em;}
+  .herosub{font-size:14px; color:var(--dim); margin-top:9px; line-height:1.6;}
+  .herosub b{color:var(--white); font-weight:800;}
+  .bar{height:16px; background:var(--track); margin-top:16px; position:relative;}
+  .bar i{position:absolute; left:0; top:0; bottom:0; background:var(--yellow);}
+  .bar .half{position:absolute; left:50%; top:-4px; bottom:-4px; width:2px; background:var(--white);}
+  .barticks{display:flex; justify-content:space-between; font-size:10px; color:var(--dim); margin-top:6px; letter-spacing:.08em;}
+  .barticks b{color:var(--white);}
+
+  h2{font-size:13px; font-weight:800; letter-spacing:.22em; color:var(--yellow); margin:36px 0 6px; padding-bottom:8px; border-bottom:1px solid var(--line);}
+  .h2sub{font-size:11.5px; color:var(--dim); margin:-2px 0 14px; letter-spacing:.04em;}
+
+  /* stage rows */
+  .stage{display:flex; align-items:center; gap:16px; padding:13px 0; border-bottom:1px solid var(--line);}
+  .stage:last-child{border-bottom:none;}
+  .sname{width:150px; flex-shrink:0;}
+  .sname .k{font-size:10.5px; color:var(--dim); letter-spacing:.08em;}
+  .sname .n{font-size:17px; font-weight:900; margin-top:2px;}
+  .sbuilt{font-size:10.5px; font-weight:900; color:var(--bg); background:var(--yellow); padding:2px 7px; flex-shrink:0; letter-spacing:.04em;}
+  .sbar{flex:1; height:14px; background:var(--track); position:relative;}
+  .sbar i{position:absolute; left:0; top:0; bottom:0; background:var(--yellow);}
+  .sbar .half{position:absolute; left:50%; top:-3px; bottom:-3px; width:2px; background:rgba(255,255,255,.5);}
+  .sverify{width:96px; flex-shrink:0; font-size:11px; color:var(--dim); text-align:right; letter-spacing:.02em;}
+  .sverify b{color:var(--white);}
+  .schip{width:74px; flex-shrink:0; text-align:center; font-size:10.5px; font-weight:800; padding:3px 0; letter-spacing:.03em;}
+  .schip.wait{border:1px solid var(--line); color:var(--dim);}
+  .schip.test{border:1px solid var(--yellow); color:var(--yellow);}
+  .schip.fix{border:1px solid var(--yellow); color:var(--bg); background:var(--yellow);}
+  .schip.done{border:1px solid var(--yellow); color:var(--bg); background:var(--yellow);}
+  .stot{width:54px; flex-shrink:0; text-align:right; font-size:20px; font-weight:900;}
+
+  .note{display:flex; gap:24px; margin-top:22px; font-size:12px; color:var(--dim); line-height:1.55;}
+  .note .box{flex:1; border:1px solid var(--line); padding:14px 16px;}
+  .note .box b{color:var(--yellow); font-weight:800; display:block; margin-bottom:5px; font-size:12px; letter-spacing:.04em;}
+
+  .foot{display:flex; justify-content:space-between; align-items:center; margin-top:30px; padding-top:16px; border-top:3px solid var(--yellow); font-size:11.5px; color:var(--dim);}
+  .legend span{margin-right:16px;}
+  .legend b{color:var(--yellow);}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="top">
+    <div>
+      <div class="brand">PRODUCE&nbsp;SCRIPT &nbsp;·&nbsp; 제작 동료 AI</div>
+      <div class="title">김짠부 콘텐츠 제작 시스템 — 진행 보고</div>
+    </div>
+    <div class="meta">
+      <div class="pill">실사용 검증 단계</div>
+      <div style="margin-top:10px">기준일 &nbsp;<span id="today">2026.06.25</span><br/>핵심 과제 &nbsp;실사용 테스트</div>
+    </div>
+  </div>
+
+  <div class="hero">
+    <div class="pct"><span id="overall">50</span><span>%</span></div>
+    <div class="herotxt">
+      <div class="herolabel">전체 진행률</div>
+      <div class="herosub">
+        각 단계 = <b>구축(만들기)</b> 절반 + <b>실사용 검증(테스트)</b> 절반.<br/>
+        구축은 <b>전 단계 완료</b> → 이제 <b>실사용 테스트로 나머지 절반</b>을 채웁니다.
+      </div>
+      <div class="bar"><i id="ovbar" style="width:50%"></i><span class="half"></span></div>
+      <div class="barticks"><span>0</span><span><b>구축 완료 (50)</b></span><span>검증 완료 (100)</span></div>
+    </div>
+  </div>
+
+  <h2>실사용 검증 — 단계별 진행</h2>
+  <div class="h2sub">막대 왼쪽 절반(흰 눈금까지) = 구축 완료 · 오른쪽 절반 = 실사용 테스트로 채워지는 검증 완성도</div>
+  <div id="stages"></div>
+
+  <div class="note">
+    <div class="box"><b>지금 상태</b>구축(개발)은 6단계 전부 완료. 실사용 테스트는 내일 시작 — 단계마다 직접 써보며 품질·UX를 다듬어 검증 %를 올립니다.</div>
+    <div class="box"><b>검증 기준</b>대기 → 테스트중 → 보완중 → 검증완료. 실제 제작에 "그대로 쓸 수 있다" 판단이 서면 그 단계 검증 100%.</div>
+  </div>
+
+  <div class="foot">
+    <div class="legend">
+      <span>전체 = <b>6단계 평균</b></span>
+      <span>구축 ≈ <b>100%</b></span>
+      <span>실사용 검증 = 테스트로 채움</span>
+    </div>
+    <div>produce script · 내부 보고용</div>
+  </div>
+
+</div>
+
+<script>
+  /* ─────────────────────────────────────────────────────────────
+     실사용 테스트하며 여기 값만 바꾸면 단계별·전체 %가 자동 갱신됩니다.
+       verify : 0~100  (그 단계 실사용 검증 완성도)
+       status : 'wait'(대기) | 'test'(테스트중) | 'fix'(보완중) | 'done'(검증완료)
+     ───────────────────────────────────────────────────────────── */
+  const STAGES = [
+    { k:'1 · 촉이',  n:'주제',      verify:0, status:'wait' },
+    { k:'2 · 훅이',  n:'제목 3개',  verify:0, status:'wait' },
+    { k:'3 · 훅이',  n:'썸네일 3개', verify:0, status:'wait' },
+    { k:'4 · 구다리', n:'구성',      verify:0, status:'wait' },
+    { k:'5 · 셜록',  n:'리서치',    verify:0, status:'wait' },
+    { k:'6 · 짠펜',  n:'스크립트',   verify:0, status:'wait' },
+  ];
+
+  const STATUS = { wait:['대기','wait'], test:['테스트중','test'], fix:['보완중','fix'], done:['검증완료','done'] };
+  const wrap = document.getElementById('stages');
+  let sum = 0;
+  for (const s of STAGES){
+    const total = Math.round(50 + s.verify/2);          // 구축 50 + 검증 절반
+    sum += total;
+    const [label, cls] = STATUS[s.status] || STATUS.wait;
+    const el = document.createElement('div');
+    el.className = 'stage';
+    el.innerHTML =
+      '<div class="sname"><div class="k">'+s.k+'</div><div class="n">'+s.n+'</div></div>'
+      + '<div class="sbuilt">구축 ✓</div>'
+      + '<div class="sbar"><i style="width:'+total+'%"></i><span class="half"></span></div>'
+      + '<div class="sverify">검증 <b>'+s.verify+'%</b></div>'
+      + '<div class="schip '+cls+'">'+label+'</div>'
+      + '<div class="stot">'+total+'<span style="font-size:11px;font-weight:700">%</span></div>';
+    wrap.appendChild(el);
+  }
+  const overall = Math.round(sum / STAGES.length);
+  document.getElementById('overall').textContent = overall;
+  document.getElementById('ovbar').style.width = overall + '%';
+</script>
+</body>
+</html>
