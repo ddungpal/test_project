@@ -25,6 +25,7 @@ export interface TitlePayload {
   thumbnail_boxes?: string[]; // 작은 박스 2개(신규 구조)
   thumbnail_copy?: string; // 파생/레거시(메인+박스 join 또는 과거 단일 문자열) — 옵셔널
   ref_similarity?: number; // 제목이 레퍼런스를 베낀 정도(0~1)
+  style_conformance?: { banned_hits: string[]; winning_score: number }; // A/B 학습 스타일 부합도(banned 위반·winning 점수) — 휴리스틱
 }
 export interface StructureSection {
   section: string;
