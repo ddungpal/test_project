@@ -1,0 +1,32 @@
+{
+  "project": "produce script",
+  "phase": "title-thumbnail-split",
+  "goal": "제목·썸네일을 한 단계(title_thumb)에서 → 제목 단계 + 썸네일 단계 둘로 분리. 새 흐름: 주제선정 → 제목3개 생성(다시생성) → 제목1개 선택 → 선택된 제목으로 썸네일3개 생성 → 전체/개별 다시생성 → 썸네일3개 최종확정(A/B/C 테스트용, 1개 아님). title_thumb 스테이지는 '제목 전용'으로 의미만 바꿔 유지(17파일 참조 → rename 리스크 회피), 새 thumbnail 스테이지 추가. 새 상태 thumbnails_proposed/thumbnails_selected + 마이그레이션(상태 CHECK 003 + 전이표 008 둘 다 확장, 수동 적용=사람게이트). 새 역할 thumbnail_maker(opus). 개별 다시생성=3칸 중 1칸만 교체·나머지 유지. AC는 오프라인 $0(순수 전이·에이전트 단위테스트·tc/test/build). DB 적용·라이브는 사용자.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "state-machine-split",
+      "status": "completed",
+      "started_at": "2026-06-24T20:01:46+0900",
+      "team_round": "1/3 PASS",
+      "summary": "⚠️ 마이그레이션 미적용(사용자 수동). enums 새 상태 thumbnails_proposed/selected + 전이(titles_selected→thumbnails_proposed→thumbnails_selected→structure_proposed, titles_selected→structure_proposed 제거) + STAGES 'thumbnail' + STAGE_DESCRIPTORS.thumbnail(role thumbnail_maker)·structure.fromState 변경 + proposalTypes ThumbnailPayload·PROPOSAL_STAGES 'thumbnail' + 마이그레이션 SQL 20260624120022(003 CHECK 재정의+008 전이 insert/delete). title_thumb는 제목전용으로 유지(rename 안함). 타입 전수강제로 labels/stageProgress/ProposalSelector 자리값 최소 변경(로직 무변경, thumbnail UI/role은 step1). 전이 테스트. tc/test/build 그린",
+      "completed_at": "2026-06-24T20:11:30+0900"
+    },
+    {
+      "step": 1,
+      "name": "title-thumbnail-agents",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "thumbnail-regenerate-backend",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "title-thumbnail-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-24T20:01:46+0900"
+}
