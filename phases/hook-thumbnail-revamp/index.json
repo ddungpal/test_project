@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "thumbnail-render-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-24T13:39:02+0900",
+      "summary": "ThumbnailCanvas 메인2+박스2 구조 렌더(레거시 copy 폴백)+CandidateBody 배선+ref_similarity 경고배지(REFERENCE_SIMILARITY_FLAG import)+EditFields 개별입력(main/boxes). TRUS 3색 유지. tc/test(231)/build 그린",
+      "completed_at": "2026-06-24T13:47:27+0900"
     },
     {
       "step": 2,
