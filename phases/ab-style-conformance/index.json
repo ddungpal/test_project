@@ -3,7 +3,18 @@
   "phase": "ab-style-conformance",
   "goal": "A/B 학습에 '이빨'을 준다: 활성 style_profile의 banned(A/B 패배 패턴)·winning(emphasis_words·hook_patterns)으로 훅이 출력(제목·메인문구)을 사후 검사해 부합도/위반을 표면화. 현재는 학습이 프롬프트 조언일 뿐 강제 안 됨. step0=순수 evaluateStyleConformance + 훅이 toCandidates 주석(ref_similarity와 동일·promptHash 무관), step1=CandidateBody에 ⚠banned칩+부합도 점수. 휴리스틱 신호(완전 의미판정 아님). DB/LLM 0.",
   "steps": [
-    { "step": 0, "name": "conformance-guard", "status": "pending" },
-    { "step": 1, "name": "conformance-ui", "status": "pending" }
+    {
+      "step": 0,
+      "name": "conformance-guard",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "summary": "evaluateStyleConformance 순수(banned 따옴표예시 substring·자릿수/TOP 옵션토큰 매칭 + emphasis_words winning_score) + 훅이 toCandidates style_conformance 주석(promptHash 무관) + TitlePayload 타입 + 테스트 10케이스. 휴리스틱·결정적. DB/LLM 0. tc/test(255)/build 그린",
+      "completed_at": "2026-06-24T17:10:35+0900"
+    },
+    {
+      "step": 1,
+      "name": "conformance-ui",
+      "status": "pending"
+    }
   ]
 }
