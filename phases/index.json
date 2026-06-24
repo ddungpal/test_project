@@ -19,6 +19,15 @@
       "dir": "perf-optimization",
       "status": "completed",
       "completed_at": "2026-06-24T02:03:47+0900"
+    },
+    {
+      "dir": "dev-pipeline-port-guard",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (preflight-core)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-06-24T12:20:15+0900"
     }
   ]
 }
