@@ -8,6 +8,7 @@ import { PROPOSAL_STAGES, STAGE_TITLE, type ProposalStage } from "@/lib/dashboar
 import { RELATION_LABEL } from "@/lib/dashboard/seedTypes";
 import { isDevBypass, requireOwnerPage } from "@/app/actions/auth";
 import { ProposalSelector } from "@/components/ProposalSelector";
+import { RegenerateButton } from "@/components/RegenerateButton";
 import { CandidateBody } from "@/components/CandidateBody";
 import { RequestStageButton } from "@/components/RequestStageButton";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -47,6 +48,13 @@ const TONE_CLASS = {
   active: "border-trus-white/30 text-trus-white/80",
 } as const;
 
+// ProposalStage → regenerateStage 인자. 없는 stage는 재생성 미지원 → 버튼 생략.
+const REGEN_STAGE: Partial<Record<ProposalStage, "topic" | "titles" | "structure">> = {
+  topic: "topic",
+  title_thumb: "titles",
+  structure: "structure",
+};
+
 // 단계 박스 — 선택됨(요약) | 활성(선택기) | 시작 버튼 | 대기.
 function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; runState: RunState }) {
   const stage = sv.stage as ProposalStage;
@@ -74,14 +82,19 @@ function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; r
       </div>
     );
   } else if (runState === desc.proposedState && sv.proposal) {
+    // ProposalStage → regenerateStage 인자 매핑. 없는 stage면 '다시 생성' 버튼 생략(방어).
+    const regenStage = REGEN_STAGE[stage];
     body = (
-      <ProposalSelector
-        runId={runId}
-        stage={stage}
-        proposalId={sv.proposal.proposalId}
-        candidates={sv.proposal.candidates}
-        sources={sv.proposal.sources}
-      />
+      <div className="flex flex-col gap-3">
+        <ProposalSelector
+          runId={runId}
+          stage={stage}
+          proposalId={sv.proposal.proposalId}
+          candidates={sv.proposal.candidates}
+          sources={sv.proposal.sources}
+        />
+        {regenStage && <RegenerateButton runId={runId} stage={regenStage} />}
+      </div>
     );
   } else if (stage === "topic" && runState === "created") {
     body = <WaitingNote text="촉이가 주제 생성 중… (inngest:dev 가동 필요)" />;
