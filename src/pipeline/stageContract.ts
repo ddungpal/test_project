@@ -14,6 +14,7 @@ import { getRun, transitionRun, setProgress, type Supa } from "./runState.js";
 import type { StageDescriptor } from "./stages.js";
 import type { ProposalSource } from "../lib/dashboard/proposalTypes.js";
 import { decideStageEntry } from "./regenerateDecision.js";
+import { buildRegenerateAugmentedSystem } from "./regenerateVariation.js";
 
 /** stage_proposals.candidates 한 항목(제안=임시, lineage 정규화는 채택 후). */
 export interface Candidate {
@@ -96,6 +97,24 @@ export async function runProposalStage<TOut>(
 
   // 2) 결정적 prep(AI 없음).
   const prep = await spec.prepare(supa);
+
+  // 2-1) 재생성(force=run-in-place)만 prep.system을 변주 — '다시 생성'이 이전과 바이트 동일한 후보를 내던 버그 수정.
+  //   prepare는 supa만 받아 force를 모른다(같은 run·주제 → 동일 system+input → 동일 promptHash → 동일 후보).
+  //   여기서 이 (run, stage)의 기존 제안 개수=다음 회차 nonce(attempt), 최근 candidates=priorCandidates로
+  //   '이전 안과 뚜렷이 다르게' 변주 지시를 덧붙여 promptHash를 차등화한다.
+  //   ⚠ run-forward 등 다른 경로는 prep을 절대 건드리지 않는다 → forward promptHash 불변(기존 parity/eval 픽스처 보존).
+  //   ponytail: 재생성은 새 promptHash라 replay 전용($0 동결)에선 픽스처 미스 throw가 정상(설계). replay는 동결 재생용, 재생성은 record로.
+  if (entry === "run-in-place") {
+    const { data: priors } = await supa
+      .from("stage_proposals")
+      .select("candidates, created_at")
+      .eq("run_id", runId)
+      .eq("stage", descriptor.stage)
+      .order("created_at", { ascending: false });
+    const attempt = (priors?.length ?? 0); // 기존 제안 개수 = 다음 회차 nonce
+    const priorCandidates = (priors?.[0]?.candidates as unknown as Candidate[] | undefined) ?? [];
+    prep.system = buildRegenerateAugmentedSystem(prep.system, priorCandidates, attempt);
+  }
 
   // 3) AI 정확히 1회 — 비용가드·fixtures·스키마강제는 callLLM이 담당.
   const res = await callLLM<TOut>(

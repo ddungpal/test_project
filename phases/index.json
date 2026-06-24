@@ -59,6 +59,15 @@
       "dir": "ab-style-relearn-loop",
       "status": "completed",
       "completed_at": "2026-06-24T17:30:16+0900"
+    },
+    {
+      "dir": "regenerate-distinct",
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (regenerate-prompt-variation)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-06-24T19:01:44+0900"
     }
   ]
 }
