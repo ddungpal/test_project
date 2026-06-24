@@ -24,6 +24,15 @@
       "dir": "dev-pipeline-port-guard",
       "status": "completed",
       "completed_at": "2026-06-24T12:26:15+0900"
+    },
+    {
+      "dir": "hook-thumbnail-revamp",
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (thumbnail-copy-contract)",
+      "attempt": 1,
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-06-24T13:38:50+0900"
     }
   ]
 }

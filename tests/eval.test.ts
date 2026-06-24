@@ -50,14 +50,20 @@ describe("eval: 촉이(topic_scout) 발굴 품질", () => {
 });
 
 describe("eval: 훅이(hook_maker) 제목·썸네일 품질", () => {
-  const fx = withArray(outputs("hook_maker"), "candidates");
+  // 신규 구조(thumbnail_main 배열)만 통과 — 레거시(thumbnail_copy 문자열) fixture는 자동 제외.
+  const fx = withArray(outputs("hook_maker"), "candidates").filter((o) =>
+    o.candidates.every((c: any) => Array.isArray(c?.thumbnail_main)),
+  );
   it("골든셋 존재", () => expect(fx.length).toBeGreaterThan(0));
-  it("후보 ≥3 · 제목·썸네일카피·레이아웃 비자명 · evidence 보유", () => {
+  it("후보 ≥3 · 제목·메인문구2·박스2·레이아웃 비자명 · evidence 보유", () => {
     for (const o of fx) {
       expect(o.candidates.length).toBeGreaterThanOrEqual(3);
       for (const c of o.candidates) {
         expect(nonTrivial(c.title, 6)).toBe(true);
-        expect(nonTrivial(c.thumbnail_copy, 2)).toBe(true);
+        expect(Array.isArray(c.thumbnail_main) && c.thumbnail_main.length === 2).toBe(true);
+        for (const m of c.thumbnail_main) expect(nonTrivial(m, 2)).toBe(true);
+        expect(Array.isArray(c.thumbnail_boxes) && c.thumbnail_boxes.length === 2).toBe(true);
+        for (const b of c.thumbnail_boxes) expect(nonTrivial(b, 2)).toBe(true);
         expect(nonTrivial(c.thumbnail_layout)).toBe(true);
         expect((c.evidence_ids ?? []).length).toBeGreaterThanOrEqual(1);
       }

@@ -21,7 +21,10 @@ export interface TopicPayload {
 export interface TitlePayload {
   title: string;
   thumbnail_layout: string;
-  thumbnail_copy: string;
+  thumbnail_main?: string[]; // 메인문구 2개(신규 구조)
+  thumbnail_boxes?: string[]; // 작은 박스 2개(신규 구조)
+  thumbnail_copy?: string; // 파생/레거시(메인+박스 join 또는 과거 단일 문자열) — 옵셔널
+  ref_similarity?: number; // 제목이 레퍼런스를 베낀 정도(0~1)
 }
 export interface StructureSection {
   section: string;

@@ -27,8 +27,8 @@ export interface ProposalStageSpec<TOut> {
   descriptor: StageDescriptor;
   /** DB 컨텍스트 읽기 + 결정적 가공 → LLM 호출 재료. AI 미사용(§8.1). */
   prepare(supa: Supa): Promise<{ system: string; input: unknown; schema: JsonSchema; maxTokens?: number; sources?: ProposalSource[] }>;
-  /** 검증된 LLM 출력 → 후보 배열(stage_proposals.candidates). */
-  toCandidates(out: TOut): Candidate[];
+  /** 검증된 LLM 출력 → 후보 배열(stage_proposals.candidates). 2번째 인자(opt)=prepare가 만든 input(파생 필드·가드용). */
+  toCandidates(out: TOut, input?: unknown): Candidate[];
 }
 
 export interface ProposalStageDeps {
@@ -99,7 +99,7 @@ export async function runProposalStage<TOut>(
   );
 
   // 4) proposed 저장(컨펌 전 = 저장 후 표시).
-  const candidates = spec.toCandidates(res.data);
+  const candidates = spec.toCandidates(res.data, prep.input);
   const { data: proposal, error: pe } = await supa
     .from("stage_proposals")
     .insert({ run_id: runId, stage: descriptor.stage, candidates: candidates as unknown as Json, prompt_run_ref: res.promptHash })
