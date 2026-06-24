@@ -24,7 +24,11 @@
     {
       "step": 2,
       "name": "thumbnail-regenerate-backend",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-24T20:28:14+0900",
+      "summary": "썸네일 전체 다시생성(regenerateStage union에 thumbnail 추가·run/thumbnails.requested force run-in-place로 3개 새로·편의 액션 regenerateThumbnails) + 개별 다시생성(composeSlotReplacement 순수 1칸 교체·나머지 2칸 idx/payload/reason/evidence 완전보존·범위밖 throw + regenerateThumbnailSlot 무전이 in-place: thumbnailStageSpec prepare/toCandidates 재사용·buildRegenerateAugmentedSystem 변주로 promptHash 차등·낙관잠금 state=thumbnails_proposed 0행 throw·transitionRun 미호출 + thumbnailSlotStage Inngest run/thumbnail-slot.requested concurrency1/retries2/onFailure thumbnail·index 등록·client.ts 이벤트 + 서버액션 regenerateThumbnailSlot). 상태전이 없음·신규스키마 0·UI 미침범(step3). tests/thumbnailSlot.test.ts 6케이스. tc/test(300)/build 그린",
+      "completed_at": "2026-06-24T20:39:03+0900"
     },
     {
       "step": 3,
