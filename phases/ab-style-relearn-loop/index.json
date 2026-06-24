@@ -3,6 +3,15 @@
   "phase": "ab-style-relearn-loop",
   "goal": "A/B 스타일 학습을 지속 루프로: 새 A/B 표본이 마지막 style_profile 학습 이후 늘면 재학습 draft를 자동 제안(사람이 검수·activate). 현재는 2026-06-23 1회 학습 후 고정. 회고 sweep(retrospectiveSweep) 멱등 패턴 복제 — 순수 eligibleForStyleRelearn + styleRelearnSweep + Inngest 함수(수동 트리거 'style/relearn.requested' + 선택 cron). draft만 생성(status=draft), 활성화=사람게이트. 멱등. DB는 sweep만, LLM은 learn-ab-style(claude-p $0).",
   "steps": [
-    { "step": 0, "name": "style-relearn-sweep", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "style-relearn-sweep",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "summary": "eligibleForStyleRelearn 순수판정(표본 minDelta 증가시만) + styleRelearnSweep 멱등(현재 thumbnail ab_variants 행수 vs 최신 style_profile provenance 행수 비교, 학습시 ab_variant_id 채워 다음 sweep 동률→스킵, 0표본 no-op, provenance 실패시 draft 롤백, activate 안함) + Inngest styleRelearnCron(수동 style/relearn.requested + 주1회 cron, retrospectiveCron 미러) + 테스트 7케이스. draft까지만·사람게이트. tc/test/build 그린",
+      "started_at": "2026-06-24T17:17:12+0900",
+      "completed_at": "2026-06-24T17:30:16+0900"
+    }
+  ],
+  "created_at": "2026-06-24T17:17:12+0900"
 }
