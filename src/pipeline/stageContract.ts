@@ -13,6 +13,7 @@ import type { LlmConfig } from "../llm/config.js";
 import { getRun, transitionRun, setProgress, type Supa } from "./runState.js";
 import type { StageDescriptor } from "./stages.js";
 import type { ProposalSource } from "../lib/dashboard/proposalTypes.js";
+import { decideStageEntry } from "./regenerateDecision.js";
 
 /** stage_proposals.candidates 한 항목(제안=임시, lineage 정규화는 채택 후). */
 export interface Candidate {
@@ -53,13 +54,22 @@ export interface ProposalStageResult {
 export async function runProposalStage<TOut>(
   spec: ProposalStageSpec<TOut>,
   deps: ProposalStageDeps,
+  opts: { force?: boolean } = {},
 ): Promise<ProposalStageResult> {
   const { runId, descriptor } = spec;
   const { supa } = deps;
   const run = await getRun(supa, runId);
 
-  // 0) 멱등: 이미 제안 완료 상태면 기존 proposal 반환(재과금 0).
-  if (run.state === descriptor.proposedState) {
+  // 진입 판정(순수): force=false면 기존 멱등·정상·가드 분기와 정확히 동치.
+  const entry = decideStageEntry({
+    state: run.state,
+    fromState: descriptor.fromState,
+    proposedState: descriptor.proposedState,
+    force: !!opts.force,
+  });
+
+  // 0) 멱등: 이미 제안 완료 상태면 기존 proposal 반환(재과금 0). force면 우회(run-in-place).
+  if (entry === "memoized") {
     const { data: existing } = await supa
       .from("stage_proposals")
       .select("id, candidates")
@@ -75,10 +85,12 @@ export async function runProposalStage<TOut>(
         state: descriptor.proposedState, costUsd: 0, provider: "memoized", skipped: true,
       };
     }
+    // proposal 행이 없으면(이론상 비정상) 기존엔 fromState 가드에 걸려 에러였다 — 동치 유지.
+    throw new Error(`${descriptor.stage} 단계는 '${descriptor.fromState}'에서만 시작(현재 '${run.state}').`);
   }
 
-  // 1) 진입 가드: fromState에서만 시작.
-  if (run.state !== descriptor.fromState) {
+  // 1) 진입 가드: fromState에서만 시작. (run-in-place는 proposedState에서 진입하므로 통과)
+  if (entry === "reject") {
     throw new Error(`${descriptor.stage} 단계는 '${descriptor.fromState}'에서만 시작(현재 '${run.state}').`);
   }
 
@@ -128,13 +140,27 @@ export async function runProposalStage<TOut>(
     }
   }
 
-  // 6) 상태 전이를 '마지막'에 + 비용/모델/지연 갱신(같은 UPDATE).
-  await transitionRun(supa, runId, descriptor.fromState, descriptor.proposedState, {
+  // 6) 마지막에 run 갱신. run-forward는 fromState→proposedState 전이(기존 동작 동치).
+  //    run-in-place(force 재생성)는 전이 없이 같은 proposedState로 비용/모델/지연만 update —
+  //    상태가 안 바뀌니 DB 전이 트리거 무관(migration 불필요). 새 proposal만 추가된다.
+  const patch = {
     cost_usd: run.cost_usd + res.costUsd,
     model: `${res.provider}`,
     prompt_version: res.promptHash,
     latency_ms: res.latencyMs,
-  });
+  };
+  if (entry === "run-in-place") {
+    const { data: upd, error: ue } = await supa
+      .from("production_runs")
+      .update(patch)
+      .eq("id", runId)
+      .eq("state", descriptor.proposedState) // 낙관 잠금: 같은 state일 때만(경합 안전)
+      .select("id");
+    if (ue) throw new Error(`run 비용 갱신 실패(in-place): ${ue.message}`);
+    if (!upd || upd.length === 0) throw new Error(`in-place 갱신 무효: run ${runId}가 더 이상 '${descriptor.proposedState}'가 아님.`);
+  } else {
+    await transitionRun(supa, runId, descriptor.fromState, descriptor.proposedState, patch);
+  }
   await setProgress(supa, runId, null); // 서브진행 클리어(단계 완료)
 
   return {

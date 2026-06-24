@@ -3,8 +3,13 @@
 import { runProposalStage, type ProposalStageSpec } from "../../pipeline/stageContract.js";
 import { withStageRuntime } from "../../pipeline/stageRuntime.js";
 
-export async function executeProposalStage<TOut>(spec: ProposalStageSpec<TOut>, opts: { softAck?: boolean | undefined } = {}) {
-  const guarded = await withStageRuntime(spec.runId, (deps) => runProposalStage(spec, deps), opts);
+export async function executeProposalStage<TOut>(spec: ProposalStageSpec<TOut>, opts: { softAck?: boolean | undefined; force?: boolean | undefined } = {}) {
+  const { softAck, force } = opts;
+  const guarded = await withStageRuntime(
+    spec.runId,
+    (deps) => runProposalStage(spec, deps, force !== undefined ? { force } : {}),
+    softAck !== undefined ? { softAck } : {},
+  );
   if (guarded.status !== "ok") return { runId: spec.runId, status: guarded.status };
   const res = guarded.value;
   return { runId: res.runId, status: "ok" as const, proposalId: res.proposalId, count: res.candidates.length, state: res.state, skipped: res.skipped };

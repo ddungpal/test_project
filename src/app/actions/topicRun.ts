@@ -158,6 +158,17 @@ export async function selectStructure(sel: SelectInput): Promise<{ state: string
   return { state: res.state };
 }
 
+// '다시 생성'(§8.2 단계경계 버튼) — 같은 단계 이벤트를 force=true로 재발행.
+//   멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음). 최신-우선 읽기라
+//   새 제안이 자동으로 화면에 뜬다. research/script는 제안 단계가 아니라 범위 밖.
+export async function regenerateStage(runId: string, stage: "topic" | "titles" | "structure"): Promise<void> {
+  await requireOwner();
+  const name = (
+    { topic: "run/topic.requested", titles: "run/titles.requested", structure: "run/structure.requested" } as const
+  )[stage];
+  await inngest.send({ name, data: { runId, force: true } });
+}
+
 // 셜록 리서치(§8.2 단계경계 버튼) — request(이벤트) → 검수 진입 → 트리아지 승인(§11).
 export async function requestResearch(runId: string): Promise<void> {
   await requireOwner();

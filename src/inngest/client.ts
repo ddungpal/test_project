@@ -8,7 +8,8 @@ import { Inngest, EventSchemas } from "inngest";
 // 단계 경계 이벤트 스키마(§8.2: 버튼=단계경계/사람게이트). data는 최소(runId)만 — 진실은 DB.
 // softAck: SOFT 비용캡 일시정지 후 사람이 승인하고 재개할 때 true(반장 마감).
 // levelSplit: 촉이 수준 분해 모드(키워드를 시청자 수준별로 나눠 제안) — topic.requested에서만 사용.
-type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean };
+// force: '다시 생성' — 멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음).
+type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean };
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };

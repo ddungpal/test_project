@@ -29,6 +29,15 @@
       "dir": "hook-thumbnail-revamp",
       "status": "completed",
       "completed_at": "2026-06-24T13:52:40+0900"
+    },
+    {
+      "dir": "stage-regenerate",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (regenerate-force-path)",
+      "attempt": 1,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-06-24T14:16:52+0900"
     }
   ]
 }
