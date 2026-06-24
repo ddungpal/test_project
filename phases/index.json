@@ -47,12 +47,8 @@
     },
     {
       "dir": "ab-style-confidence",
-      "status": "running",
-      "progress": "0/1",
-      "running_step": "0 (lift-frequency-confidence)",
-      "attempt": 1,
-      "elapsed_seconds": 720,
-      "heartbeat_at": "2026-06-24T16:59:37+0900"
+      "status": "completed",
+      "completed_at": "2026-06-24T17:00:01+0900"
     },
     {
       "dir": "ab-style-conformance",
