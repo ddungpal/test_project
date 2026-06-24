@@ -62,12 +62,8 @@
     },
     {
       "dir": "regenerate-distinct",
-      "status": "running",
-      "progress": "0/1",
-      "running_step": "0 (regenerate-prompt-variation)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-24T19:01:44+0900"
+      "status": "completed",
+      "completed_at": "2026-06-24T19:02:15+0900"
     }
   ]
 }
