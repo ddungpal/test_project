@@ -37,12 +37,8 @@
     },
     {
       "dir": "thumbnail-text-layout",
-      "status": "running",
-      "progress": "0/1",
-      "running_step": "0 (candidate-thumbnail-text)",
-      "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-06-24T15:19:16+0900"
+      "status": "completed",
+      "completed_at": "2026-06-24T15:19:27+0900"
     }
   ]
 }
