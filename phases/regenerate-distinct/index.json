@@ -1,0 +1,17 @@
+{
+  "project": "produce script",
+  "phase": "regenerate-distinct",
+  "goal": "'다시 생성'(force=true)이 이전과 바이트 동일한 후보를 돌려주는 버그 수정. 근본원인: callLLM이 promptHash(roleId,system,input,schema,model,maxTokens)로 픽스처를 캐싱(replay=항상 재생, record=있으면 재생)하는데, 재생성은 prepare가 같은 run·주제로 동일 system+input→동일 promptHash→동일 출력. 새 stage_proposals 행은 INSERT되나 내용 불변(=화면상 업데이트 안 보임, 자동/강제 새로고침 모두). 해결: runProposalStage에서 entry==='run-in-place'(force)일 때만 prep.system에 변주 지시(이전 후보 요약 + 재생성 회차 nonce) 주입 → promptHash가 forward와 달라져 dev record에서 새 라이브 생성($0)·운영서 '이전 안과 다른 대안' 명시. forward(force=false)는 불변 → 기존 parity/eval 픽스처 전부 보존. 순수 헬퍼 + promptHash 차등 테스트로 검증(라이브 0·오프라인 $0).",
+  "steps": [
+    {
+      "step": 0,
+      "name": "regenerate-prompt-variation",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-24T18:53:44+0900",
+      "summary": "buildRegenerateAugmentedSystem(이전후보+회차nonce 변주지시·결정적) + runProposalStage가 run-in-place(force)에서만 prep.system augment(이전 제안 조회·attempt=기존 제안수) → 재생성 promptHash가 forward와 차등 = 새 후보 생성. forward 경로 불변(픽스처 보존). promptHash 차등·결정성 테스트. tc/test/build 그린",
+      "completed_at": "2026-06-24T19:02:15+0900"
+    }
+  ],
+  "created_at": "2026-06-24T18:53:44+0900"
+}
