@@ -5,7 +5,7 @@
   "description": "김짠부 콘텐츠 제작 동료 AI 시스템 (Phase 0 부트스트랩)",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
@@ -15,7 +15,8 @@
     "parity:live": "tsx scripts/parity-live.ts",
     "tone:extract": "tsx scripts/extract-tone.ts",
     "slice:topic": "tsx scripts/run-topic-slice.ts",
-    "inngest:dev": "inngest-cli dev"
+    "preflight": "tsx scripts/dev-preflight.ts",
+    "inngest:dev": "inngest-cli dev -u http://localhost:3000/api/inngest"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.39.0",

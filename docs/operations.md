@@ -37,3 +37,5 @@ DEV_OWNER_BYPASS              # ⚠️ 운영/스테이징 절대 미설정(NODE
 
 ## 남은 운영 하드닝(후순위)
 - 실시간 구독(수동 새로고침 → Supabase Realtime) · audit_log · eval 엄밀화 · 골든 A/B(모델 비교, 별도 트랙).
+
+파이프라인 런이 이유 없이 Failed면 `npm run preflight`로 앱/Inngest 포트 일치부터 확인(3000 고정).
