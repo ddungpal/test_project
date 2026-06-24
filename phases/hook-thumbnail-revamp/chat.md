@@ -35,3 +35,22 @@
 [Joy] 레거시 copy 폴백이랑 카피 없음 placeholder 둘 다 살아있어서 옛날 데이터도 안 깨져 금지사항 위반 없음
 [Joy] 에스더 이번 거 진짜 깔끔하다 통과! 수고했어 👏
 [리드] 좋아, step 1 완료. 썸네일이 메인2+박스2 구조로 그려지고, 레거시 copy 폴백도 살아있고, ref 유사 경고 배지에 수정칸 분리까지 다 됐어. TRUS 3색 그대로. 에스더·조이 수고했어! 다음은 step2 단계 자동 새로고침.
+
+=== Step 2: stage-auto-refresh ===
+
+=== Step 2: stage-auto-refresh ===
+[리드] 마지막 step이야. 단계 시작 버튼 누르면 백그라운드로 도는데 완료돼도 화면이 안 바뀌어서 수동 새로고침해야 하는 문제. RequestStageButton에 "생성 중" 상태 + LiveRefresh만 붙이면 끝나. 서버 상태머신은 절대 안 건드려. 맥스, UI 한 파일 수정이라 에스더 없이 가자.
+[Max] 응 내가 맡을게. RequestStageButton이랑 LiveRefresh, page.tsx StageSection 분기 다 읽었어. LiveRefresh는 active fallbackMs props 그대로 재사용하면 되겠다.
+[Max] 버튼에 submitted 로컬 상태 붙이고 성공하면 생성 중으로 잠그면서 LiveRefresh 켤게. 결과 들어오면 부모가 분기 바꿔서 버튼 자체가 언마운트되니까 폴링은 알아서 멈춰.
+[Max] 다 됐어. RequestStageButton 한 파일만 고쳤어. 버튼 누르면 submitted로 잠그고 생성 중 라벨 + LiveRefresh active fallbackMs 3000 켜져. 에러 나면 submitted false로 되돌려서 재시도 가능해.
+[Max] 무한 폴링 막으려고 3분 상한 뒀어. setTimeout으로 timedOut 켜지면 LiveRefresh 끄고 오래 걸린다 안내만 띄워. LiveRefresh랑 page.tsx 서버 분기는 안 건드렸어.
+[Max] typecheck 0, test 231개 통과, build 0. 이번엔 캐시한테 안 맞았네. 놓친 거 있으면 봐줘.
+[리드] AC 직접 돌렸어 — typecheck/test/build 전부 exit 0. 조이, 맥스 작업 독립 검수 부탁해!
+[Joy] 오 맥스 빠르다~ git diff 봤어. 진짜 RequestStageButton 한 파일만 건드렸네. 클라 버튼만 손대라는 거 정확히 지킴 굿굿
+[Joy] submitted 상태 추가, 성공 후 setSubmitted+router.refresh, 에러 시 되돌림, disabled랑 라벨 분기, 3분 setTimeout 상한에 cleanup까지 다 있다. LiveRefresh active fallbackMs=3000 시그니처도 맞고
+[Joy] 이제 typecheck/test/build 돌려볼게. 캐시 깨지면 .next 날리고 다시 할게
+[Joy] typecheck exit 0, test 231개 전부 통과 exit 0. 테스트 지워서 통과시킨 거 아니고 그대로 다 살아있음
+[Joy] build는 처음에 _not-found 프리렌더에서 webpack-runtime 에러 떴는데 이거 캐시 이슈 맞더라. .next 날리고 다시 돌리니까 exit 0 깔끔하게 빌드됨
+[Joy] 금지사항도 다 잘 지킴 — 새 enum/migration 없고 LiveRefresh.tsx stageProgress.ts page.tsx 안 건드림, 단계별 분기 없이 공통 처리, 색도 trus-yellow/black/white만 씀. 통과! 수고했어 맥스 🎉
+[Joy] 다 봤어! 클라 버튼 한 파일만 손댔고 LiveRefresh·page.tsx 서버 분류 안 건드림, submitted 상태·3분 상한·타이머 cleanup까지 다 들어갔어. typecheck/test(231)/build 다 exit 0! 통과야 맥스 깔끔했어 🎉
+[리드] 좋아, step 2 통과. 훅·썸네일 리뱀프 3 step 전부 완료다. 다들 수고했어!
