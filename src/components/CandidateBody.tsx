@@ -6,6 +6,7 @@ import {
   AUDIENCE_LEVEL_LABEL,
 } from "@/lib/dashboard/proposalTypes";
 import { ThumbnailCanvas } from "./ThumbnailCanvas";
+import { REFERENCE_SIMILARITY_FLAG } from "@/agents/hook_maker/referenceGuard";
 
 // 후보/선택 payload 표시(읽기) — 순수 컴포넌트(서버=요약, 클라=선택기 공용).
 //   payload는 jsonb→unknown(LLM 산출·사람 수정) — 형태 보장 없음. 방어적으로 가드(누락 시 폴백, 크래시 금지).
@@ -27,12 +28,26 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
   }
   if (stage === "title_thumb") {
     const p = (payload ?? {}) as Partial<TitlePayload>;
+    // 레퍼런스 유사도 임계 이상이면 '거의 베낌' 의심 → 경고 칩. 임계값은 referenceGuard에서 단일 출처.
+    const refFlagged = p.ref_similarity != null && p.ref_similarity >= REFERENCE_SIMILARITY_FLAG;
     return (
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         <div className="sm:w-56 sm:shrink-0">
-          <ThumbnailCanvas copy={p.thumbnail_copy ?? ""} layout={p.thumbnail_layout ?? ""} />
+          <ThumbnailCanvas
+            main={p.thumbnail_main}
+            boxes={p.thumbnail_boxes}
+            copy={p.thumbnail_copy}
+            layout={p.thumbnail_layout}
+          />
         </div>
-        <div className="text-sm font-bold text-trus-white">{p.title || "—"}</div>
+        <div className="min-w-0">
+          <div className="text-sm font-bold text-trus-white">{p.title || "—"}</div>
+          {refFlagged && (
+            <span className="mt-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow">
+              ⚠ 레퍼런스와 유사
+            </span>
+          )}
+        </div>
       </div>
     );
   }

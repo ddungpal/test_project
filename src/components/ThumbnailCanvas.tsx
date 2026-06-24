@@ -3,8 +3,11 @@
 //   색은 검정/노랑/흰 3색만. 격동고딕2(font-sans). 그림자·그라데이션 금지. radius 0.
 //   순수 표시 컴포넌트(상태·서버호출 없음) → 서버/클라 양쪽에서 사용 가능.
 //
-//   props 하위호환: { copy, layout } 시그니처 유지.
-//     copy = 썸네일 문구(단일 문자열). 줄바꿈은 줄 분리, [대괄호]는 강조 하이라이트로 결정적 파싱.
+//   props 하위호환: { main?, boxes?, copy?, layout? }.
+//     신규: main = 메인문구 2개(큰 글씨 위쪽), boxes = 작은 박스 2개(칩, 아래쪽).
+//       main/boxes 중 하나라도 비어있지 않으면 신규 구조 렌더(각 줄에 [대괄호] 강조 하이라이트 적용).
+//     레거시: main/boxes 둘 다 없고 copy 문자열만 있으면 기존 렌더(줄바꿈 분리 + [강조]).
+//       copy = 썸네일 문구(단일 문자열). 줄바꿈은 줄 분리, [대괄호]는 강조 하이라이트로 결정적 파싱.
 //     layout = 레이아웃 설명(캡션). 있으면 캔버스 아래 작게 표시.
 
 // 한 줄 내에서 [강조] 마커를 노랑 하이라이트 조각으로 분해. 마커 없으면 통째로 일반 조각.
@@ -23,13 +26,46 @@ function splitEmphasis(line: string): { text: string; emphasis: boolean }[] {
   return parts;
 }
 
-export function ThumbnailCanvas({ copy, layout }: { copy: string; layout?: string }) {
-  // 결정적 파싱: 줄바꿈 분리 → 빈 줄 제거. 전부 비면 placeholder.
+// 한 줄을 [강조] 분해 후 <span>/<mark> 조각으로 렌더(신규·레거시 공용). 키 prefix로 충돌 방지.
+function renderLine(line: string, keyPrefix: string) {
+  return splitEmphasis(line).map((seg, si) =>
+    seg.emphasis ? (
+      <mark
+        key={`${keyPrefix}-${si}`}
+        className="box-decoration-clone bg-trus-yellow px-1 text-trus-black"
+      >
+        {seg.text}
+      </mark>
+    ) : (
+      <span key={`${keyPrefix}-${si}`}>{seg.text}</span>
+    ),
+  );
+}
+
+export function ThumbnailCanvas({
+  main,
+  boxes,
+  copy,
+  layout,
+}: {
+  main?: string[] | undefined; // 신규: 메인문구 2개(큰 글씨)
+  boxes?: string[] | undefined; // 신규: 작은 박스 2개(칩)
+  copy?: string | undefined; // 레거시: 단일 문자열
+  layout?: string | undefined;
+}) {
+  // 신규 구조: 빈 항목 필터(빈 줄/빈 박스 안 그리게).
+  const mainLines = (main ?? []).map((l) => l.trim()).filter((l) => l.length > 0);
+  const boxItems = (boxes ?? []).map((b) => b.trim()).filter((b) => b.length > 0);
+  const hasStructured = mainLines.length > 0 || boxItems.length > 0;
+
+  // 레거시 폴백: 줄바꿈 분리 → 빈 줄 제거.
   const lines = (copy ?? "")
     .split(/\r?\n/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
-  const hasCopy = lines.length > 0;
+
+  // 표시할 내용 유무: 신규 우선, 없으면 레거시 copy.
+  const hasContent = hasStructured || lines.length > 0;
 
   return (
     <div>
@@ -55,9 +91,42 @@ export function ThumbnailCanvas({ copy, layout }: { copy: string; layout?: strin
           <span className="pointer-events-none absolute left-0 top-0 h-5 w-5 border-l-4 border-t-4 border-trus-yellow" />
           <span className="pointer-events-none absolute bottom-0 right-0 h-5 w-5 border-b-4 border-r-4 border-trus-yellow" />
 
-          {!hasCopy ? (
+          {!hasContent ? (
             <p className="text-center text-sm font-bold text-trus-white/30">카피 없음</p>
+          ) : hasStructured ? (
+            // 신규 구조: 메인문구 2개(큰 글씨) 위 + 작은 박스 2개(칩) 아래.
+            <div className="flex flex-col gap-2">
+              {mainLines.length > 0 && (
+                <div
+                  className={
+                    // 메인문구 줄 수에 따라 크기 자동(기존 큰 사이즈감 유지).
+                    mainLines.length >= 2
+                      ? "text-xl font-black leading-[1.05] tracking-tight sm:text-2xl"
+                      : "text-2xl font-black leading-[1.05] tracking-tight sm:text-3xl"
+                  }
+                >
+                  {mainLines.map((line, li) => (
+                    <p key={li} className="break-keep text-trus-white">
+                      {renderLine(line, `m${li}`)}
+                    </p>
+                  ))}
+                </div>
+              )}
+              {boxItems.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {boxItems.map((box, bi) => (
+                    <span
+                      key={bi}
+                      className="break-keep border border-trus-yellow px-1.5 py-0.5 text-xs font-bold text-trus-yellow sm:text-sm"
+                    >
+                      {renderLine(box, `b${bi}`)}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
+            // 레거시 폴백: copy 단일 문자열(줄바꿈 분리 + [강조]).
             <div
               className={
                 // 줄 수가 많을수록 한 단계 작게(긴 카피도 안 깨지게).
@@ -70,18 +139,7 @@ export function ThumbnailCanvas({ copy, layout }: { copy: string; layout?: strin
             >
               {lines.map((line, li) => (
                 <p key={li} className="break-keep text-trus-white">
-                  {splitEmphasis(line).map((seg, si) =>
-                    seg.emphasis ? (
-                      <mark
-                        key={si}
-                        className="box-decoration-clone bg-trus-yellow px-1 text-trus-black"
-                      >
-                        {seg.text}
-                      </mark>
-                    ) : (
-                      <span key={si}>{seg.text}</span>
-                    ),
-                  )}
+                  {renderLine(line, `l${li}`)}
                 </p>
               ))}
             </div>
