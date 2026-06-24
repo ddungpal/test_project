@@ -13,6 +13,7 @@ type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };
+  "run/thumbnails.requested": { data: StageData }; // 썸네일메이커(선택된 제목 → 썸네일 3개)
   "run/structure.requested": { data: StageData };
   "run/research.requested": { data: StageData }; // 셜록 셀(fan-out/join)
   "run/script.requested": { data: StageData }; // 짠펜(최종 합류)

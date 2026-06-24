@@ -18,6 +18,7 @@ export interface AgentRole {
 export const ROLES = {
   topic_scout: { roleId: "topic_scout", name: "촉이", defaultModel: "opus", tools: ["web"] },
   hook_maker: { roleId: "hook_maker", name: "훅이", defaultModel: "opus", tools: [] },
+  thumbnail_maker: { roleId: "thumbnail_maker", name: "썸네일메이커", defaultModel: "opus", tools: [] }, // 선택된 제목에 맞춘 썸네일 전용(훅이에서 분리). roleId 영구·변경 금지.
   structurer: { roleId: "structurer", name: "구다리", defaultModel: "opus", tools: [] },
   sherlock_lead: { roleId: "sherlock_lead", name: "셜록", defaultModel: "opus", tools: ["web", "fetch"] },
   fact_verifier: { roleId: "fact_verifier", name: "팩트검증가", defaultModel: "opus", tools: ["web", "fetch"] },

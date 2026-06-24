@@ -146,6 +146,12 @@ export async function selectTitles(sel: SelectInput): Promise<{ state: string }>
   return { state: res.state };
 }
 
+// 썸네일 단계(§8.2): 제목 확정 후 썸네일메이커 트리거. select/confirm/UI는 범위 밖(step3).
+export async function requestThumbnails(runId: string): Promise<void> {
+  await requireOwner();
+  await inngest.send({ name: "run/thumbnails.requested", data: { runId } });
+}
+
 export async function requestStructure(runId: string): Promise<void> {
   await requireOwner();
   await inngest.send({ name: "run/structure.requested", data: { runId } });

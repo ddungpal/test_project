@@ -68,11 +68,11 @@
     {
       "dir": "title-thumbnail-split",
       "status": "running",
-      "progress": "0/4",
-      "running_step": "0 (state-machine-split)",
+      "progress": "1/4",
+      "running_step": "1 (title-thumbnail-agents)",
       "attempt": 1,
-      "elapsed_seconds": 540,
-      "heartbeat_at": "2026-06-24T20:10:46+0900"
+      "elapsed_seconds": 960,
+      "heartbeat_at": "2026-06-24T20:27:30+0900"
     }
   ]
 }
