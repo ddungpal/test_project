@@ -167,12 +167,23 @@ export async function selectStructure(sel: SelectInput): Promise<{ state: string
 // '다시 생성'(§8.2 단계경계 버튼) — 같은 단계 이벤트를 force=true로 재발행.
 //   멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음). 최신-우선 읽기라
 //   새 제안이 자동으로 화면에 뜬다. research/script는 제안 단계가 아니라 범위 밖.
-export async function regenerateStage(runId: string, stage: "topic" | "titles" | "structure"): Promise<void> {
+export async function regenerateStage(runId: string, stage: "topic" | "titles" | "structure" | "thumbnail"): Promise<void> {
   await requireOwner();
   const name = (
-    { topic: "run/topic.requested", titles: "run/titles.requested", structure: "run/structure.requested" } as const
+    { topic: "run/topic.requested", titles: "run/titles.requested", structure: "run/structure.requested", thumbnail: "run/thumbnails.requested" } as const
   )[stage];
   await inngest.send({ name, data: { runId, force: true } });
+}
+
+// 썸네일 '전체 다시 생성'(3개 새로) 편의 액션 — force=true로 thumbnails.requested 재발행(run-in-place).
+export async function regenerateThumbnails(runId: string): Promise<void> {
+  await regenerateStage(runId, "thumbnail");
+}
+
+// 썸네일 '개별 슬롯 다시 생성'(3칸 중 slotIdx만 교체·나머지 보존) — 무전이 in-place(상태 유지).
+export async function regenerateThumbnailSlot(runId: string, slotIdx: number): Promise<void> {
+  await requireOwner();
+  await inngest.send({ name: "run/thumbnail-slot.requested", data: { runId, slotIdx } });
 }
 
 // 셜록 리서치(§8.2 단계경계 버튼) — request(이벤트) → 검수 진입 → 트리아지 승인(§11).

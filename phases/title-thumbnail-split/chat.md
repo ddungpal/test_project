@@ -54,3 +54,28 @@
 [Joy] hook 쪽 wiring 테스트도 스타일 주입 안 함을 not.toContain으로 못박았고, thumbnail 쪽은 별도 contract/wiring으로 새로 뺐네. eval도 훅이=제목전용, thumbnail_maker=썸네일 따로 분리됐어
 [Joy] regenerate/confirm/UI 하나도 안 건드렸어 — step2,3 침범 0. 결론 통과! 단계 분리 딱 필요한 만큼 깔끔하게 했네 맥스 수고했어 🎉
 [리드] 좋아, 조이 PASS 확인. AC 셋 다 exit 0이고 센티넬도 깔끔해. step1 완료 — 훅이=제목전용, thumbnail_maker 신규 가동, 픽스처 오프라인 유지. 둘 다 수고했어! 다음은 step2 다시생성 백엔드야.
+
+=== Step 2: thumbnail-regenerate-backend ===
+
+[리드] 자 step2다. 썸네일 다시생성 백엔드 — 전체(3개 새로)랑 개별(3칸 중 1칸만 교체·나머지 유지). UI는 step3니까 순수 백엔드라 에스더는 안 부르고 맥스→조이로 간다.
+[리드] 맥스, 이거 맡아줘. 전체는 기존 force 경로(regenerateStage)에 thumbnail만 끼우면 끝이고, 개별이 핵심이야. composeSlotReplacement 순수함수로 1칸만 교체(나머지 idx·payload 보존) + regenerateThumbnailSlot 무전이 in-place(낙관잠금 state=thumbnails_proposed). step1 thumbnailStageSpec의 prepare/toCandidates 재사용하고, 변주는 buildRegenerateAugmentedSystem 그대로 써서 promptHash 차등화해줘. 상태 전이는 절대 없음. 디테일은 step 본문에 다 박혀있어.
+
+[Max] 오케이 맡을게. stageContract force 경로랑 regenerateVariation, thumbnailStageSpec 다 다시 읽었어. 전체는 force에 thumbnail만 끼우면 되고 개별이 핵심인 거 확인했어.
+[Max] 먼저 thumbnailStage가 이미 force 넘기는지 봤는데 step1에서 미러해놔서 그대로 동작해. 추가 손댈 거 없어. 개별 슬롯 교체부터 짠다.
+
+[Max] 개별 슬롯 다 짰어. composeSlotReplacement는 순수함수로 1칸만 교체하고 나머지는 참조 그대로 보존하게 했고, regenerateThumbnailSlot은 transitionRun 안 부르고 낙관잠금 update만 해서 상태 전이 없게 막았어.
+[Max] 전체 재생성은 regenerateStage에 thumbnail union만 추가했어. thumbnailStage가 이미 force 받으니까 그대로 동작해. 편의 액션이랑 슬롯 서버액션, Inngest 함수·이벤트·레지스트리까지 붙였어.
+[Max] 이제 AC 돌려볼게.
+
+[Max] AC 셋 다 통과했어. typecheck 0, test 300개 그린(슬롯 테스트 6개 추가), build도 0이야. build는 처음에 .next 캐시가 깨져서 한 번 떨어졌는데 캐시 지우니까 깨끗해졌어 — 내 코드 문제는 아니었어.
+[Max] 정리하면, 둘 다 상태 전이 없어. 전체는 force run-in-place로 3개 새로, 개별은 1칸만 바꾸고 나머지 2칸은 손도 안 댔어. 낙관잠금도 thumbnails_proposed로 걸어놨어.
+[Max] 신규 스키마 안 만들고 thumbnailStageSpec 그대로 재사용했어. 놓친 거 있으면 말해줘.
+
+[리드] 고마워 맥스. AC 내가 다시 돌려도 셋 다 exit 0 확인했어(typecheck 0, test 300, clean build 0).
+[리드] 조이, 검수 부탁해. 맥스 diff 전체랑 AC 결과 봐줘. 특히 개별 경로가 무전이 in-place(transitionRun 안 부름)·나머지 2칸 완전 보존인지, 전체는 기존 force 재사용인지, 낙관잠금 state=thumbnails_proposed 걸렸는지, slotIdx 범위밖 안전 throw인지, UI/confirm 안 건드렸는지 봐줘.
+[Joy] 신규파일 셋 다 읽었어. regenerateThumbnailSlot 진짜 transitionRun 안 부르고 runProposalStage run-in-place 패턴 그대로 미러했네. 낙관잠금 state=thumbnails_proposed 0행 throw까지 똑같아 👍
+[Joy] 가드도 빵빵해 — state 체크, 후보3개 미만 throw, slotIdx 0..2 범위밖 throw 두 군데(순수함수+런타임) 다 박혀있어. 이제 AC 셋 돌려본다!
+[Joy] AC 셋 다 돌렸어 — typecheck exit0, test 300개(슬롯6개 추가) 전부 통과, build exit0! 기존 테스트 약화·삭제 하나도 없어
+[Joy] 전체재생성은 기존 force 경로(regenerateStage)에 thumbnail union만 끼웠고 신규 스키마 0, 개별은 thumbnailStageSpec prepare/toCandidates 그대로 재사용. UI/confirm/tsx 침범 0이라 step3도 안건드렸어
+[Joy] 결론 통과! runProposalStage run-in-place를 진짜 충실하게 미러했네. 무전이 in-place·2칸 완전보존·낙관잠금 다 맞아. 맥스 깔끔했어 🎉
+[리드] 좋아, 조이 PASS 확인. AC 셋 다 exit 0이고 센티넬도 깔끔해. step2 완료 — 전체 다시생성(force run-in-place)·개별 다시생성(1칸 교체·나머지 보존·무전이 in-place) 다 들어갔어. 다음은 step3 UI야. 둘 다 수고했어!
