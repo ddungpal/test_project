@@ -39,6 +39,15 @@
       "dir": "thumbnail-text-layout",
       "status": "completed",
       "completed_at": "2026-06-24T15:19:27+0900"
+    },
+    {
+      "dir": "thumbnail-card-refine",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (hook-main-copy-semantics)",
+      "attempt": 1,
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-06-24T15:47:44+0900"
     }
   ]
 }
