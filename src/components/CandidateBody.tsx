@@ -40,7 +40,6 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
     const box2 = p.thumbnail_boxes?.[1]?.trim() ?? "";
     const legacyCopy = (p.thumbnail_copy ?? "").trim(); // 레거시: 단일 문자열(줄바꿈 보존)
     const title = (p.title ?? "").trim();
-    const layout = (p.thumbnail_layout ?? "").trim();
 
     const labelCls = "shrink-0 text-trus-white/50";
     return (
@@ -75,7 +74,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
           )
         )}
 
-        <div className="text-sm">
+        <div className="text-sm mt-3 border-t border-trus-white/10 pt-2">
           <span className={labelCls}>제목: </span>
           <span className="font-bold text-trus-white">{title || "—"}</span>
           {refFlagged && (
@@ -84,10 +83,6 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
             </span>
           )}
         </div>
-
-        {layout && (
-          <p className="text-xs text-trus-white/45">레이아웃: {layout}</p>
-        )}
       </div>
     );
   }

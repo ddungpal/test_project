@@ -100,20 +100,24 @@ export function ProposalSelector({
                 </span>
                 <div className="min-w-0 flex-1">
                   <CandidateBody stage={stage} payload={c.payload} />
-                  <p className="mt-2 text-xs leading-snug text-trus-white/60">왜: {c.reason}</p>
-                  {c.evidence_ids.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      {c.evidence_ids.map((id) => (
-                        <span key={id} className="border border-trus-white/15 px-1.5 py-0.5 text-[10px] text-trus-white/40">
-                          {id}
-                        </span>
-                      ))}
-                    </div>
+                  {stage !== "title_thumb" && (
+                    <>
+                      <p className="mt-2 text-xs leading-snug text-trus-white/60">왜: {c.reason}</p>
+                      {c.evidence_ids.length > 0 && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          {c.evidence_ids.map((id) => (
+                            <span key={id} className="border border-trus-white/15 px-1.5 py-0.5 text-[10px] text-trus-white/40">
+                              {id}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
             </button>
-            {candSources.length > 0 && (
+            {stage !== "title_thumb" && candSources.length > 0 && (
               <div className="px-4 pb-3">
                 <SourceLinks sources={candSources} />
               </div>
