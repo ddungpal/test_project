@@ -40,12 +40,17 @@ export function RegenerateButton({ runId, stage, proposalId }: { runId: string; 
     return () => clearTimeout(t);
   }, [submitted]);
 
-  function onClick() {
-    if (!window.confirm("현재 후보를 버리고 새로 생성합니다.")) return;
+  // forceLlm=false: 로컬($0) 우선(hybrid) — 활성 스켈레톤 있으면 LLM 미호출·거의 즉시. true: LLM 새 창작.
+  //   로컬 경로는 즉시 끝나도 완료=proposalId 변경으로 감지하므로 안 깨진다(기존 패턴 그대로).
+  function onClick(forceLlm: boolean) {
+    const msg = forceLlm
+      ? "현재 후보를 버리고 LLM으로 새로 생성합니다(비용 발생)."
+      : "현재 후보를 버리고 다시 생성합니다($0·로컬 우선).";
+    if (!window.confirm(msg)) return;
     setError(null);
     startTransition(async () => {
       try {
-        await regenerateStage(runId, stage, reason); // 빈/공백 reason은 Max 쪽에서 미전송 → 기존 동작과 동일
+        await regenerateStage(runId, stage, reason, forceLlm); // 빈/공백 reason·false forceLlm은 Max 쪽에서 미전송 → 기존 동작과 동일
         setStartId(proposalId); // 현재 proposalId 기록 → 새 행 도착해 바뀌면 완료
         router.refresh();
       } catch (e) {
@@ -69,13 +74,23 @@ export function RegenerateButton({ runId, stage, proposalId }: { runId: string; 
         placeholder="왜 다시 생성하나요? (선택) 예: 더 자극적인 후킹으로"
         className="mb-2 block w-full max-w-md resize-none border border-trus-yellow/40 bg-transparent px-3 py-2 text-sm text-trus-white placeholder:text-trus-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-50"
       />
-      <button
-        onClick={onClick}
-        disabled={pending || submitted}
-        className="border border-trus-yellow/50 px-5 py-2 text-sm font-bold text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-50"
-      >
-        {pending ? "요청 중…" : submitted ? "생성 중…" : "다시 생성"}
-      </button>
+      {/* 두 경로 — '다시 생성($0)'(로컬 우선·이유 없이 즉시) vs 'LLM으로 새로 써줘'(forceLlm·비용). 완료감지 로직 공유. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          onClick={() => onClick(false)}
+          disabled={pending || submitted}
+          className="border border-trus-yellow/50 px-5 py-2 text-sm font-bold text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-50"
+        >
+          {pending ? "요청 중…" : submitted ? "생성 중…" : "다시 생성 ($0)"}
+        </button>
+        <button
+          onClick={() => onClick(true)}
+          disabled={pending || submitted}
+          className="border border-trus-white/30 px-5 py-2 text-sm font-bold text-trus-white/80 hover:border-trus-yellow hover:text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-50"
+        >
+          LLM으로 새로 써줘
+        </button>
+      </div>
       {submitted && !timedOut && (
         <div className="mt-2">
           <LiveRefresh active fallbackMs={3000} />

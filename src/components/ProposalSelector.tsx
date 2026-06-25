@@ -14,6 +14,7 @@ import {
   type ProposalSource,
 } from "@/lib/dashboard/proposalTypes";
 import { CandidateBody } from "./CandidateBody";
+import { CandidateSourceBadge } from "./CandidateSourceBadge";
 import { SourceLinks } from "./SourceLinks";
 
 // 제안→선택(§8.1 사람 게이트) — 후보 라디오 선택 + (선택)수정 + 한 줄 이유 → select 액션(상태전환만, AI 0회).
@@ -101,6 +102,12 @@ export function ProposalSelector({
                 </span>
                 <div className="min-w-0 flex-1">
                   <CandidateBody stage={stage} payload={c.payload} />
+                  {/* 제목(title_thumb)은 reason/evidence는 안 보이되 출처 배지(로컬/LLM)만 작게 — 후보가 어디서 왔는지 표시. */}
+                  {stage === "title_thumb" && (
+                    <div className="mt-2">
+                      <CandidateSourceBadge evidenceIds={c.evidence_ids} />
+                    </div>
+                  )}
                   {stage !== "title_thumb" && (
                     <>
                       <p className="mt-2 text-xs leading-snug text-trus-white/60">왜: {c.reason}</p>

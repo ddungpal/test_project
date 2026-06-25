@@ -51,6 +51,24 @@ export interface CandidateView {
   evidence_ids: string[];
 }
 
+/** 후보가 어디서 왔는지(출처 배지용). 로컬 생성기는 evidence_ids에 "skeleton"을 박는다(step2). */
+export type CandidateSource = "local" | "llm";
+
+/**
+ * 후보 출처 판정(순수) — evidence_ids에 "skeleton"이 있으면 로컬($0), 없으면 LLM.
+ *   step2 localCandidates가 evidence_ids=[style.id,"skeleton"]로 로컬 후보를 표시한다.
+ *   활성 스켈레톤 없어 자동 LLM 폴백된 경우도 skeleton이 없으니 자연히 "llm"으로 표시된다(혼동 없음).
+ */
+export function candidateSource(evidence_ids: readonly string[] | null | undefined): CandidateSource {
+  return Array.isArray(evidence_ids) && evidence_ids.includes("skeleton") ? "local" : "llm";
+}
+
+/** 출처 배지 라벨(표시 문자열 단일 출처). */
+export const CANDIDATE_SOURCE_LABEL: Record<CandidateSource, string> = {
+  local: "로컬 생성 $0",
+  llm: "LLM 생성",
+};
+
 /** 제안 생성에 쓴 검색 출처(웹·YouTube) — 토글로 노출해 원문 확인(출처명시). migration 16. */
 export interface ProposalSource {
   id: string; // "web:0" | "yt:1" — 후보 evidence_ids와 매칭

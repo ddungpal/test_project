@@ -64,3 +64,43 @@
 [Joy] hook/thumbnail localCandidates 테스트 봤어. toCandidates 재사용해서 payload 동형(idx·title·ref_similarity / thumbnail_main·boxes·layout·thumbnail_copy파생·conformance) 다 단언했고, 스켈레톤 없으면 null로 LLM 폴백까지 못박았네. evidence_ids도 style.id가 style: 접두라 테스트랑 일치. 기존 테스트 안 지웠고. 자, 이제 AC 직접 돌려본다~
 [Joy] AC 셋 다 직접 돌렸어 — typecheck exit 0, test 434개 전부 통과 exit 0, build exit 0! 🎉 localCandidates는 제목·썸네일 두 곳에만 붙었고(topic/structure/research/script은 안 건드림), 로컬 경로 callLLM 미호출·$0·insert/전이 공유 다 확인. 기존 테스트도 약화 없이 보존됐고 payload 동형도 toCandidates 재사용으로 완벽. 맥스 이번 거 진짜 깔끔하다 👏 통과!
 [리드] 조이 PASS, AC 셋 다 exit 0(내 손으로도 재확인). step2 완료 처리한다. 이제 로컬 생성 배선은 끝 — 활성 스켈레톤만 있으면 제목/썸네일이 $0로 나가고, 없으면 기존 LLM 그대로. 마지막은 step3 UI(다시생성 로컬 vs 새로써줘 LLM).
+
+=== Step 3: local-gen-ui ===
+
+[리드] 마지막 스텝, UI야. 제목·썸네일 다시생성에 '다시 생성($0)'(로컬)·'LLM으로 새로 써줘'(forceLlm) 두 버튼 분기 + 후보 출처 배지(로컬/LLM). step0~2 계약은 손대지 마. 내가 코드 훑어보니 배선 끊긴 데가 명확해 — 서버액션 regenerateStage가 forceLlm을 안 보내고, hookStage/thumbnailStage inngest 함수도 event.data.forceLlm을 안 읽어. step2가 executeProposalStage까지만 forceLlm 받게 해놨으니 거기까지 연결만 하면 돼(전송 배선이지 생성로직 수정 아님).
+[리드] 맥스가 전송 배선+컴포넌트+테스트 맡고, 에스더가 디자인(TRUS 3색·직각·무그림자) 검수·폴리시. 맥스, 먼저 시작해줘.
+
+[Max] step3 시작할게. 필독 파일 다 봤어 — 배선 끊긴 데 두 군데 확인했어. 서버액션이 forceLlm 안 보내고 inngest 함수가 event.data.forceLlm 안 읽어. step2가 executeProposalStage까지 받게 해놨으니 거기까지만 이으면 돼.
+[Max] 먼저 출처 판정을 candidateSource 순수함수로 빼서 단위테스트부터 박을게. evidence_ids에 skeleton 있으면 로컬, 없으면 LLM. 이게 배지 판단 근거니까 여기부터 단단히.
+
+[Max] 배선 다 이었어. client.ts StageData에 forceLlm 추가, hookStage/thumbnailStage가 event.data.forceLlm 전달, regenerateStage/regenerateThumbnails에 forceLlm 인자 추가했어. 전부 조건부 spread라 exactOptional 깨질 일 없고, 안 넘기면 기존 페이로드랑 바이트 동일이야.
+[Max] 이제 버튼 분기 들어간다. 제목부터 — 기존 '다시 생성'을 '다시 생성($0)'로 두고 옆에 'LLM으로 새로 써줘' 붙일게. 완료감지 로직은 둘이 공유.
+
+[Max] step3 다 됐어. AC 3개 다 통과 — typecheck 0, test 441 passed(신규 candidateSource 7개 포함) 0, build도 이번엔 stale .next 없이 한방에 exit 0이야.
+[리드] 맥스 빠르네. 에스더, UI step이니까 디자인 검수 부탁해 — 두 버튼 위계(로컬 기본/LLM 보조)랑 배지가 TRUS 3색·직각·무그림자 지키는지, 기존 버튼이랑 일관되는지 봐줘.
+[Esther] 봤어. 버튼 위계는 깔끔해 — 로컬 노란외곽선(주), LLM 흰외곽선(보조)로 기존 확정=노란채움 언어랑 안 부딪혀. 근데 제목 카드에서 로컬 배지(노란채움)가 A/B/C 식별 뱃지랑 경고 칩보다 더 튀어서 위계가 뒤집혔더라. 출처는 메타정보인데 말이지. 배지를 노란외곽선으로 낮췄어.
+[Esther] 한 줄만 고쳤고 typecheck·build 둘 다 exit 0. 기능·배선은 안 건드렸어(맥스 영역). 대비도 15:1이라 AA 충족. 끝!
+[리드] 에스더 굿. AC 셋 다 내 손으로도 돌렸어 — typecheck 0, test 0(441 passed), build도 stale 없이 한방에 exit 0. 조이, 독립 검수 부탁해.
+[Max] 버튼 분기는 제목·썸네일 둘 다 '다시 생성($0)'(로컬 우선)이랑 'LLM으로 새로 써줘'(forceLlm) 두 개로 나눴어. 완료감지는 기존 proposalId 변경 로직 그대로 공유하고, 슬롯('이 칸만')은 별도 경로라 안 건드렸어.
+[Max] 출처 배지는 candidateSource 순수함수로 빼서 단위테스트 박았고, CandidateSourceBadge 작은 컴포넌트로 제목 후보랑 썸네일 카드 둘 다 붙였어. evidence_ids에 skeleton 있으면 로컬(노란 채움), 없으면 LLM(흰 외곽선). 부분일치 오판 안 하게 정확히 skeleton만 보고.
+[Max] step0~2 계약은 안 건드렸어 — localCopyGen·runProposalStage·schema·maker 생성로직 그대로고, forceLlm은 전송 배선만 이었어. 선택작업이던 '다시 생성($0) 비활성 안내'는 page에 새 데이터 페치 필요해서 생략했어. 배지로 사후 표시되니 충분할 것 같아. 조이 검수 받을게. 놓친 거 있으면 말해줘.
+
+[Esther] 음 나 디자인 패스 시작할게. 맥스가 만든 다시생성 두 갈래랑 출처 배지부터 다 정독했어.
+
+[Esther] 두 갈래 버튼은 위계가 또렷해서 손 안 댔어. 노란 외곽선이 주($0), 흰 외곽선이 보조(LLM) — 기존 확정=노란채움 언어랑도 안 부딪히고 깔끔하더라.
+[Esther] 다만 출처 배지 하나만 고쳤어. 로컬을 노란 채움으로 두니까 제목 후보 카드에서 아직 안 고른 A/B/C 뱃지보다 더 튀어서 위계가 뒤집히더라고. 메타정보가 식별표시를 압도하면 안 되잖아.
+[Esther] 그래서 로컬도 노란 외곽선으로 바꿨어. 같은 카드 경고칩(레퍼런스 유사·A/B 패배)이랑 같은 언어가 돼서 통일감 생기고, 썸네일 카드에선 헤더 A/B/C 노란채움이랑 채움-외곽선으로 자연스레 갈려. 이건 자신 있어.
+
+[Esther] typecheck도 build도 둘 다 exit 0 깨끗해. 디자인 패스 끝! 배지 하나만 만지고 나머지는 맥스가 위계 잘 잡아놔서 그대로 뒀어. 조이한테 넘길게.
+
+[Joy] 오케이 step3 검수 들어간다! git diff부터 쭉 봤는데 forceLlm 배선 서버액션부터 inngest 함수까지 깔끔하게 이어졌네 굿굿
+[Joy] candidateSource 부분일치 오판 테스트(skeletons, my-skeleton-x 같은거)까지 챙겨놨더라 꼼꼼해서 좋다 에스더 배지 노란외곽선 변경도 들어왔고
+[Joy] 이제 typecheck test build 세개 내 손으로 돌려본다 잠깐만!
+
+[Joy] typecheck 0, test 441개 전부 통과(0), build도 0! 라우트 다 정상이고 stale캐시 이슈도 없었어 코드는 진짜 깔끔하다 맥스 에스더 굿굿
+[Joy] 근데 딱 하나! phases/copy-local-gen/index.json의 step3가 아직 pending이고 summary가 비어있어. 규칙에 step 완료하면 completed랑 summary로 갱신하라고 돼있거든 이것만 채워주면 완벽 마무리야
+[리드] 조이 IMPROVE 받았는데 유일한 지적이 index.json 메타데이터야 — 코드·AC는 7개 체크포인트 다 통과(typecheck/test/build exit 0). 그건 룰 7대로 PASS 후 내가 채우는 마감작업이라 코드 결함 아니고. 내가 step3를 completed+summary로 갱신했어. 조이, 메타데이터만 한 번 더 확인해줘.
+[Joy] 확인했어! step3 completed에 summary도 forceLlm 분기·출처 배지·전송 배선 다 담겼고 team_round도 박혔네. 규칙 충족이야. 코드·AC는 아까 다 초록이었으니 이제 진짜 끝! 맥스 에스더 수고했어 🎉
+[리드] 좋아. 2라운드에서 메타데이터까지 정리 완료 — step3 PASS. copy-local-gen 페이즈 4스텝 전부 끝났다. 하이브리드 $0 생성: 재학습만 API, 제목/썸네일 생성·재생성은 활성 스켈레톤으로 로컬($0), 'LLM 새로 써줘'는 선택 폴백. 수고했어 다들 👏
+
+[Joy] 라운드2 재검수 끝! index.json step3 completed에 team_round 2/3 PASS로 갱신됐고 summary도 forceLlm 분기·출처 배지·전송 배선 다 들어가서 의미있게 채워졌어 굿굿. JSON 파싱도 정상이고. AC 셋 다 내 손으로 다시 돌렸는데 typecheck 0, test 441 passed, build는 stale .next 없이 한방에 exit 0 깔끔하게 나왔어. 범위 외 fixtures 혼입도 없고. 라운드1 유일 지적이던 메타데이터까지 해결돼서 통과! 맥스 수고했어 🎉

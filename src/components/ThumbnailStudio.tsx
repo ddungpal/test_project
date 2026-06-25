@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { regenerateThumbnails, regenerateThumbnailSlot, confirmThumbnails } from "@/app/actions/topicRun";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { CandidateBody } from "@/components/CandidateBody";
+import { CandidateSourceBadge } from "@/components/CandidateSourceBadge";
 import type { CandidateView } from "@/lib/dashboard/proposalTypes";
 
 // 썸네일 스튜디오(§8.1 사람 게이트) — A/B/C 3개를 보고 ① 개별 칸 다시 생성 ② 3개 전체 다시 생성 ③ 3개로 확정.
@@ -106,8 +107,10 @@ export function ThumbnailStudio({
                   <span className="flex h-6 w-6 items-center justify-center bg-trus-yellow text-sm font-black text-trus-black">
                     {String.fromCharCode(65 + c.idx)}
                   </span>
-                  {slotBusy && (
+                  {slotBusy ? (
                     <span className="text-xs font-bold tracking-wide text-trus-yellow">생성 중…</span>
+                  ) : (
+                    <CandidateSourceBadge evidenceIds={c.evidence_ids} />
                   )}
                 </div>
                 <div className={`p-3 ${slotBusy ? "opacity-50" : ""}`}>
@@ -159,13 +162,23 @@ export function ThumbnailStudio({
           />
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <button
-            onClick={() => runRegen("all", () => regenerateThumbnails(runId, allReason))}
-            disabled={disabledAll}
-            className="border border-trus-yellow/50 px-5 py-2.5 text-sm font-bold text-trus-yellow hover:border-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
-          >
-            {busy === "all" ? "전체 생성 중…" : "3개 전체 다시 생성"}
-          </button>
+          {/* 전체 재생성 두 경로 — '다시 생성($0)'(로컬 우선) vs 'LLM으로 새로 써줘'(forceLlm·비용). 슬롯('이 칸만')은 별도 경로라 미변경. */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => runRegen("all", () => regenerateThumbnails(runId, allReason))}
+              disabled={disabledAll}
+              className="border border-trus-yellow/50 px-5 py-2.5 text-sm font-bold text-trus-yellow hover:border-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+            >
+              {busy === "all" ? "전체 생성 중…" : "다시 생성 ($0)"}
+            </button>
+            <button
+              onClick={() => runRegen("all", () => regenerateThumbnails(runId, allReason, true))}
+              disabled={disabledAll}
+              className="border border-trus-white/30 px-5 py-2.5 text-sm font-bold text-trus-white/80 hover:border-trus-yellow hover:text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+            >
+              LLM으로 새로 써줘
+            </button>
+          </div>
           <button
             onClick={onConfirm}
             disabled={disabledAll}
