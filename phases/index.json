@@ -72,12 +72,8 @@
     },
     {
       "dir": "usertest-fixes-1",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (stepper-thumbnail-stage)",
-      "attempt": 1,
-      "elapsed_seconds": 360,
-      "heartbeat_at": "2026-06-25T11:12:00+0900"
+      "status": "completed",
+      "completed_at": "2026-06-25T11:12:07+0900"
     }
   ]
 }
