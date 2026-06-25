@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "learn-emit-skeletons",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-26T00:34:02+0900",
+      "summary": "재학습 LLM 콜 출력에 skeletons(재사용 스켈레톤) 옵셔널 편승 — 추가 LLM 호출 0. ① schema.ts: ThumbnailStylePatterns.skeletons?(localCopyGen CopySkeletons 재사용·import), STYLE_EXTRACTION_SCHEMA.patterns.properties.skeletons 옵셔널 추가(required 제외, additionalProperties:false라 properties 등재·느슨한 형태만). ② 프롬프트 AB_STYLE_SYSTEM·TITLE_STYLE_SYSTEM 둘 다 스켈레톤 출력 지시 한 줄(슬롯 {number}/{target}/{keyword}/{topic}만, banned 제외). ③ normalizeSkeletons(raw): normalizeConfidence 동일 안전수령 패턴(throw 없음·exactOptional 키 생략). 슬롯 화이트리스트 검증은 localCopyGen에서 export한 templateSlotsAllowed/extractAllowedSlots 재사용(생성 시점 폐기를 학습 시점 선차단·의미 일치). 화이트리스트 밖 토큰 항목 폐기, 유효 0개면 키 생략, 둘 다 없으면 skeletons 생략. normalizePatterns·loadReviewedArtifact 둘 다 ...normalizeSkeletons spread 합침. ④ styleRelearnSweepComponent는 patterns jsonb 그대로 저장 → 코드 변경 불필요(테스트로 보존 검증). 생성/제안 prepare·forward 파이프라인 불침범. tests/abStyleLearn.test.ts +14(normalizeSkeletons·normalizePatterns·loadReviewedArtifact skeletons 보존). AC: typecheck=0, test=398 passed(0), build=0(첫 빌드 stale .next PageNotFoundError→rm -rf .next 후 통과).",
+      "completed_at": "2026-06-26T00:45:30+0900"
     },
     {
       "step": 2,
