@@ -10,10 +10,13 @@ import {
   buildAbStyleInput,
   buildEquivalentSignals,
   loadReviewedArtifact,
+  normalizeSkeletons,
+  normalizePatterns,
   verdictWeight,
   LIFT_CAP,
   type AbResultVideo,
 } from "../scripts/learn-ab-style.js";
+import type { StyleExtractionOutput } from "../src/agents/style_extractor/schema.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
 
 /** tmp 파일에 JSON 을 쓰고 경로 반환(loadReviewedArtifact 는 파일 IO 만, DB·LLM 미접근). */
@@ -385,5 +388,180 @@ describe("judgeComponent 재계산 (판정 권위)", () => {
     }));
     const verdict = judgeComponent("thumbnail", variants, THRESHOLDS);
     expect(verdict.decisiveness).toBe("inconclusive");
+  });
+});
+
+describe("normalizeSkeletons (step1 학습 산출 스켈레톤 안전 수령)", () => {
+  it("유효 skeletons(title+thumbnail, 화이트리스트 슬롯만) → 정제되어 patterns.skeletons 에 실린다", () => {
+    const out = normalizeSkeletons({
+      skeletons: {
+        title: [
+          { template: "{number} 전에 꼭 보세요", slots: ["number"] },
+          { template: "{target}이라면 {keyword} 무조건", slots: ["target", "keyword"] },
+        ],
+        thumbnail: [
+          { main: ["딱 {number}만 넘으세요", "절대 깨지 마세요"], boxes: ["{keyword}", "필수"], slots: ["number", "keyword"] },
+        ],
+      },
+    });
+    expect(out.skeletons).toBeDefined();
+    // title 2개 모두 통과, slots 는 화이트리스트 교집합으로 재정제(template 에 실제 쓴 키만).
+    expect(out.skeletons!.title).toEqual([
+      { template: "{number} 전에 꼭 보세요", slots: ["number"] },
+      { template: "{target}이라면 {keyword} 무조건", slots: ["target", "keyword"] },
+    ]);
+    // thumbnail 1개 통과, main+boxes 슬롯 합집합(등장 순서).
+    expect(out.skeletons!.thumbnail).toEqual([
+      { main: ["딱 {number}만 넘으세요", "절대 깨지 마세요"], boxes: ["{keyword}", "필수"], slots: ["number", "keyword"] },
+    ]);
+  });
+
+  it("무효: skeletons 가 배열·문자열 등 객체 아님 → 키 생략(throw 안 함)", () => {
+    expect(normalizeSkeletons({ skeletons: [] })).toEqual({});
+    expect(normalizeSkeletons({ skeletons: "x" })).toEqual({});
+    expect(normalizeSkeletons({ skeletons: null })).toEqual({});
+    expect(normalizeSkeletons({ skeletons: 42 })).toEqual({});
+  });
+
+  it("title 이 배열 아니면 무시한다(throw 안 함)", () => {
+    const out = normalizeSkeletons({ skeletons: { title: "nope" } });
+    expect(out).toEqual({}); // title 무시 + thumbnail 없음 → skeletons 키 자체 생략.
+  });
+
+  it("슬롯 화이트리스트: {price} 같은 허용 외 슬롯 포함 template 제거. 유효 0개면 title 키 생략", () => {
+    const out = normalizeSkeletons({
+      skeletons: {
+        title: [
+          { template: "{price} 할인 중", slots: ["price"] }, // 허용 외 → 폐기
+          { template: "{unknown} 보세요", slots: [] }, // 허용 외 → 폐기
+        ],
+      },
+    });
+    expect(out).toEqual({}); // title 유효 0 → title 생략, thumbnail 없음 → skeletons 생략.
+  });
+
+  it("화이트리스트 밖 슬롯 항목만 폐기하고 유효 항목은 보존한다(부분 폐기)", () => {
+    const out = normalizeSkeletons({
+      skeletons: {
+        title: [
+          { template: "{price} 할인", slots: ["price"] }, // 폐기
+          { template: "{keyword} 총정리", slots: ["keyword"] }, // 통과
+        ],
+      },
+    });
+    expect(out.skeletons?.title).toEqual([{ template: "{keyword} 총정리", slots: ["keyword"] }]);
+    expect(out.skeletons?.thumbnail).toBeUndefined();
+  });
+
+  it("thumbnail main/boxes 한 라인이라도 허용 외 슬롯이면 그 항목 폐기", () => {
+    const out = normalizeSkeletons({
+      skeletons: {
+        thumbnail: [
+          { main: ["{number} 보유", "{price} 수익"], boxes: ["x"], slots: ["number"] }, // main 에 {price} → 폐기
+          { main: ["{target} 필독"], boxes: ["{badslot}"], slots: ["target"] }, // boxes 에 {badslot} → 폐기
+          { main: ["{topic} 정리"], boxes: ["{keyword}"], slots: ["topic", "keyword"] }, // 통과
+        ],
+      },
+    });
+    expect(out.skeletons?.thumbnail).toEqual([
+      { main: ["{topic} 정리"], boxes: ["{keyword}"], slots: ["topic", "keyword"] },
+    ]);
+  });
+
+  it("thumbnail main/boxes 가 string[] 아니면 그 항목 폐기. 유효 0개면 thumbnail 키 생략", () => {
+    const out = normalizeSkeletons({
+      skeletons: {
+        thumbnail: [
+          { main: "not-array", boxes: ["x"], slots: [] }, // main 비배열 → 폐기
+          { main: ["ok", 42], boxes: ["x"], slots: [] }, // main 에 비-string → 폐기
+        ],
+      },
+    });
+    expect(out).toEqual({});
+  });
+
+  it("고정 표현(슬롯 없는 template)도 통과한다(슬롯 토큰 없음 = 허용)", () => {
+    const out = normalizeSkeletons({
+      skeletons: { title: [{ template: "이거 모르면 손해", slots: [] }] },
+    });
+    expect(out.skeletons?.title).toEqual([{ template: "이거 모르면 손해", slots: [] }]);
+  });
+
+  it("하위호환: skeletons 키 없는 출력 → 결과에 skeletons 키 자체 없음", () => {
+    const out = normalizeSkeletons({});
+    expect(out).toEqual({});
+    expect("skeletons" in out).toBe(false);
+  });
+});
+
+describe("normalizePatterns — skeletons 보존(저장 경로 검증)", () => {
+  /** 최소 유효 patterns(copy/visual/structure 필수만) — skeletons 만 바꿔 검증. */
+  function rawPatterns(skeletons?: unknown): StyleExtractionOutput["patterns"] {
+    const base = {
+      copy: {
+        structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" },
+        length_notes: "l",
+      },
+      visual: { face: "f", color_usage: "c", number_treatment: "n" },
+      banned: [],
+    };
+    return (skeletons === undefined ? base : { ...base, skeletons }) as unknown as StyleExtractionOutput["patterns"];
+  }
+
+  it("유효 skeletons → normalizePatterns 결과 patterns.skeletons 에 정제되어 보존(styleRelearn jsonb 저장에 그대로 실림)", () => {
+    const p = normalizePatterns(
+      rawPatterns({
+        title: [{ template: "{keyword} 총정리", slots: ["keyword"] }],
+        thumbnail: [{ main: ["{number} 보유"], boxes: ["필수"], slots: ["number"] }],
+      }),
+    );
+    expect(p.skeletons?.title).toEqual([{ template: "{keyword} 총정리", slots: ["keyword"] }]);
+    expect(p.skeletons?.thumbnail).toEqual([{ main: ["{number} 보유"], boxes: ["필수"], slots: ["number"] }]);
+  });
+
+  it("하위호환: skeletons 없는 출력 → patterns 에 skeletons 키 없음(기존과 동일)", () => {
+    const p = normalizePatterns(rawPatterns());
+    expect("skeletons" in p).toBe(false);
+  });
+
+  it("무효 skeletons(허용 외 슬롯만) → patterns 에 skeletons 키 생략", () => {
+    const p = normalizePatterns(rawPatterns({ title: [{ template: "{price} 할인", slots: ["price"] }] }));
+    expect("skeletons" in p).toBe(false);
+  });
+});
+
+describe("loadReviewedArtifact — skeletons 보존(--from 검수본 경로)", () => {
+  it("검수본 patterns.skeletons 도 normalizeSkeletons 로 정제·보존된다", () => {
+    const reviewed = {
+      source_ref: "x",
+      videos: [],
+      patterns: {
+        copy: { structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" }, length_notes: "l" },
+        visual: { face: "f", color_usage: "c", number_treatment: "n" },
+        banned: [],
+        skeletons: {
+          title: [
+            { template: "{keyword} 총정리", slots: ["keyword"] },
+            { template: "{price} 할인", slots: ["price"] }, // 허용 외 → 폐기
+          ],
+        },
+      },
+    };
+    const art = loadReviewedArtifact(writeTmpJson(reviewed));
+    expect(art.patterns.skeletons?.title).toEqual([{ template: "{keyword} 총정리", slots: ["keyword"] }]);
+  });
+
+  it("검수본에 skeletons 없으면 patterns 에 skeletons 키 없음(하위호환)", () => {
+    const reviewed = {
+      source_ref: "x",
+      videos: [],
+      patterns: {
+        copy: { structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" }, length_notes: "l" },
+        visual: { face: "f", color_usage: "c", number_treatment: "n" },
+        banned: [],
+      },
+    };
+    const art = loadReviewedArtifact(writeTmpJson(reviewed));
+    expect("skeletons" in art.patterns).toBe(false);
   });
 });

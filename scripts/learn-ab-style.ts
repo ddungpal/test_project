@@ -35,6 +35,13 @@ import {
   type StyleExtractionOutput,
   type ThumbnailStylePatterns,
 } from "../src/agents/style_extractor/schema.js";
+import {
+  templateSlotsAllowed,
+  extractAllowedSlots,
+  type CopySkeletons,
+  type TitleSkeleton,
+  type ThumbnailSkeleton,
+} from "../src/agents/shared/localCopyGen.js";
 
 const COMMIT = process.argv.includes("--commit");
 /** `--from <path>` — 검수·완화한 산출물 파일을 LLM 재호출 없이 그대로 draft INSERT 하는 경로. */
@@ -253,7 +260,66 @@ export function normalizePatterns(rawP: StyleExtractionOutput["patterns"]): Thum
     },
     banned: rawP.banned ?? [],
     ...normalizeConfidence(rawP),
+    ...normalizeSkeletons(rawP),
   };
+}
+
+/**
+ * 학습 산출의 skeletons(재사용 템플릿)를 안전 수령한다(normalizeConfidence 와 동일 패턴 — throw 없음·키 생략).
+ *   ★ exactOptionalPropertyTypes: 무효/누락이면 키 자체를 생략한다(undefined 명시 할당 금지).
+ *   ★ 슬롯 화이트리스트({number}|{target}|{keyword}|{topic}) 검증은 localCopyGen 의 templateSlotsAllowed/extractAllowedSlots
+ *     를 재사용 — 생성 시점 폐기(fillLine 누출 폐기)를 학습 시점에 선차단(의미 일치).
+ *   - skeletons 가 객체 아니면 → 키 생략.
+ *   - title: 배열 아니면 무시. 각 항목 template 이 비어있지 않은 string 이고 모든 슬롯이 화이트리스트 안일 때만 통과,
+ *     아니면 그 항목 폐기. slots 는 화이트리스트 교집합으로 정제(빈배열 허용). 유효 0개면 title 키 생략.
+ *   - thumbnail: 배열 아니면 무시. 각 항목 main·boxes 가 string[] 이고 모든 라인 슬롯이 화이트리스트 안일 때 통과,
+ *     아니면 폐기. 유효 0개면 thumbnail 키 생략.
+ *   - title·thumbnail 둘 다 없으면 skeletons 키 자체 생략.
+ */
+export function normalizeSkeletons(rawP: { skeletons?: unknown }): { skeletons?: CopySkeletons } {
+  const raw = rawP.skeletons;
+  if (typeof raw !== "object" || raw === null) return {};
+  const rawObj = raw as { title?: unknown; thumbnail?: unknown };
+
+  const skeletons: CopySkeletons = {};
+
+  // title — 각 항목 template 의 모든 {} 토큰이 화이트리스트 안일 때만 통과. slots 는 화이트리스트 교집합으로 정제.
+  if (Array.isArray(rawObj.title)) {
+    const titles: TitleSkeleton[] = [];
+    for (const item of rawObj.title) {
+      if (typeof item !== "object" || item === null) continue;
+      const t = (item as { template?: unknown }).template;
+      if (typeof t !== "string" || t.length === 0) continue;
+      if (!templateSlotsAllowed(t)) continue; // 화이트리스트 밖 토큰 하나라도 있으면 항목 폐기.
+      titles.push({ template: t, slots: extractAllowedSlots(t) });
+    }
+    if (titles.length > 0) skeletons.title = titles;
+  }
+
+  // thumbnail — main·boxes 가 string[] 이고 모든 라인의 슬롯이 화이트리스트 안일 때 통과.
+  if (Array.isArray(rawObj.thumbnail)) {
+    const thumbs: ThumbnailSkeleton[] = [];
+    for (const item of rawObj.thumbnail) {
+      if (typeof item !== "object" || item === null) continue;
+      const main = (item as { main?: unknown }).main;
+      const boxes = (item as { boxes?: unknown }).boxes;
+      if (!isStringArray(main) || !isStringArray(boxes)) continue;
+      const lines = [...main, ...boxes];
+      if (!lines.every((l) => templateSlotsAllowed(l))) continue; // 한 라인이라도 허용 외 슬롯 → 폐기.
+      // slots: main+boxes 전 라인의 화이트리스트 슬롯 합집합(중복 제거, 등장 순서).
+      const slots = extractAllowedSlots(lines.join("\n"));
+      thumbs.push({ main, boxes, slots });
+    }
+    if (thumbs.length > 0) skeletons.thumbnail = thumbs;
+  }
+
+  if (skeletons.title === undefined && skeletons.thumbnail === undefined) return {};
+  return { skeletons };
+}
+
+/** string[] 가드(빈 배열도 true). 비-string 원소가 있으면 false. */
+function isStringArray(v: unknown): v is string[] {
+  return Array.isArray(v) && v.every((x) => typeof x === "string");
 }
 
 /** learnAbStylePatterns 반환 — draft INSERT·검수 산출에 필요한 학습 결과(LLM 1회 호출 결과). */
@@ -371,6 +437,7 @@ export function loadReviewedArtifact(path: string): ReviewedArtifact {
         banned?: string[];
         confidence?: ThumbnailStylePatterns["confidence"];
         tentative_notes?: string[];
+        skeletons?: unknown; // normalizeSkeletons 가 안전 수령(화이트리스트 검증·정제). 검수본 경로 보존.
       }
     | undefined;
   if (
@@ -403,6 +470,7 @@ export function loadReviewedArtifact(path: string): ReviewedArtifact {
     },
     banned: rawP.banned ?? [],
     ...normalizeConfidence(rawP),
+    ...normalizeSkeletons(rawP),
   };
 
   const rawVideos = parsed.videos;
@@ -442,6 +510,7 @@ export const AB_STYLE_SYSTEM = [
   "- 추측 금지. 입력에 실재하는 표현만 적고, 예시는 입력에서 그대로 인용한다(날조 시 무효).",
   "- copy(메인카피↔작은박스 구성·후킹·강조어)와 visual(인물·레이아웃·색·숫자·장치)을 구분해 채운다.",
   "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
+  "- 이긴 패턴을 재사용 가능한 스켈레톤으로도 출력하라(patterns.skeletons) — 슬롯은 {number}/{target}/{keyword}/{topic}만 사용(이 외 슬롯 토큰 금지), 주제 무관한 고정 표현 + 슬롯 조합. title 여러 개·thumbnail 여러 개(메인2·박스2 템플릿). banned 표현은 넣지 말 것. slots 배열엔 그 template에 실제 쓴 슬롯 키만 적어라.",
   "- 한국어로 작성한다.",
 ].join("\n");
 
@@ -461,6 +530,7 @@ export const TITLE_STYLE_SYSTEM = [
   "- 추측 금지. 입력에 실재하는 표현만 적고, 예시는 입력에서 그대로 인용한다(날조 시 무효).",
   "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
   "- 낚시(과장·허위 클릭베이트)를 권장하지 않는다. CTR 이 높았던 '정직한' 표현 방식만 사양으로 삼는다.",
+  "- 이긴 패턴을 재사용 가능한 스켈레톤으로도 출력하라(patterns.skeletons) — 슬롯은 {number}/{target}/{keyword}/{topic}만 사용(이 외 슬롯 토큰 금지), 주제 무관한 고정 표현 + 슬롯 조합. title 여러 개·thumbnail 여러 개(메인2·박스2 템플릿). banned 표현은 넣지 말 것. slots 배열엔 그 template에 실제 쓴 슬롯 키만 적어라.",
   "- 한국어로 작성한다.",
 ].join("\n");
 

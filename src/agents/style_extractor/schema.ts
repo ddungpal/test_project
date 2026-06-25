@@ -9,6 +9,7 @@
 //    전체 실패. 과거 critic 사건.) 빈 가능 필드는 step에서 `?? []` 기본값으로 받는다.
 
 import type { JsonSchema } from "../../llm/types.js";
+import type { CopySkeletons } from "../shared/localCopyGen.js";
 
 /** style_profiles.patterns 의 형태. DB jsonb로 그대로 저장된다. */
 export interface ThumbnailStylePatterns {
@@ -33,6 +34,11 @@ export interface ThumbnailStylePatterns {
   confidence?: "high" | "tentative";
   /** 저표본·소수 사례 경고(tentative 패턴 메모). 빈 배열 가능 → required 제외. */
   tentative_notes?: string[];
+  /**
+   * 재사용 가능한 스켈레톤(파라메트릭 템플릿) — step1. localCopyGen 의 CopySkeletons 타입 재사용(중복 정의 금지).
+   * 누락 허용(옵셔널) — 없으면 step2 가 LLM 폴백. 슬롯 화이트리스트 검증은 코드(normalizeSkeletons)에서 한다.
+   */
+  skeletons?: CopySkeletons;
 }
 
 export interface StyleExtractionOutput {
@@ -90,6 +96,39 @@ export const STYLE_EXTRACTION_SCHEMA: JsonSchema = {
         banned: strArray,
         confidence: { type: "string", enum: ["high", "tentative"] }, // 옵셔널 — required 제외.
         tentative_notes: strArray, // 옵셔널 빈 가능 배열 — required 제외.
+        // 재사용 스켈레톤(step1) — 옵셔널(required 제외). additionalProperties:false 라 properties 엔 반드시 등재.
+        //   느슨한 형태만 강제(title/thumbnail 배열·string 필드). 슬롯 화이트리스트 검증은 코드(normalizeSkeletons).
+        skeletons: {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            title: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["template", "slots"],
+                properties: {
+                  template: { type: "string" },
+                  slots: strArray,
+                },
+              },
+            },
+            thumbnail: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                required: ["main", "boxes", "slots"],
+                properties: {
+                  main: strArray,
+                  boxes: strArray,
+                  slots: strArray,
+                },
+              },
+            },
+          },
+        },
       },
     },
     evidence_summary: { type: "string" },

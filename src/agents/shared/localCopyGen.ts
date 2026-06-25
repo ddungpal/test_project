@@ -37,8 +37,39 @@ export interface LocalGenContext {
 }
 
 /** 인식 슬롯 키. 템플릿에 이 외 토큰이 {} 형태로 남으면 빈슬롯 누출로 간주(폐기). */
-const SLOT_KEYS = ["number", "target", "keyword", "topic"] as const;
+//   export: step1 normalizeSkeletons 가 동일 화이트리스트로 학습 산출 스켈레톤을 검증하기 위해 재사용한다
+//   (검증 의미를 한 곳에 모은다 — 슬롯 정의가 두 군데로 갈라지는 것 방지).
+export const SLOT_KEYS = ["number", "target", "keyword", "topic"] as const;
 type SlotKey = (typeof SLOT_KEYS)[number];
+
+/** 텍스트의 모든 `{...}` 토큰이 전부 화이트리스트(SLOT_KEYS) 안에 있으면 true. 화이트리스트 밖 토큰이 하나라도 있으면 false. */
+//   fillLine 의 폐기 의미와 일치: 인식 슬롯만 치환 가능하고, 그 외 {...} 토큰이 남으면 누출로 본다.
+//   step1 normalizeSkeletons 가 학습 산출 template/라인 검증에 재사용한다(생성 시점 폐기를 학습 시점에 선차단).
+export function templateSlotsAllowed(text: string): boolean {
+  if (typeof text !== "string") return false;
+  const matches = text.match(/\{([^}]*)\}/g);
+  if (!matches) return true; // 슬롯 토큰 자체가 없으면 허용(고정 표현).
+  const allowed = new Set<string>(SLOT_KEYS);
+  return matches.every((m) => allowed.has(m.slice(1, -1)));
+}
+
+/** 텍스트에서 화이트리스트(SLOT_KEYS) 안의 슬롯 키만 중복 없이 추출(등장 순서). 화이트리스트 밖 토큰은 무시. */
+export function extractAllowedSlots(text: string): SlotKey[] {
+  if (typeof text !== "string") return [];
+  const matches = text.match(/\{([^}]*)\}/g);
+  if (!matches) return [];
+  const allowed = new Set<string>(SLOT_KEYS);
+  const seen = new Set<string>();
+  const out: SlotKey[] = [];
+  for (const m of matches) {
+    const key = m.slice(1, -1);
+    if (allowed.has(key) && !seen.has(key)) {
+      seen.add(key);
+      out.push(key as SlotKey);
+    }
+  }
+  return out;
+}
 
 /** ctx에서 슬롯 값을 꺼낸다. undefined/빈문자열이면 null(누락 취급). */
 function slotValue(ctx: LocalGenContext, key: SlotKey): string | null {
