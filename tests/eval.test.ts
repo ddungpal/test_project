@@ -82,15 +82,16 @@ describe("eval: 썸네일메이커(thumbnail_maker) 썸네일 품질", () => {
     }
   });
 
-  // 길이 계약 — golden-thumbnail.json만 직접 읽어 박스≤12자·메인≤14자를 못박는다.
-  //   ★ 박스 한도=12: 김짠부 실제 우승 박스가 7~9자 라벨 구('사회초년생 필수 시청','파킹통장 추천')라, 6자 한도는 학습 스타일보다
-  //     빡세서 '곱버스·이유3'처럼 잘린 단편을 강제했다 → schema/SYSTEM과 함께 12자로 완화(thumbnail_maker/schema.ts).
-  it("golden-thumbnail: 박스 전부 ≤12자 · 메인 전부 ≤14자", () => {
+  // 길이 계약 — golden-thumbnail.json만 직접 읽어 박스≤12자·메인≤20자를 못박는다.
+  //   ★ 한도=박스12·메인20: 김짠부 실제 우승 카피가 박스 7~9자 라벨('파킹통장 추천')·메인 15~20자 단정 선언
+  //     ('이 순서를 모르면 3년을 버립니다')이라, 기존 6/14 한도는 학습 스타일보다 빡세서 '곱버스·이유3' 단편과
+  //     약한 메인을 강제했다 → schema/SYSTEM과 함께 12/20으로 완화(thumbnail_maker/schema.ts).
+  it("golden-thumbnail: 박스 전부 ≤12자 · 메인 전부 ≤20자", () => {
     const path = join(FIX, "thumbnail_maker", "golden-thumbnail.json");
     const golden = JSON.parse(JSON.parse(readFileSync(path, "utf8")).rawJson);
     expect(Array.isArray(golden.candidates) && golden.candidates.length >= 3).toBe(true);
     for (const c of golden.candidates) {
-      for (const m of c.thumbnail_main) expect([...String(m)].length).toBeLessThanOrEqual(14);
+      for (const m of c.thumbnail_main) expect([...String(m)].length).toBeLessThanOrEqual(20);
       for (const b of c.thumbnail_boxes) expect([...String(b)].length).toBeLessThanOrEqual(12);
     }
   });

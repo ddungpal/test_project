@@ -31,7 +31,7 @@ export const THUMBNAIL_MAKER_SCHEMA: JsonSchema = {
         required: ["thumbnail_layout", "thumbnail_main", "thumbnail_boxes", "reason", "evidence_ids"],
         properties: {
           thumbnail_layout: { type: "string", minLength: 1 },
-          thumbnail_main: { type: "array", items: { type: "string", minLength: 1, maxLength: 14 }, minItems: 2, maxItems: 2 },
+          thumbnail_main: { type: "array", items: { type: "string", minLength: 1, maxLength: 20 }, minItems: 2, maxItems: 2 },
           thumbnail_boxes: { type: "array", items: { type: "string", minLength: 1, maxLength: 12 }, minItems: 2, maxItems: 2 },
           reason: { type: "string", minLength: 1 },
           evidence_ids: { type: "array", items: { type: "string" }, minItems: 1 },
@@ -51,7 +51,8 @@ export const THUMBNAIL_MAKER_SYSTEM = [
   "",
   "썸네일 카피 구조(반드시 준수):",
   "- 썸네일 카피는 ① 메인문구 2개(thumbnail_main: 큰 글자 핵심 두 마디) ② 작은 박스 2개(thumbnail_boxes: 보조 후킹·구체수치·질문)로 나눠 쓴다. 각각 정확히 2개.",
-  "- 글자수: 메인문구는 14자 이내 한 호흡(후킹 한 방), 작은 박스는 12자 이내 짧은 '라벨 구'다. 메인이 후킹, 박스는 보조 정보.",
+  "- 글자수: 메인문구는 20자 이내 한 호흡(한 가지 메시지로 압축하되, 단정을 약화시키면서까지 억지로 줄이지 마라 — '이 순서를 모르면 3년을 버립니다'처럼 길어도 강하면 OK), 작은 박스는 12자 이내 짧은 '라벨 구'다. 메인이 후킹, 박스는 보조 정보.",
+  "- ★메인문구는 '단정·명령·목표 선언'으로 세게 밀어붙인다(약하면 실패). 확신형('절대','무조건','정답','필수 시청')·행동 촉구·통념 반박('적립식 투자 그만하라고?')·목표 선언('무조건 10억 됩니다','월 200 재테크 로드맵')·자산 기준 호명('100만 원 이상 있다면'). ✗약한 묘사('-2배 폭락','녹는다')·중립 설명·교육조('~원리부터 알자','~알아보자')·의문 나열은 금지 — 김짠부 메인은 묘사가 아니라 '한 방 선언'이다. active 스타일의 emphasis_words·main_copy_notes를 그대로 따른다.",
   "- 박스는 의미가 통하는 완성된 보조 라벨로 쓴다 — 방법('ISA 연장하는 방법')·대상 호출('사회초년생 필수 시청')·시점('5월 1일부터 시행')·혜택/조건('중복 가입 가능')·추천('파킹통장 추천')·총정리('룰 변경 총정리') 같은 형태. ★'곱버스'·'이유3'·'3분컷'처럼 단어를 억지로 자르거나 줄여 쓰지 마라 — 짧되 뜻이 온전한 구로.",
   "- thumbnail_main의 두 문구는 상단/하단으로 각각 그 자체로 완성된 메시지여야 한다. 둘이 이어져야만 말이 되는 반쪽(예: '배당받고도'+'주가 빠집니다')은 금지 — 각 줄을 따로 봐도 후킹이 성립하게 쓴다. (상·하단이 같은 주제를 다른 각도로 강조하는 건 OK, 단 한 문장을 둘로 자르는 건 금지.)",
   '- 예시(파킹통장): thumbnail_main = ["통장에 돈 묵히면 손해","파킹통장이 정답"], thumbnail_boxes = ["파킹통장 추천","연 4% 이자"]. (박스 = 잘린 단어가 아니라 온전한 라벨 구)',
