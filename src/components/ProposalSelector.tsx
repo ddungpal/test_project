@@ -186,46 +186,10 @@ function EditFields({
   }
   if (stage === "title_thumb") {
     const p = (draft ?? {}) as Partial<TitlePayload>;
-    const set = (patch: Partial<TitlePayload>) => setDraft({ ...p, ...patch });
-    // 메인문구/박스는 인덱스별 갱신하되 항상 [0,1] 2칸 배열로 저장(레거시 draft엔 배열이 없을 수 있어 옵셔널 가드).
-    const setMain = (i: 0 | 1, v: string) =>
-      set({ thumbnail_main: i === 0 ? [v, p.thumbnail_main?.[1] ?? ""] : [p.thumbnail_main?.[0] ?? "", v] });
-    const setBox = (i: 0 | 1, v: string) =>
-      set({ thumbnail_boxes: i === 0 ? [v, p.thumbnail_boxes?.[1] ?? ""] : [p.thumbnail_boxes?.[0] ?? "", v] });
     return (
       <div className="flex flex-col gap-2">
-        <input value={p.title ?? ""} onChange={(e) => set({ title: e.target.value })} placeholder="제목" className={inputCls} />
-        <input
-          value={p.thumbnail_main?.[0] ?? ""}
-          onChange={(e) => setMain(0, e.target.value)}
-          placeholder="메인문구 1"
-          className={inputCls}
-        />
-        <input
-          value={p.thumbnail_main?.[1] ?? ""}
-          onChange={(e) => setMain(1, e.target.value)}
-          placeholder="메인문구 2"
-          className={inputCls}
-        />
-        <input
-          value={p.thumbnail_boxes?.[0] ?? ""}
-          onChange={(e) => setBox(0, e.target.value)}
-          placeholder="작은 박스 1"
-          className={inputCls}
-        />
-        <input
-          value={p.thumbnail_boxes?.[1] ?? ""}
-          onChange={(e) => setBox(1, e.target.value)}
-          placeholder="작은 박스 2"
-          className={inputCls}
-        />
-        <textarea
-          value={p.thumbnail_layout ?? ""}
-          onChange={(e) => set({ thumbnail_layout: e.target.value })}
-          placeholder="레이아웃 설명"
-          rows={2}
-          className={inputCls}
-        />
+        <input value={p.title ?? ""} onChange={(e) => setDraft({ ...p, title: e.target.value })} placeholder="제목" className={inputCls} />
+        {/* 썸네일 필드(메인문구·박스·레이아웃)는 제거 — 썸네일은 thumbnail 단계(ThumbnailStudio)에서. */}
       </div>
     );
   }
