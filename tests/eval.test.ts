@@ -81,6 +81,18 @@ describe("eval: 썸네일메이커(thumbnail_maker) 썸네일 품질", () => {
       }
     }
   });
+
+  // 신규 길이 계약(Step1) — golden-thumbnail.json만 직접 읽어 박스≤6자·메인≤14자를 못박는다.
+  //   ★ 레거시 6개 픽스처는 박스가 6자를 넘어 여기 포함하지 않는다(긴 박스라 단언이 깨짐). golden에만 신규 계약을 박는다.
+  it("golden-thumbnail: 박스 전부 ≤6자 · 메인 전부 ≤14자", () => {
+    const path = join(FIX, "thumbnail_maker", "golden-thumbnail.json");
+    const golden = JSON.parse(JSON.parse(readFileSync(path, "utf8")).rawJson);
+    expect(Array.isArray(golden.candidates) && golden.candidates.length >= 3).toBe(true);
+    for (const c of golden.candidates) {
+      for (const m of c.thumbnail_main) expect([...String(m)].length).toBeLessThanOrEqual(14);
+      for (const b of c.thumbnail_boxes) expect([...String(b)].length).toBeLessThanOrEqual(6);
+    }
+  });
 });
 
 describe("eval: 구다리(structurer) 구성 품질", () => {

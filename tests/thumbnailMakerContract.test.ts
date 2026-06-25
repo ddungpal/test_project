@@ -50,8 +50,8 @@ describe("THUMBNAIL_MAKER_SCHEMA — main/boxes 정확히 2개·후보 정확히
 describe("thumbnailStageSpec.toCandidates — main/boxes 보존 + thumbnail_copy 파생 + ref_similarity/style_conformance 부착", () => {
   const out = { candidates: [candidate(2, 2), candidate(2, 2), candidate(2, 2)] };
 
-  it("input(reference_titles) 있을 때: main/boxes 보존·copy 파생·ref_similarity·style_conformance 계산", () => {
-    const input = { reference_titles: [{ id: "ref:1", text: "메인1 메인2" }] };
+  it("input(reference_thumbnail_copies) 있을 때: main/boxes 보존·copy 파생·ref_similarity·style_conformance 계산", () => {
+    const input = { reference_thumbnail_copies: [{ id: "ref:1", text: "메인1 메인2" }] };
     const cands = thumbnailStageSpec("run-x").toCandidates(out as any, input);
     const p = cands[0]!.payload as any;
     expect(p.thumbnail_main).toEqual(["메인1", "메인2"]);

@@ -14,8 +14,8 @@ export function thumbnailStageSpec(runId: string): ProposalStageSpec<ThumbnailMa
     descriptor: STAGE_DESCRIPTORS.thumbnail,
     prepare: (supa) => prepareThumbnailMaker(supa, runId),
     toCandidates: (out, input): Candidate[] => {
-      // prepare가 만든 reference_titles(있을 때만) — 유사도 가드용. input 없이 호출돼도 안전(빈 배열).
-      const references = ((input as ThumbnailMakerInput | undefined)?.reference_titles ?? []).map((r) => r.text);
+      // prepare가 만든 reference_thumbnail_copies(있을 때만) — 베껴쓰기 가드용. input 없이 호출돼도 안전(빈 배열).
+      const references = ((input as ThumbnailMakerInput | undefined)?.reference_thumbnail_copies ?? []).map((r) => r.text);
       // PhaseA active 스타일 패턴(있을 때만) — banned·emphasis_words로 사후 부합도 검사. LLM 호출 후 변환 → promptHash 무관.
       const stylePatterns = (input as ThumbnailMakerInput | undefined)?.style_profile?.patterns as ThumbnailStylePatterns | undefined;
       // 후보가 3개 미만이어도 map은 안전(크래시 없음).
