@@ -6,7 +6,7 @@
 //   ★ 순수 매핑(mapCopyAbToRows·mapCtr24hToMetricRow)은 copyLearnMap.ts(server-only 무관)에 — 테스트가 DB 없이 import.
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
-import { inngest } from "../../inngest/client.js";
+import { styleRelearnSweep } from "../../performance/styleRelearn.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
 import { loadConfig } from "../../llm/config.js";
@@ -78,16 +78,35 @@ export async function saveCopyAbResults(input: CopyAbInput): Promise<{ savedThum
 }
 
 /**
- * A/B 스타일 재학습 트리거(사람 게이트). requireOwner 후 "style/relearn.requested" 발행.
+ * A/B 스타일 재학습(사람 게이트). requireOwner 후 styleRelearnSweep 를 **동기로 await** 한다.
+ *   ★ 이벤트 발행(fire-and-forget)이 아니라 직접 실행 — 그래야 프런트의 pending 이 학습 끝까지 유지돼
+ *     '진행중' 표시가 정확하고, 반환값으로 component별 draft 생성/스킵을 알려 자동 새로고침·메시지가 정확해진다.
  *   sweep 은 표본 증가분으로 thumbnail_copy·title draft 까지만 만든다(activate 는 별도 사람 게이트).
- *   dev 에서는 실제 발행됨 — 그래서 테스트는 액션 단위(목)로.
+ *   적격 아니거나 표본 0 이면 LLM 호출 0·draft 0(과금 0·멱등) → created=false 로 "변경 없음" 안내.
+ *   // ponytail: 동기 실행 — 개발(claude-p $0·수십초)엔 적합. 운영에서 LLM 이 길어 서버액션 타임아웃이 문제되면
+ *   //   다시 Inngest 비동기 + 상태 폴링으로 옮긴다(durability 필요 시).
  */
-export async function requestCopyRelearn(): Promise<{ initiated: boolean }> {
+export async function requestCopyRelearn(): Promise<{
+  thumbnail: { created: boolean };
+  title: { created: boolean };
+  anyCreated: boolean;
+}> {
   const ownerId = await requireOwner();
-  await inngest.send({ name: "style/relearn.requested", data: {} });
-  // auditLog 는 best-effort(던지지 않음) — admin 클라이언트로 기록.
-  await auditLog(createAdminClient(), { actorId: ownerId, action: "copy_relearn_requested" });
-  return { initiated: true };
+  const supa = createAdminClient();
+  const res = await styleRelearnSweep(supa);
+  const thumbnailCreated = res.thumbnail.created !== null;
+  const titleCreated = res.title.created !== null;
+  // auditLog 는 best-effort(던지지 않음).
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "copy_relearn_requested",
+    detail: { thumbnailCreated, titleCreated },
+  });
+  return {
+    thumbnail: { created: thumbnailCreated },
+    title: { created: titleCreated },
+    anyCreated: thumbnailCreated || titleCreated,
+  };
 }
 
 /**

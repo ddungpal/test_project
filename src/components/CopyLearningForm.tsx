@@ -370,9 +370,115 @@ const STATUS_LABEL: Record<CopyStyleDraft["status"], string> = {
   retired: "내림",
 };
 
+// 패턴 키 → 한글 라벨(가독성). 없는 키는 원문 그대로.
+const PATTERN_KEY_LABEL: Record<string, string> = {
+  copy: "문구(copy)",
+  banned: "금지 패턴(banned)",
+  visual: "시각(visual)",
+  confidence: "신뢰도(confidence)",
+  tentative_notes: "잠정 메모(tentative_notes)",
+  structure: "구성",
+  description: "설명",
+  main_copy_notes: "메인카피 노트",
+  small_box_notes: "작은박스 노트",
+  length_notes: "길이 노트",
+  hook_patterns: "후킹 패턴",
+  emphasis_words: "강조 단어",
+  face: "얼굴/인물",
+  devices: "장치",
+  color_usage: "색 사용",
+  number_treatment: "숫자 처리",
+  layout_archetypes: "레이아웃 원형",
+};
+
+// patterns(jsonb, 임의 구조)를 안전하게 재귀 렌더 — 문자열·숫자·배열·객체 처리. 깊이 무관.
+function PatternNode({ value }: { value: unknown }) {
+  if (value === null || value === undefined) return <span className="text-trus-white/35">—</span>;
+  if (typeof value === "string") return <span className="text-trus-white/80">{value}</span>;
+  if (typeof value === "number" || typeof value === "boolean") return <span className="text-trus-white/80">{String(value)}</span>;
+  if (Array.isArray(value)) {
+    if (value.length === 0) return <span className="text-trus-white/35">(비어있음)</span>;
+    return (
+      <ul className="ml-3 flex list-disc flex-col gap-1">
+        {value.map((v, i) => (
+          <li key={i}>
+            <PatternNode value={v} />
+          </li>
+        ))}
+      </ul>
+    );
+  }
+  if (typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>);
+    if (entries.length === 0) return <span className="text-trus-white/35">(비어있음)</span>;
+    return (
+      <div className="flex flex-col gap-2">
+        {entries.map(([k, v]) => (
+          <div key={k}>
+            <span className="text-xs font-bold tracking-wide text-trus-yellow/80">{PATTERN_KEY_LABEL[k] ?? k}</span>
+            <div className="mt-0.5 pl-2 text-sm leading-relaxed">
+              <PatternNode value={v} />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return <span className="text-trus-white/35">—</span>;
+}
+
+// 초안/활성 1개 카드 — 키 칩 + '상세 보기' 토글로 patterns 전체를 펼친다.
+function DraftCard({ d }: { d: CopyStyleDraft }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <li className="border border-trus-white/15 px-3 py-2">
+      <div className="flex items-center gap-2 text-xs text-trus-white/55">
+        <span className="font-bold text-trus-white">v{d.version ?? "—"}</span>
+        <span
+          className={
+            d.status === "active"
+              ? "border border-trus-yellow px-1.5 py-0.5 font-bold text-trus-yellow"
+              : "border border-trus-white/25 px-1.5 py-0.5 text-trus-white/55"
+          }
+        >
+          {STATUS_LABEL[d.status]}
+        </span>
+        <span className="ml-auto">{fmtDate(d.createdAt)}</span>
+      </div>
+      {d.patternKeys.length > 0 ? (
+        <>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1">
+            {d.patternKeys.map((k) => (
+              <span key={k} className="border border-trus-white/20 px-1.5 py-0.5 text-[11px] text-trus-white/70">
+                {k}
+              </span>
+            ))}
+            <button
+              type="button"
+              onClick={() => setOpen((o) => !o)}
+              aria-expanded={open}
+              className="ml-auto text-[11px] font-bold text-trus-yellow/80 hover:text-trus-yellow"
+            >
+              {open ? "상세 접기 −" : "상세 보기 +"}
+            </button>
+          </div>
+          {open && (
+            <div className="mt-2 border-t border-trus-white/10 pt-2">
+              <PatternNode value={d.patterns} />
+            </div>
+          )}
+        </>
+      ) : (
+        <p className="mt-1 text-[11px] text-trus-white/35">패턴 키 없음</p>
+      )}
+    </li>
+  );
+}
+
 function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "relearn" | "activate">(null); // 무엇이 진행중인지(라벨 구분)
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -382,9 +488,12 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
     return m;
   }, [drafts]);
 
-  function run(fn: () => Promise<string>) {
+  // 재학습은 styleRelearnSweep 를 동기로 await 하므로 pending 이 학습 끝까지 유지된다(진행중 표시 정확).
+  //   완료되면 router.refresh()로 새 draft 가 반영(자동 새로고침). 실패/no-op 도 메시지로 구분.
+  function run(tag: "relearn" | "activate", fn: () => Promise<string>) {
     setError(null);
     setOk(null);
+    setBusy(tag);
     startTransition(async () => {
       try {
         const msg = await fn();
@@ -392,6 +501,8 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "처리 실패");
+      } finally {
+        setBusy(null);
       }
     });
   }
@@ -402,15 +513,28 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
         <h2 className="text-xs font-bold tracking-widest text-trus-yellow uppercase">스타일 학습</h2>
         <button
           type="button"
-          onClick={() => run(async () => {
+          onClick={() => run("relearn", async () => {
             const r = await requestCopyRelearn();
-            return r.initiated ? "재학습 요청됨 — draft 생성까지 잠시 기다린 뒤 새로고침" : "요청 보류";
+            if (!r.anyCreated) {
+              return "새 학습 데이터가 없어 변경 없음(이미 최신). 영상 입력을 저장한 뒤 다시 시도하세요.";
+            }
+            const parts: string[] = [];
+            if (r.thumbnail.created) parts.push("썸네일");
+            if (r.title.created) parts.push("제목");
+            return `재학습 완료 — ${parts.join("·")} 새 초안 생성. 아래에서 검토 후 활성화하세요.`;
           })}
           disabled={pending}
+          aria-busy={busy === "relearn"}
           className="bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:opacity-50"
         >
-          {pending ? "처리 중…" : "재학습 실행"}
+          {busy === "relearn" ? "재학습 진행중… (수십 초~수 분)" : "재학습 실행"}
         </button>
+        {busy === "relearn" && (
+          <span className="inline-flex items-center gap-2 text-xs text-trus-yellow">
+            <span className="inline-block h-3 w-3 animate-spin border-2 border-trus-yellow border-t-transparent" aria-hidden />
+            학습 중 — 끝나면 자동 새로고침됩니다. 버튼을 다시 누르지 마세요.
+          </span>
+        )}
       </div>
       <p className="mt-2 text-xs text-trus-white/50">
         입력을 저장한 뒤 재학습하면 새 <b className="text-trus-white/80">초안(draft)</b>이 생긴다. 검토 후 직접 활성화한다(자동 활성화 없음).
@@ -427,7 +551,7 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
                 <h3 className="text-sm font-black text-trus-white">{COMPONENT_LABEL[ct]}</h3>
                 <button
                   type="button"
-                  onClick={() => run(async () => {
+                  onClick={() => run("activate", async () => {
                     const r = await activateCopyStyle(activateArg);
                     return r.activated > 0 ? `${COMPONENT_LABEL[ct]} 최신 초안을 활성화했어` : `${COMPONENT_LABEL[ct]} — 이미 활성(변경 없음)`;
                   })}
@@ -444,32 +568,7 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
               ) : (
                 <ul className="mt-3 flex flex-col gap-2">
                   {list.map((d) => (
-                    <li key={d.id} className="border border-trus-white/15 px-3 py-2">
-                      <div className="flex items-center gap-2 text-xs text-trus-white/55">
-                        <span className="font-bold text-trus-white">v{d.version ?? "—"}</span>
-                        <span
-                          className={
-                            d.status === "active"
-                              ? "border border-trus-yellow px-1.5 py-0.5 font-bold text-trus-yellow"
-                              : "border border-trus-white/25 px-1.5 py-0.5 text-trus-white/55"
-                          }
-                        >
-                          {STATUS_LABEL[d.status]}
-                        </span>
-                        <span className="ml-auto">{fmtDate(d.createdAt)}</span>
-                      </div>
-                      {d.patternKeys.length > 0 ? (
-                        <div className="mt-1.5 flex flex-wrap gap-1">
-                          {d.patternKeys.map((k) => (
-                            <span key={k} className="border border-trus-white/20 px-1.5 py-0.5 text-[11px] text-trus-white/70">
-                              {k}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-[11px] text-trus-white/35">패턴 키 없음</p>
-                      )}
-                    </li>
+                    <DraftCard key={d.id} d={d} />
                   ))}
                 </ul>
               )}

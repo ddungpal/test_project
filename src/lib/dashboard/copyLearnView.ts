@@ -54,6 +54,7 @@ export interface CopyStyleDraft {
   status: CopyStyleStatus;
   createdAt: string;
   patternKeys: string[]; // patterns(jsonb) 최상위 키 목록(요약). 빈/비객체면 [].
+  patterns: unknown; // patterns(jsonb) 원본 — UI 상세 펼치기용. 임의 구조라 렌더러가 안전 처리.
 }
 
 /** patterns(jsonb)에서 최상위 키만 추출(요약용). 비객체·null·배열이면 []. */
@@ -89,6 +90,7 @@ export async function getCopyStyleDrafts(perComponent = 5): Promise<CopyStyleDra
       status: r.status as CopyStyleStatus,
       createdAt: r.created_at,
       patternKeys: patternKeysOf(r.patterns),
+      patterns: r.patterns,
     });
   }
   return out;
