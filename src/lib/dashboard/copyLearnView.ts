@@ -20,6 +20,7 @@ export interface CopyLearnVideo {
   title: string | null;
   uploadDate: string | null;
   ctr24h: number | null; // performance_metrics d1 overall
+  views24h: number | null; // performance_metrics d1 overall
   thumbnail: CopyLearnVariant[]; // component_type='thumbnail'
   titleHasAbTest: boolean; // 제목 A/B 입력 모드(변형 ≥2면 true)
   titleVariants: CopyLearnVariant[]; // component_type='title' (A/B면 3개, 단일이면 1개)
@@ -117,14 +118,18 @@ export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
   // performance_metrics d1 overall 코드 조인.
   const { data: perfRows, error: perfErr } = await supa
     .from("performance_metrics")
-    .select("content_id, ctr")
+    .select("content_id, ctr, views")
     .in("content_id", ids)
     .eq("metric_window", "d1")
     .eq("ab_variant", "overall");
   if (perfErr) throw new Error(`performance_metrics 조회 실패: ${perfErr.message}`);
 
   const ctrById = new Map<string, number | null>();
-  for (const r of perfRows ?? []) ctrById.set(r.content_id, r.ctr);
+  const viewsById = new Map<string, number | null>();
+  for (const r of perfRows ?? []) {
+    ctrById.set(r.content_id, r.ctr);
+    viewsById.set(r.content_id, r.views);
+  }
 
   const thumbByContent = new Map<string, CopyLearnVariant[]>();
   const titleByContent = new Map<string, CopyLearnVariant[]>();
@@ -153,6 +158,7 @@ export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
       title: c.title,
       uploadDate: c.upload_date,
       ctr24h: ctrById.get(c.id) ?? null,
+      views24h: viewsById.get(c.id) ?? null,
       thumbnail,
       titleHasAbTest: titleVariants.length >= 2,
       titleVariants,

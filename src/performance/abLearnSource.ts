@@ -82,16 +82,20 @@ export async function loadAbResultsFromDb(supa: Supa, component: AbComponent): P
   const labelById = new Map<string, string>();
   for (const c of contents ?? []) labelById.set(c.id, c.topic ?? c.title ?? c.id);
 
-  // performance_metrics d1 overall CTR — 영상별 1건.
+  // performance_metrics d1 overall CTR·조회수 — 영상별 1건.
   const { data: perf, error: pe } = await supa
     .from("performance_metrics")
-    .select("content_id, ctr")
+    .select("content_id, ctr, views")
     .in("content_id", contentIds)
     .eq("metric_window", "d1")
     .eq("ab_variant", "overall");
   if (pe) throw new Error(`performance_metrics 조회 실패: ${pe.message}`);
   const ctrById = new Map<string, number | null>();
-  for (const r of perf ?? []) ctrById.set(r.content_id, r.ctr);
+  const viewsById = new Map<string, number | null>();
+  for (const r of perf ?? []) {
+    ctrById.set(r.content_id, r.ctr);
+    viewsById.set(r.content_id, r.views);
+  }
 
   // 영상별로 variant 묶기.
   const byContent = new Map<string, AbVariantRow[]>();
@@ -125,6 +129,7 @@ export async function loadAbResultsFromDb(supa: Supa, component: AbComponent): P
       youtube_video_id: cid,
       variants: abVariants,
       video_ctr24h: ctrById.get(cid) ?? null,
+      video_views24h: viewsById.get(cid) ?? null,
     });
   }
 
@@ -156,6 +161,7 @@ export async function loadAbResultsFromDb(supa: Supa, component: AbComponent): P
         learn_mode: "single",
         variants: variantsArr,
         video_ctr24h: s.ctr,
+        video_views24h: viewsById.get(s.cid) ?? null,
       });
     }
   }

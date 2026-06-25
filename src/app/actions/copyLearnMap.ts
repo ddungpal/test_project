@@ -15,6 +15,7 @@ export interface CopyAbInput {
   contentId?: string;
   youtubeVideoId?: string;
   ctr24h: number | null;
+  views24h: number | null;
   thumbnail: { variant: AbVariantKey; copyMain: string[]; copyBoxes: string[]; watchShare: number | null }[];
   title: { hasAbTest: boolean; variants: { variant: AbVariantKey; text: string; watchShare: number | null }[] };
 }
@@ -117,12 +118,13 @@ export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "
   return component === "thumbnail" ? "thumbnail_copy" : "title";
 }
 
-/** performance_metrics d1 overall 1행(순수 변환). ctr=ctr24h. */
+/** performance_metrics d1 overall 1행(순수 변환). ctr=ctr24h, views=views24h. */
 export function mapCtr24hToMetricRow(input: CopyAbInput, contentId: string, nowIso: string): TablesInsert<"performance_metrics"> {
   return {
     content_id: contentId,
     metric_window: "d1",
     ctr: input.ctr24h,
+    views: input.views24h,
     ab_variant: "overall",
     recorded_at: nowIso,
   };

@@ -225,6 +225,52 @@ describe("buildAbStyleInput (prep 순수 헬퍼)", () => {
   });
 });
 
+describe("buildAbStyleInput — 조회수 신뢰도 가중(§13.2)", () => {
+  // 같은 결정력(decisive)·같은 CTR 의 두 영상. 조회수만 다름(고조회 vs 저조회).
+  //   reference = 코퍼스 max(=고조회). 고조회는 vconf≈1.0, 저조회는 vconf<1.0 → weight 차이는 조회수만 기인.
+  const ctrEq = 30.0;
+  const HI_LO: AbResultVideo[] = [
+    {
+      topic: "고조회", verdict: "decisive", relative_lift_pct: 12.0, video_ctr24h: ctrEq, video_views24h: 500000,
+      variants: [
+        { variant: "A", watch_share_pct: 40.0, is_winner: true, copy_main: "고조회 winner" },
+        { variant: "B", watch_share_pct: 28.0, copy_main: "고조회 loser" },
+      ],
+    },
+    {
+      topic: "저조회", verdict: "decisive", relative_lift_pct: 12.0, video_ctr24h: ctrEq, video_views24h: 5000,
+      variants: [
+        { variant: "A", watch_share_pct: 40.0, is_winner: true, copy_main: "저조회 winner" },
+        { variant: "B", watch_share_pct: 28.0, copy_main: "저조회 loser" },
+      ],
+    },
+  ];
+
+  it("같은 결정력·CTR 이면 고조회 영상 weight > 저조회 영상 weight", () => {
+    const out = buildAbStyleInput(HI_LO);
+    const byTopic = new Map(out.map((v) => [v.topic, v]));
+    const hi = byTopic.get("고조회")!;
+    const lo = byTopic.get("저조회")!;
+    expect(hi.weight).toBeGreaterThan(lo.weight);
+  });
+
+  it("전부 views null 이면 기존 weight 와 동일하다(하위호환 — viewsReference=0 → vconf=1.0)", () => {
+    // views 를 모두 제거한 동일 코퍼스.
+    const noViews = HI_LO.map((v) => {
+      const { video_views24h: _omit, ...rest } = v;
+      return rest;
+    });
+    const withViews = buildAbStyleInput(noViews);
+    const byTopic = new Map(withViews.map((v) => [v.topic, v]));
+    // views 없으면 vconf=1.0 → CTR·lift 만으로 계산된 기존 weight.
+    expect(byTopic.get("고조회")!.weight).toBe(byTopic.get("저조회")!.weight);
+    // 기존 9영상 코퍼스(views 없음)도 불변: ISA 3년 weight = verdictWeight(decisive, 12.4) × CTR 무가중.
+    //   (이 코퍼스는 video_ctr24h 도 없어 ab 모드는 verdictWeight 와 정확히 동일해야 한다.)
+    const legacy = new Map(buildAbStyleInput(VIDEOS).map((v) => [v.topic, v]));
+    expect(legacy.get("ISA 3년")!.weight).toBe(verdictWeight("decisive", 12.4));
+  });
+});
+
 describe("loadReviewedArtifact (--from 검수본 로드 순수 헬퍼)", () => {
   // 검수본 실제 형태(ab-style-proposed-*.json) 축약 — copy/visual/banned 구비.
   const REVIEWED = {

@@ -111,7 +111,8 @@ function toInput(contentId: string, s: VideoFormState): CopyAbInput {
     };
   }
 
-  return { contentId, ctr24h: numOrNull(s.ctr24h), thumbnail, title: titleBlock };
+  // views24h 입력칸은 step2에서 연결한다. 지금은 타입 계약만 충족(null → vconf 무가중·동작 동일).
+  return { contentId, ctr24h: numOrNull(s.ctr24h), views24h: null, thumbnail, title: titleBlock };
 }
 
 // ── 공통 인풋 스타일(TRUS: 직각·투명배경·흰 테두리, 포커스 시 노랑 링) ──

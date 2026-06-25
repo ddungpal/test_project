@@ -225,13 +225,14 @@ describe("loadAbResultsFromDb (DB 학습 소스 매핑)", () => {
         { content_id: "c1", component_type: "thumbnail", variant: "B", payload: { copy_main: "이것만 알면" }, ctr_pct: 27.1, is_winner: false },
       ],
       contents: [{ id: "c1", title: "ISA", topic: "ISA 3년" }],
-      performance_metrics: [{ content_id: "c1", ctr: 6.4, metric_window: "d1", ab_variant: "overall" }],
+      performance_metrics: [{ content_id: "c1", ctr: 6.4, views: 120000, metric_window: "d1", ab_variant: "overall" }],
     });
     const videos = await loadAbResultsFromDb(supa, "thumbnail");
     expect(videos).toHaveLength(1);
     const v = videos[0]!;
     expect(v.topic).toBe("ISA 3년");
     expect(v.video_ctr24h).toBe(6.4);
+    expect(v.video_views24h).toBe(120000); // performance_metrics.views → video_views24h 매핑.
     expect(v.learn_mode).toBeUndefined(); // A/B 경로 → mode 미지정(=ab)
     expect(v.variants).toHaveLength(2);
     const a = v.variants.find((x) => x.variant === "A")!;

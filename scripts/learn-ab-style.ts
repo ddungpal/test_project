@@ -73,6 +73,8 @@ export interface AbResultVideo {
   variants: AbResultVariant[];
   /** 영상(24h) CTR(%). DB 소스에서 채운다(§13.2 CTR 합성). 파일 시드엔 보통 없음(undefined → CTR 무가중·하위호환). */
   video_ctr24h?: number | null;
+  /** 영상(24h) 조회수. DB 소스에서 채운다(§13.2 조회수 신뢰도 가중). 파일 시드엔 보통 없음(null → vconf 무가중·하위호환). */
+  video_views24h?: number | null;
   /** 학습 모드. "single"=영상 내 비교 없음(제목 단일 — 영상간 CTR 대비). 미지정 → "ab"(영상 내 A/B). */
   learn_mode?: "ab" | "single";
 }
@@ -157,6 +159,15 @@ export function buildAbStyleInput(
   component: AbComponent = "thumbnail",
   config = loadConfig(),
 ): AbStyleInputVideo[] {
+  // §13.2 조회수 신뢰도 기준 — 코퍼스(학습대상 영상들)의 24h 조회수 최댓값. 영상마다 다시 구하지 않고 1회만 산출.
+  //   전부 null/0 이면 spread 가 비어 Math.max(0)=0 → ctrWeightedScore 에서 vconf=1.0(하위호환).
+  const viewsReference = Math.max(
+    0,
+    ...videos
+      .map((v) => v.video_views24h)
+      .filter((n): n is number => typeof n === "number" && Number.isFinite(n) && n > 0),
+  );
+
   const out: AbStyleInputVideo[] = [];
   for (const video of videos) {
     const isSingle = video.learn_mode === "single";
@@ -170,7 +181,7 @@ export function buildAbStyleInput(
         continue;
       }
       const weight = ctrWeightedScore(
-        { decisiveness: "decisive", videoCtr24h: video.video_ctr24h ?? null, mode: "single" },
+        { decisiveness: "decisive", videoCtr24h: video.video_ctr24h ?? null, mode: "single", videoViews24h: video.video_views24h ?? null, viewsReference },
         config.ab,
       );
       if (weight <= 0) continue; // CTR 없거나 0 → 학습 신호 없음(저CTR은 loser 합성에서 처리).
@@ -208,8 +219,8 @@ export function buildAbStyleInput(
     const relativeLiftPct = video.relative_lift_pct ?? (margin !== null && margin > 0 ? margin * 100 : undefined);
     const weight = ctrWeightedScore(
       relativeLiftPct === undefined
-        ? { decisiveness, videoCtr24h: video.video_ctr24h ?? null, mode: "ab" }
-        : { decisiveness, relativeLiftPct, videoCtr24h: video.video_ctr24h ?? null, mode: "ab" },
+        ? { decisiveness, videoCtr24h: video.video_ctr24h ?? null, mode: "ab", videoViews24h: video.video_views24h ?? null, viewsReference }
+        : { decisiveness, relativeLiftPct, videoCtr24h: video.video_ctr24h ?? null, mode: "ab", videoViews24h: video.video_views24h ?? null, viewsReference },
       config.ab,
     );
 

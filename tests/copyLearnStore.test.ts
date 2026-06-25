@@ -11,6 +11,7 @@ const CID = "content-uuid-1";
 const AB_INPUT: CopyAbInput = {
   contentId: CID,
   ctr24h: 6.4,
+  views24h: 120000,
   thumbnail: [
     { variant: "A", copyMain: ["절대 깨지 마세요"], copyBoxes: ["3년"], watchShare: 38.8 },
     { variant: "B", copyMain: ["이것만 알면 ISA"], copyBoxes: [], watchShare: 27.1 },
@@ -30,6 +31,7 @@ const AB_INPUT: CopyAbInput = {
 const SINGLE_TITLE_INPUT: CopyAbInput = {
   contentId: CID,
   ctr24h: 5.0,
+  views24h: 80000,
   thumbnail: AB_INPUT.thumbnail,
   title: { hasAbTest: false, variants: [{ variant: "A", text: "최종 제목 하나", watchShare: null }] },
 };
@@ -111,18 +113,24 @@ describe("mapCopyAbToRows — 제목 단일 모드", () => {
 });
 
 describe("mapCtr24hToMetricRow — performance d1 overall", () => {
-  it("1행, metric_window='d1', ab_variant='overall', ctr=ctr24h", () => {
+  it("1행, metric_window='d1', ab_variant='overall', ctr=ctr24h, views=views24h", () => {
     const row = mapCtr24hToMetricRow(AB_INPUT, CID, "2026-06-25T00:00:00.000Z");
     expect(row.content_id).toBe(CID);
     expect(row.metric_window).toBe("d1");
     expect(row.ab_variant).toBe("overall");
     expect(row.ctr).toBe(6.4);
+    expect(row.views).toBe(120000); // views24h 가 d1 overall 행에 실린다(§13.2 조회수 신뢰도).
     expect(row.recorded_at).toBe("2026-06-25T00:00:00.000Z");
   });
 
   it("ctr24h=null이면 ctr=null", () => {
     const row = mapCtr24hToMetricRow({ ...AB_INPUT, ctr24h: null }, CID, "2026-06-25T00:00:00.000Z");
     expect(row.ctr).toBeNull();
+  });
+
+  it("views24h=null이면 views=null(하위호환 — vconf 무가중)", () => {
+    const row = mapCtr24hToMetricRow({ ...AB_INPUT, views24h: null }, CID, "2026-06-25T00:00:00.000Z");
+    expect(row.views).toBeNull();
   });
 });
 
