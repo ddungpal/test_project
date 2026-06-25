@@ -4,7 +4,7 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-25(저녁 세션) · 단계: **유저테스트 1·2차 + 썸네일·제목 CTR 학습 관리자(`/copy-learn`) 완료 후 실사용 검증 진행 중. `/copy-learn` UI 3건 수정 랜딩(origin/main=`aa6e5f1`, vitest 350 그린): winner 라디오 제거(점유율 최고 자동), 재학습 진행표시·자동새로고침(액션을 styleRelearnSweep 동기 await로), 스타일 초안 패턴 상세 펼치기. 라이브 재학습 동작 확인(썸네일 v2·제목 v1 draft 생성됨). ▶▶ 다음 재개점=실사용 검증 계속: 특히 `/copy-learn`에서 ①제목 v1 초안 아직 미활성→활성화해야 hook_maker 반영 ②실데이터 입력→재학습→활성화(썸네일·제목 각각)→새 런으로 문구 품질 확인. 상세=아래 NEXT·세션로그(2026-06-25 저녁).**_
+_Last updated: 2026-06-25(밤 세션 — copy-views-weight 머지) · 단계: **유저테스트 1·2차 + `/copy-learn` 학습 관리자 완료 후 실사용 검증 진행 중. 이번 밤: `copy-views-weight` phase(하네스 3 step·1라운드씩 PASS)를 main에 ff-머지(main tip=`a995cf4`, vitest 369 그린·typecheck/build exit 0). 내용=24h 조회수를 학습 '신뢰도 가중'(vconf, 코퍼스 상대 reference)으로 추가 — 저조회 우연 고CTR이 검증된 히트만큼 학습을 끌어당기던 문제 보완. views 없으면 vconf=1.0=기존 동일(하위호환). ▶▶ 다음 재개점=실사용 검증 계속: `/copy-learn`에서 ①제목 v1 초안 아직 미활성→활성화 ②실데이터(이제 **24h 조회수 칸 포함**) 입력→재학습→활성화→새 런으로 문구 품질 확인. 미푸시(로컬 main만)·feat 브랜치 미삭제. 상세=아래 NEXT·세션로그(2026-06-25 밤/저녁).**_
 
 > ⚠️ 라이브 dev 운영 메모(이번 세션 학습):
 > - **dev 기동**: `pnpm dev`/`pnpm inngest:dev` 래퍼는 pnpm 빌드스크립트 승인 게이트(sharp/protobufjs)에서 막힘 → 바이너리 직접 사용: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest`.
@@ -24,6 +24,14 @@ _Last updated: 2026-06-25(저녁 세션) · 단계: **유저테스트 1·2차 + 
 - **(병렬·사람게이트) Phase D 실전환**: 김짠부가 한 단계 "이제 됐다" + 신호데이터(채택률·eval) 축적 → `AX_STAGES=<stage>`로 그 단계 AX 전환(롤백 가능).
 - **(병렬·사람게이트) A/B 학습 루프 가동**: ①C 효과 적용=claude-p로 `learn-ab-style` 재실행→draft→`activate-style` ②B 효과=새 Test&Compare→`ab-results.json`→`ingest-ab`→`style/relearn.requested` 트리거→draft 검수→activate. (코드는 ✅, 이후 사람 승인 루프.)
 - **(deferred·코드) 하네스 top-index 자동등록**: 새 phase가 `phases/index.json`에 미등록(watch는 mtime기반이라 무방, 저우선).
+
+## 📜 세션 로그 (2026-06-25 밤) — `copy-views-weight` phase: 24h 조회수 신뢰도 가중 (하네스, main ff-머지)
+**문제(사용자·과거 Claude 둘 다 지적): `/copy-learn` 학습 점수=A/B결정력×CTR크기 가 reach(규모)를 몰라, 24h 조회수 적은 영상의 우연한 고CTR이 검증된 히트만큼 스타일을 끌어당김("조회수 높아지면 썸네일 평가 불명확"). → 24h 조회수를 '신뢰도 가중'으로 추가. 하네스(Max·Joy·Esther) 3 step, 각 1라운드 PASS, AC(typecheck/test/build) 전부 exit 0. vitest 350→369(+19, 약화·삭제 없이 추가). `feat-copy-views-weight`→main ff(tip `a995cf4`). 마이그레이션 0(`performance_metrics.views` 기존 컬럼 재사용).**
+- **step0 `views-score-core`**(`5fd57cc`): `ctrWeightedScore`에 순수 헬퍼 `viewsConfidence = floor+(1−floor)·log1p(min(views,ref))/log1p(ref)` ∈[floor,1] 곱. **상대 기준**=코퍼스 reference(절대 cap 아님). views/ref 없거나 ref≤0/NaN/음수 → **vconf=1.0=기존 바이트 동일**(하위호환). views=0→floor, inconclusive는 vconf 무관 0. `config.ab.viewsConfFloor`(`AB_VIEWS_CONF_FLOOR` 기본 0.5)+`.env.example`. 테스트 9(하위호환·경계·단조). **순수 유지**=reference는 호출자가 주입.
+- **step1 `views-data-wiring`**(`336c479`): `CopyAbInput.views24h`→`mapCtr24hToMetricRow`가 performance_metrics d1 overall 행에 `views` 멱등 저장→`loadAbResultsFromDb`가 views select·`video_views24h` 채움(ab·single 둘 다)→`buildAbStyleInput` 진입부에서 `viewsReference=코퍼스 max(views)` **1회** 산출→`ctrWeightedScore` 2곳 주입. `copyLearnView.CopyLearnVideo.views24h`(프리필). 하위호환 회귀 가드(views 없으면 weight 불변)·promptHash 무영향(forward 픽스처 보존). 테스트 5.
+- **step2 `views-input-ui`**(`47a31e6`): `/copy-learn` 폼 영상별 **24h 조회수 입력칸**(ctr24h 패턴 미러·TRUS 3색·정수)+접힌 헤더에 `toLocaleString()` 천단위 노출. 파싱 순수모듈 분리(`src/components/copyViewsParse.ts`: 빈칸·음수·비숫자→null, "0"→0 — vitest alias·서버액션 의존 회피). 새 게이지 없음(상대 기준이라 단일 절대표시 오해 방지). 테스트 6.
+- **실효과는 실데이터 후**: 가중 로직만 변경 — 실제 학습 변화는 `/copy-learn`에서 24h 조회수 포함 실데이터 입력→재학습→활성화→새 런으로 확인(기존 copy-learn 검증 루프 동일).
+- **→ 남음**: ①origin push(현재 로컬 main만) ②feat-copy-views-weight 브랜치 삭제(보존됨) ③rules-proposals 5건+rules.md 신선도(15일) 정리 ④실데이터 라이브 검증.
 
 ## 📜 세션 로그 (2026-06-25 저녁) — 실사용 검증 중 `/copy-learn` UI 3건 수정 (main 푸시)
 **실사용 검증 시작. `/copy-learn`에서 발견한 UX 이슈를 직접 수정(하네스 아님·소규모)·각각 커밋·푸시. typecheck/350 그린 유지.**
