@@ -27,7 +27,6 @@ interface TitleVariantDraft {
 interface VideoFormState {
   ctr24h: string;
   thumb: Record<AbVariantKey, ThumbDraft>;
-  winner: AbVariantKey | null; // 썸네일 winner 선택
   titleHasAbTest: boolean;
   titleVariants: Record<AbVariantKey, TitleVariantDraft>;
   titleSingle: string; // hasAbTest=false일 때 최종 제목 1개
@@ -44,7 +43,6 @@ function initialState(v: CopyLearnVideo): VideoFormState {
     B: emptyThumb(),
     C: emptyThumb(),
   };
-  let winner: AbVariantKey | null = null;
   for (const tv of v.thumbnail) {
     if (!VARIANTS.includes(tv.variant)) continue;
     // payloadToText는 copy_main + copy_boxes를 평탄화해 text[]로 줌. 앞 2개를 메인, 다음 2개를 박스로 복원(근사).
@@ -52,7 +50,6 @@ function initialState(v: CopyLearnVideo): VideoFormState {
     t.copyMain = [tv.text[0] ?? "", tv.text[1] ?? ""];
     t.copyBoxes = [tv.text[2] ?? "", tv.text[3] ?? ""];
     t.watchShare = tv.watchShare != null ? String(tv.watchShare) : "";
-    if (tv.isWinner) winner = tv.variant;
   }
 
   const titleVariants: Record<AbVariantKey, TitleVariantDraft> = {
@@ -72,7 +69,6 @@ function initialState(v: CopyLearnVideo): VideoFormState {
   return {
     ctr24h: v.ctr24h != null ? String(v.ctr24h) : "",
     thumb,
-    winner,
     titleHasAbTest: v.titleHasAbTest,
     titleVariants,
     titleSingle,
@@ -145,6 +141,20 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
     }));
   }
 
+  // winner는 입력이 아니라 점유율(%)에서 파생(서버도 judgeComponent로 점유율 기준 재계산). 최고 점유율 변형만 강조.
+  const thumbWinner = useMemo<AbVariantKey | null>(() => {
+    let best: AbVariantKey | null = null;
+    let bestShare = -Infinity;
+    for (const variant of VARIANTS) {
+      const sh = numOrNull(state.thumb[variant].watchShare);
+      if (sh != null && sh > bestShare) {
+        bestShare = sh;
+        best = variant;
+      }
+    }
+    return best;
+  }, [state.thumb]);
+
   function onSave() {
     setError(null);
     setOk(null);
@@ -213,21 +223,16 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
             <div className="flex flex-col gap-4">
               {VARIANTS.map((variant) => {
                 const t = state.thumb[variant];
-                const isWinner = state.winner === variant;
+                const isWinner = thumbWinner === variant;
                 return (
                   <div key={variant} className={`border p-3 ${isWinner ? "border-trus-yellow" : "border-trus-white/15"}`}>
                     <div className="flex items-center justify-between">
                       <span className="text-sm font-black text-trus-white">변형 {variant}</span>
-                      <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-                        <input
-                          type="radio"
-                          name={`winner-${video.id}`}
-                          checked={isWinner}
-                          onChange={() => setState((s) => ({ ...s, winner: variant }))}
-                          className="accent-trus-yellow"
-                        />
-                        <span className={isWinner ? "font-bold text-trus-yellow" : "text-trus-white/55"}>winner</span>
-                      </label>
+                      {isWinner && (
+                        <span className="text-xs font-bold text-trus-yellow" title="점유율이 가장 높아 자동 winner">
+                          ★ 최고 점유율
+                        </span>
+                      )}
                     </div>
                     <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {[0, 1].map((i) => (
