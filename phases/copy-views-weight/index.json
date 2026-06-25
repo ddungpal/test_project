@@ -1,0 +1,27 @@
+{
+  "project": "produce script",
+  "phase": "copy-views-weight",
+  "goal": "/copy-learn 학습에 24h 조회수(reach)를 '신뢰도 가중'으로 추가. 현재 점수=A/B결정력×CTR크기 는 reach를 모름 → 저조회 우연 고CTR이 검증된 히트만큼 학습을 끌어당김('조회수 높아지면 썸네일 평가 불명확' 문제). 해결=조회수를 코퍼스 상대 기준(viewsReference=학습대상 영상들의 24h 조회수 최댓값, log 상대)으로 정규화한 confidence factor vconf∈[floor,1]를 점수에 곱한다. floor 기본 0.5(저조회 약화하되 죽이지 않음). 데이터 쌓일수록 reference 정밀화=자기보정. ★하위호환: views 또는 reference 없으면 vconf=1.0 → 기존과 완전 동일(픽스처·기존 테스트 보존). 마이그레이션 불필요(performance_metrics.views 컬럼 기존재, copy-learn에서만 미사용). step 0(스코어코어 순수+테스트)→1(데이터 배선: 폼입력→views 저장→로드→buildAbStyleInput이 reference 산출 후 ctrWeightedScore 주입)→2(UI: 폼 입력칸+reach 표시). AC 오프라인 $0.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "views-score-core",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-25T22:10:37+0900",
+      "summary": "ctrWeightedScore에 24h 조회수 신뢰도 가중 vconf∈[floor,1] 추가(순수 헬퍼 viewsConfidence = floor+(1-floor)·log1p(min(views,ref))/log1p(ref)). views/reference 미지정·NaN·음수·ref<=0 → vconf=1.0(하위호환 바이트 동일), views=0 → floor, inconclusive는 vconf 무관 0. config ab.viewsConfFloor(AB_VIEWS_CONF_FLOOR, 기본 0.5) 노브 + .env.example. 신규 테스트 9케이스(하위호환·경계·단조성). AC typecheck/test(360)/build 전부 exit 0.",
+      "completed_at": "2026-06-25T22:19:04+0900"
+    },
+    {
+      "step": 1,
+      "name": "views-data-wiring",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "views-input-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-25T22:10:37+0900"
+}
