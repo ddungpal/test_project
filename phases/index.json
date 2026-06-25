@@ -92,12 +92,8 @@
     },
     {
       "dir": "copy-views-weight",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (views-input-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 540,
-      "heartbeat_at": "2026-06-25T22:38:30+0900"
+      "status": "completed",
+      "completed_at": "2026-06-25T22:39:13+0900"
     }
   ]
 }
