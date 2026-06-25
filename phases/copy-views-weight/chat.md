@@ -48,3 +48,32 @@
 [Joy] CopyLearningForm 한 줄은 step1 명세가 views24h 필수로 추가하라고 못박았으니 그거 따른 거고, 입력칸 동작은 안 건드렸으니 step2 침범 아냐. PASS로 본다!
 [Joy] AC 3개 직접 돌려서 typecheck 0, test 363 통과 0, build 0 확인. 통과 🎉
 [리드] 좋아, 통과! step1 데이터 배선 끝났다. views가 폼계약→저장→로드→스코어까지 관통하고, 없으면 vconf=1.0으로 기존 그대로. step2(UI 입력칸)는 다음에. 수고했어 둘 다 👏
+
+=== Step 2: views-input-ui ===
+
+---
+
+# Step 2 — views-input-ui (UI: 24h 조회수 입력칸 + reach 맥락 표시)
+
+[리드] step0·1로 24h 조회수가 vconf로 학습까지 흐르게 됐잖아. 이번엔 김짠부가 영상별 24h 조회수를 실제로 입력할 칸 하나랑, 입력된 조회수를 화면에 보여주는 것만 붙이면 돼. ctr24h 패턴 그대로 미러하면 끝이야. 맥스, 맡아줘. 디자인 일관성은 에스더가 봐줄 거고.
+
+[Max] step2 시작할게. ctr24h 패턴 그대로 미러해서 폼에 24h 조회수 입력칸 붙이는 거지. 과설계 안 하고 숫자 노출까지만.
+
+[Max] 24h 조회수 입력칸 ctr24h 옆에 붙였어. 펼친 카드엔 입력칸, 접힌 헤더엔 천단위 콤마로 노출. step0/1 계약은 안 건드리고 폼만.
+[Max] 파싱은 작은 순수 모듈(copyViewsParse.ts)로 빼서 테스트 붙였어. 컴포넌트 통째로 import하면 서버액션까지 끌려와서 vitest가 못 풀더라고. 분리하니 깔끔해졌어. 음수·빈칸·비숫자는 null, "0"은 0으로 구분.
+[Max] numOrNull은 시그니처 안 바꿨어. 컴포넌트에서도 같은 모듈 거 쓰게 통일했고. typecheck·test 369개·build 다 통과. 봐줄래?
+
+[Esther] 음.. 디자인 일관성 보러 왔어. 24h 조회수 입력칸부터 봤는데 INPUT_CLS 그대로 쓰고 라벨도 text-xs font-bold tracking-widest text-trus-yellow uppercase로 ctr이랑 똑같네. 직각 유지되고 정렬도 flex flex-wrap gap-4로 둘이 나란히 깔끔하게 묶였어. 이건 자신 있게 통과.
+[Esther] 접힌 헤더 reach 노출도 봤어. 기존 CTR span이랑 같은 text-trus-yellow/70 톤에 ml-2로 간격 맞췄고 천단위 콤마까지. 톤이 완전히 일관돼서 좋아.
+[Esther] 혹시 과설계 있나 게이지나 프로그레스바 찾아봤는데 전혀 없어. 숫자만 딱 노출하고 끝. 정수 입력도 step="1" inputMode="numeric"로 적절하고 라벨 다 한국어야.
+[Esther] 색도 다 훑었어. 검정 노랑 흰 3색만 쓰고 shadow나 그라데이션 rounded 하나도 없어. TRUS 그대로야. 디자인 관점에선 나무랄 데 없어, 통과! 기능검수는 조이한테 넘길게 🙈
+
+[Joy] step2 검수 들어간다~ git diff부터 쫙 봤어. 맥스 ctr24h 패턴 그대로 미러했네, 깔끔
+[Joy] 파싱 모듈 분리한 거 좋은 판단이야. 컴포넌트 통째로 import하면 서버액션 끌려와서 vitest 못 푸는 거 맞아, 순수 모듈로 빼니까 테스트도 깨끗하고 굿굿
+[Joy] AC 3개 다 직접 돌렸어. typecheck exit 0, test 369 통과 exit 0(363에서 6개 늘었네, 약화·삭제 없이 추가만 굿), build exit 0. 셋 다 깔끔해 🎉
+[Joy] 체크리스트도 다 봤어. VideoFormState에 views24h:string 추가하고 initialState 프리필이 ctr24h랑 똑같은 패턴이야. toInput도 step1 하드코딩 null 빼고 parseViews24h로 실제 입력값 박았고
+[Joy] 파싱 견고성 합격! 빈칸→null, "0"→0, 음수→null, 비숫자→null 전부 테스트로 잡혀있고 throw 안 나. "12k" 같은 부분숫자도 null로 막았네 꼼꼼하다
+[Joy] step0/1 계약은 step1 커밋 이후 손 하나 안 댔어(diff에 폼·신규파일만). numOrNull도 types.ts꺼는 그대로고 폼은 새 모듈꺼 쓰는데 호출부 다 string 넘겨서 안 깨져. 헤더 reach는 toLocaleString 천단위로 잘 떠
+[Joy] 게이지·프로그레스바 없고 TRUS 3색 그대로. 에스더가 디자인 봐준 거랑 내 기능검수 둘 다 깨끗해. step2 통과! 맥스 에스더 수고했어 👏🎉
+
+[리드] 조이 PASS! AC 직접 돌린 것도 typecheck/test(369)/build 전부 exit 0이야. 24h 조회수 입력칸이 폼에 붙고 헤더에 천단위로 노출되네. step0~2로 reach 신뢰도 가중이 입력→저장→로드→스코어→UI까지 완주했다. 수고했어 셋 다 👏

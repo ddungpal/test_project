@@ -6,6 +6,7 @@ import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle } from "@/app/
 import type { CopyAbInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
 import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType } from "@/lib/dashboard/copyLearnView";
+import { numOrNull, parseViews24h } from "@/components/copyViewsParse";
 
 // 카피 학습 입력 화면(copy-learning-admin step2) — owner가 영상별 썸네일·제목 A/B + CTR(24h)를 입력→저장,
 //   재학습 트리거, 최근 draft 검수, component별 활성화. 백엔드(saveCopyAbResults/requestCopyRelearn/
@@ -26,6 +27,7 @@ interface TitleVariantDraft {
 }
 interface VideoFormState {
   ctr24h: string;
+  views24h: string; // 24h 조회수(정수). 빈칸=null(vconf 무가중·하위호환).
   thumb: Record<AbVariantKey, ThumbDraft>;
   titleHasAbTest: boolean;
   titleVariants: Record<AbVariantKey, TitleVariantDraft>;
@@ -68,19 +70,12 @@ function initialState(v: CopyLearnVideo): VideoFormState {
 
   return {
     ctr24h: v.ctr24h != null ? String(v.ctr24h) : "",
+    views24h: v.views24h != null ? String(v.views24h) : "",
     thumb,
     titleHasAbTest: v.titleHasAbTest,
     titleVariants,
     titleSingle,
   };
-}
-
-/** "12.5" → 12.5, 빈칸/비수치 → null. */
-function numOrNull(s: string): number | null {
-  const t = s.trim();
-  if (t === "") return null;
-  const n = Number(t);
-  return Number.isFinite(n) ? n : null;
 }
 
 /** 폼 상태 → CopyAbInput(서버액션 시그니처). 빈 변형은 보내지 않는다(빈 행 누출 차단). */
@@ -111,8 +106,8 @@ function toInput(contentId: string, s: VideoFormState): CopyAbInput {
     };
   }
 
-  // views24h 입력칸은 step2에서 연결한다. 지금은 타입 계약만 충족(null → vconf 무가중·동작 동일).
-  return { contentId, ctr24h: numOrNull(s.ctr24h), views24h: null, thumbnail, title: titleBlock };
+  // 빈칸/음수/비수치 → null(vconf 무가중·하위호환), "0" → 0.
+  return { contentId, ctr24h: numOrNull(s.ctr24h), views24h: parseViews24h(s.views24h), thumbnail, title: titleBlock };
 }
 
 // ── 공통 인풋 스타일(TRUS: 직각·투명배경·흰 테두리, 포커스 시 노랑 링) ──
@@ -197,6 +192,9 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
           <p className="mt-0.5 text-xs text-trus-white/45">
             업로드 {fmtDate(video.uploadDate)}
             {video.ctr24h != null && <span className="ml-2 text-trus-yellow/70">CTR {video.ctr24h}%</span>}
+            {video.views24h != null && (
+              <span className="ml-2 text-trus-yellow/70">24h 조회수 {video.views24h.toLocaleString()}</span>
+            )}
           </p>
         </div>
         <span className="shrink-0 text-xs font-bold text-trus-white/50">{open ? "접기 −" : "펼치기 +"}</span>
@@ -204,19 +202,33 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
 
       {open && (
         <div className="border-t border-trus-white/15 px-4 py-4">
-          {/* 영상 CTR(24h) */}
-          <label className="block">
-            <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">영상 CTR (24h, %)</span>
-            <input
-              type="number"
-              inputMode="decimal"
-              step="0.1"
-              value={state.ctr24h}
-              onChange={(e) => setState((s) => ({ ...s, ctr24h: e.target.value }))}
-              placeholder="예: 6.4"
-              className={`mt-1 max-w-[10rem] ${INPUT_CLS}`}
-            />
-          </label>
+          {/* 영상 CTR(24h) + 24h 조회수 */}
+          <div className="flex flex-wrap gap-4">
+            <label className="block">
+              <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">영상 CTR (24h, %)</span>
+              <input
+                type="number"
+                inputMode="decimal"
+                step="0.1"
+                value={state.ctr24h}
+                onChange={(e) => setState((s) => ({ ...s, ctr24h: e.target.value }))}
+                placeholder="예: 6.4"
+                className={`mt-1 max-w-[10rem] ${INPUT_CLS}`}
+              />
+            </label>
+            <label className="block">
+              <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">24h 조회수</span>
+              <input
+                type="number"
+                inputMode="numeric"
+                step="1"
+                value={state.views24h}
+                onChange={(e) => setState((s) => ({ ...s, views24h: e.target.value }))}
+                placeholder="예: 52000"
+                className={`mt-1 max-w-[10rem] ${INPUT_CLS}`}
+              />
+            </label>
+          </div>
 
           {/* 썸네일 섹션 */}
           <fieldset className="mt-6 border border-trus-white/15 p-3">
