@@ -87,12 +87,8 @@
     },
     {
       "dir": "copy-learning-admin",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (copy-learn-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 840,
-      "heartbeat_at": "2026-06-25T17:36:46+0900"
+      "status": "completed",
+      "completed_at": "2026-06-25T17:37:01+0900"
     }
   ]
 }
