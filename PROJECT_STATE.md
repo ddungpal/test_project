@@ -4,7 +4,7 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-25(밤 세션 — copy-views-weight 머지) · 단계: **유저테스트 1·2차 + `/copy-learn` 학습 관리자 완료 후 실사용 검증 진행 중. 이번 밤: `copy-views-weight` phase(하네스 3 step·1라운드씩 PASS)를 main에 ff-머지(main tip=`a995cf4`, vitest 369 그린·typecheck/build exit 0). 내용=24h 조회수를 학습 '신뢰도 가중'(vconf, 코퍼스 상대 reference)으로 추가 — 저조회 우연 고CTR이 검증된 히트만큼 학습을 끌어당기던 문제 보완. views 없으면 vconf=1.0=기존 동일(하위호환). ▶▶ 다음 재개점=실사용 검증 계속: `/copy-learn`에서 ①제목 v1 초안 아직 미활성→활성화 ②실데이터(이제 **24h 조회수 칸 포함**) 입력→재학습→활성화→새 런으로 문구 품질 확인. 미푸시(로컬 main만)·feat 브랜치 미삭제. 상세=아래 NEXT·세션로그(2026-06-25 밤/저녁).**_
+_Last updated: 2026-06-26(밤 세션 — copy-local-gen 머지) · 단계: **유저테스트 + `/copy-learn` 학습 관리자 완료 후 실사용 검증 중. 최근 main 머지 3건: ①`copy-views-weight`(24h 조회수 신뢰도 가중) ②`deleteRun` pts_has_source CHECK 충돌 수정(편 삭제 실패) ③`copy-local-gen`(하이브리드 $0 생성). copy-local-gen=하네스 4 step·전부 PASS, main tip=`8938e74`, vitest 369→441·typecheck 0. 내용=재학습(API)이 patterns에 '스켈레톤'까지 방출 → 제목/썸네일 생성·다시생성이 활성 스켈레톤을 로컬로 채워 callLLM 스킵($0), 'LLM 새로써줘'는 폴백(`COPY_GEN_MODE` 기본 hybrid). 스켈레톤 없거나 mode=llm이면 기존 경로 바이트 동일(하위호환·forward 픽스처 불변). ▶▶ 다음 재개점=실사용 검증: `/copy-learn`에서 재학습→스켈레톤 생성→활성화→새 런에서 제목/썸네일이 로컬 $0로 생성되는지 + 문구 품질(정형화 정도) 확인. 미푸시(로컬 main만)·feat 브랜치 미삭제. 상세=아래 세션로그(2026-06-26·06-25).**_
 
 > ⚠️ 라이브 dev 운영 메모(이번 세션 학습):
 > - **dev 기동**: `pnpm dev`/`pnpm inngest:dev` 래퍼는 pnpm 빌드스크립트 승인 게이트(sharp/protobufjs)에서 막힘 → 바이너리 직접 사용: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest`.
@@ -25,6 +25,16 @@ _Last updated: 2026-06-25(밤 세션 — copy-views-weight 머지) · 단계: **
 - **(병렬·사람게이트) A/B 학습 루프 가동**: ①C 효과 적용=claude-p로 `learn-ab-style` 재실행→draft→`activate-style` ②B 효과=새 Test&Compare→`ab-results.json`→`ingest-ab`→`style/relearn.requested` 트리거→draft 검수→activate. (코드는 ✅, 이후 사람 승인 루프.)
 - **▶ (추후 진행·사용자 방향) 썸네일 이미지(visual) 추가**: 현재 학습은 **카피(문구)만** — visual 차원(인물·색·레이아웃·장치)은 입력 공란이라 학습 불가(2026-06-25 재학습 tentative_notes에 명시). 사용자 계획=나중에 **실제 썸네일 이미지를 추가하는 방향**으로 시작. 선결: 김짠부 과거 썸네일 데이터(`contents.thumbnail_url` 수집/라벨) + 이미지 입력 경로(업로드/URL). 설계 후보=캔버스→HTML/CSS 템플릿(인물 슬롯+카피 자동배치) / 이미지생성(한글·인물일관성 약점→후순위). 상세 설계메모=아래 "썸네일 재개점 설계 메모".
 - **(deferred·코드) 하네스 top-index 자동등록**: 새 phase가 `phases/index.json`에 미등록(watch는 mtime기반이라 무방, 저우선).
+
+## 📜 세션 로그 (2026-06-26) — `copy-local-gen`(하이브리드 $0 생성) + `deleteRun` 삭제버그 수정 (main ff-머지)
+**① 편 삭제 버그 수정(`78f9b9d`, push 완료)**: `/copy-learn` 재학습 후 편 삭제 시 `삭제 실패: profile_training_sources ... pts_has_source` 에러. 원인=contents 삭제→ab_variants/performance_metrics 캐스케이드 삭제→pts.ab_variant_id `ON DELETE SET NULL`→유일출처였으면 num_nonnulls=0→`pts_has_source`(출처≥1) CHECK 위반→삭제 트랜잭션 롤백. 수정=`deleteRun`이 삭제 전 `detachOrphanTrainingSources`로 유일출처 pts만 선삭제(다중출처는 DB SET NULL 보존). cleanupRetrospectives detach 패턴과 동일 클래스. 읽기검증=차단 콘텐츠 2개·유일출처 pts 8건 정확히 정리 대상. ⚠️**잠재 2차 버그(미수정)**: 회고 있는 콘텐츠 삭제 시 retrospectives 캐스케이드→insights.source_retrospective_id SET NULL→A3 CHECK(`insights_retro_consistent`) 같은 클래스로 깨짐. 현재 테스트 콘텐츠엔 회고 없어 미발현. 같은 detach로 막을 수 있음(원하면 후속).
+**② `copy-local-gen` phase(하네스 4 step·전부 PASS, main tip `8938e74`, vitest 369→441·typecheck/build 0)**: 사용자 질문에서 출발 — "재학습만 API, 생성/재생성은 학습된 것으로 $0 가능?". 검토 결론=patterns는 채점규칙(rubric)이지 생성기가 아님 → 학습시 '스켈레톤'을 같이 컴파일 + 로컬 생성기 추가하면 가능. 하이브리드로 구현:
+- **step0 `skeleton-engine`**(`566c6ec`): 순수 `fillTitle/ThumbnailSkeletons`(슬롯 `{number}/{target}/{keyword}/{topic}` 치환·banned 필터·offset 변주·빈슬롯 누출 차단). `src/agents/shared/localCopyGen.ts`. 테스트.
+- **step1 `learn-emit-skeletons`**(`38ed586`): 재학습 LLM 출력에 `skeletons` 옵셔널 추가(추가 호출 0·기존 재학습 콜 편승)→안전수령·슬롯 화이트리스트→`patterns.skeletons` 저장. 하위호환(없으면 키 생략).
+- **step2 `local-gen-wiring`**(`ba0d74e`): `ProposalStageSpec.localCandidates` 옵셔널 훅 + `runProposalStage`(stageContract.ts) 로컬 단락 — 활성 스켈레톤+런 주제로 후보 생성 시 **callLLM 스킵($0)**, null/`mode=llm`이면 기존 경로 바이트 동일. `COPY_GEN_MODE`(기본 hybrid). 제목·썸네일만(topic/structure/research/script 불변). `buildLocalGenContext`로 주제→슬롯 추출.
+- **step3 `local-gen-ui`**(`da1e02d`): `다시 생성($0)` vs `LLM 새로 써줘`(forceLlm) 분기 + 출처 배지. TRUS 3색.
+- **실효과는 실데이터 후**: 가중 로직처럼 배선만 — `/copy-learn` 재학습→스켈레톤 생성→활성화→새 런에서 로컬 $0 생성 + 문구 품질(정형화) 확인 필요. 트레이드오프=돈 아니라 다양성, LLM 폴백으로 완화.
+- **→ 남음**: ①push(현재 로컬 main만) ②feat-copy-local-gen·feat-copy-views-weight 브랜치 삭제 ③실데이터 라이브 검증 ④(후속) deleteRun 2차 버그(회고-insights A3) 수정.
 
 ## 📜 세션 로그 (2026-06-25 밤) — `copy-views-weight` phase: 24h 조회수 신뢰도 가중 (하네스, main ff-머지)
 **문제(사용자·과거 Claude 둘 다 지적): `/copy-learn` 학습 점수=A/B결정력×CTR크기 가 reach(규모)를 몰라, 24h 조회수 적은 영상의 우연한 고CTR이 검증된 히트만큼 스타일을 끌어당김("조회수 높아지면 썸네일 평가 불명확"). → 24h 조회수를 '신뢰도 가중'으로 추가. 하네스(Max·Joy·Esther) 3 step, 각 1라운드 PASS, AC(typecheck/test/build) 전부 exit 0. vitest 350→369(+19, 약화·삭제 없이 추가). `feat-copy-views-weight`→main ff(tip `a995cf4`). 마이그레이션 0(`performance_metrics.views` 기존 컬럼 재사용).**
