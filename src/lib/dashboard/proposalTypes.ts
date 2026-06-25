@@ -72,7 +72,7 @@ export function isProposalStage(s: Stage): s is ProposalStage {
 
 export const STAGE_TITLE: Record<ProposalStage, string> = {
   topic: "주제",
-  title_thumb: "제목 · 썸네일", // 역사적 라벨 — title_thumb는 현재 제목 전용이나 레거시 표기 유지
+  title_thumb: "제목", // title_thumb 키는 레거시 — 현재 제목 전용 단계
   thumbnail: "썸네일",
   structure: "구성",
 };

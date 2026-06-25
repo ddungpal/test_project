@@ -30,3 +30,22 @@
 [Joy] 불변식 코드 굿. 조건부 push 맞고 테스트도 undefined/공백 toBe 케이스 다 있네. RegenerateButton stage 타입에 thumbnail 없어서 범위도 안 샜어. 이제 AC 돌려본다
 [Joy] AC 3개 다 exit 0! typecheck=0, test 307 passed, build=0. 불변식 코드+테스트로 보장, 범위 안 샜고 DB/스키마 변경 0, exactOptional은 조건부 스프레드로 일관, UI도 trus 3색에 그림자/그라데이션 없고 label 접근성 챙김. 보안도 깨끗. 통과! 맥스 에스더 둘 다 깔끔하다 수고했어 🎉
 [리드] 조이 PASS, AC 전부 exit 0(test 307). reason 불변식·범위·DB무변경·TRUS톤 다 확인됐어. step 1 완료로 마크할게. 맥스·에스더 수고했어 👏
+
+=== Step 2: stepper-thumbnail-stage ===
+
+## Step 2: stepper-thumbnail-stage
+[리드] 자, 마지막 step이다. 스테퍼를 5단계에서 6단계로 쪼개서 썸네일을 별도로 보여주는 거야. 내부 로직은 이미 분리돼 있으니 표시층(PIPELINE_STEPS·STATE_MAP·라벨)만 손대면 돼.
+[리드] 맥스, 이거 좀 맡아줄래? STATE_MAP 전 상태 빠짐없이 +1 재인덱싱하는 게 핵심이야. stages.ts랑 전이 로직은 절대 건드리지 말고.
+
+[Max] 표시층만 손대는 거 확인했어. 소비처(StageStepper) 다 배열 순회라 6개로 늘려도 자동 반영돼. stageProgress부터 고칠게.
+
+[Max] 다 했어. PIPELINE_STEPS 6개로 쪼개고 STATE_MAP 전수 재인덱싱, 라벨도 제목/썸네일 분리했어. typecheck·test(307개)·build 전부 통과. 내부 stages.ts는 안 건드렸고. 놓친 거 있으면 말해줘.
+[Max] 응, stageProgress 매핑부터 손봤어. 썸네일을 step 2로 끼우고 그 뒤 리서치·스크립트 구간 전부 한 칸씩 밀었어. STATE_MAP 20개 전수로.
+[Max] 라벨도 제목·썸네일에서 썸네일 떼고 정리했고. typecheck/test/build 다 exit 0이야. 307개 통과.
+[리드] 조이, 검수 좀 부탁해. STATE_MAP 재인덱싱이 핵심이니까 전 상태 +1 밀렸는지, 표시층만 건드렸는지(stages.ts 무변경) 봐줘.
+[Joy] 오 시작한다~ git diff부터 본다! 핵심 3파일이랑 phases 메타만 바뀐 거 같네, stages.ts는 안 건드렸고 굿
+[Joy] STATE_MAP 20개 전수 대조 끝! 다 맞아. structure 이후 +1 밀린 것도 정확하고. 이제 typecheck/test/build 돌려본다
+[Joy] 굿굿 다 통과! typecheck 0, test 307개 0, build 0. stages.ts랑 enums 금지영역도 안 건드렸고 깔끔하다 맥스 빠르네 PASS 🎉
+[Joy] 오 맥스 깔끔하다~ STATE_MAP 20개 전수 대조했는데 structure 이후 전부 정확히 +1 밀렸고, 금지영역(stages.ts·enums·전이) 하나도 안 건드렸어. AC도 다 exit 0!
+[Joy] StageStepper도 map으로 동적 순회라 6개 자동 반영되고, 썸네일 key 문제없어. 통과 🎉
+[리드] 좋아, step 2 PASS. 이걸로 usertest-fixes-1 3개 step 다 끝났다. 다들 수고했어!
