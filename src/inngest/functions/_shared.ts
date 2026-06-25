@@ -3,11 +3,12 @@
 import { runProposalStage, type ProposalStageSpec } from "../../pipeline/stageContract.js";
 import { withStageRuntime } from "../../pipeline/stageRuntime.js";
 
-export async function executeProposalStage<TOut>(spec: ProposalStageSpec<TOut>, opts: { softAck?: boolean | undefined; force?: boolean | undefined } = {}) {
-  const { softAck, force } = opts;
+export async function executeProposalStage<TOut>(spec: ProposalStageSpec<TOut>, opts: { softAck?: boolean | undefined; force?: boolean | undefined; reason?: string | undefined } = {}) {
+  const { softAck, force, reason } = opts;
   const guarded = await withStageRuntime(
     spec.runId,
-    (deps) => runProposalStage(spec, deps, force !== undefined ? { force } : {}),
+    // reason은 비/공백이면 미포함(exactOptionalPropertyTypes). force 패턴 그대로.
+    (deps) => runProposalStage(spec, deps, { ...(force !== undefined ? { force } : {}), ...(reason && reason.trim() ? { reason } : {}) }),
     softAck !== undefined ? { softAck } : {},
   );
   if (guarded.status !== "ok") return { runId: spec.runId, status: guarded.status };

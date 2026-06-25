@@ -11,6 +11,6 @@ export const topicStageFn = inngest.createFunction(
   { event: "run/topic.requested" },
   async ({ event, step }) =>
     step.run("topic-propose", () =>
-      executeProposalStage(topicStageSpec(event.data.runId, { levelSplit: !!event.data.levelSplit }), { softAck: event.data.softAck, force: event.data.force }),
+      executeProposalStage(topicStageSpec(event.data.runId, { levelSplit: !!event.data.levelSplit }), { softAck: event.data.softAck, force: event.data.force, reason: event.data.reason }),
     ),
 );

@@ -176,12 +176,13 @@ export async function selectStructure(sel: SelectInput): Promise<{ state: string
 // '다시 생성'(§8.2 단계경계 버튼) — 같은 단계 이벤트를 force=true로 재발행.
 //   멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음). 최신-우선 읽기라
 //   새 제안이 자동으로 화면에 뜬다. research/script는 제안 단계가 아니라 범위 밖.
-export async function regenerateStage(runId: string, stage: "topic" | "titles" | "structure" | "thumbnail"): Promise<void> {
+export async function regenerateStage(runId: string, stage: "topic" | "titles" | "structure" | "thumbnail", reason?: string): Promise<void> {
   await requireOwner();
   const name = (
     { topic: "run/topic.requested", titles: "run/titles.requested", structure: "run/structure.requested", thumbnail: "run/thumbnails.requested" } as const
   )[stage];
-  await inngest.send({ name, data: { runId, force: true } });
+  // reason은 비/공백이면 미포함(exactOptionalPropertyTypes — undefined 명시대입 금지). 없으면 기존 페이로드와 동일.
+  await inngest.send({ name, data: { runId, force: true, ...(reason && reason.trim() ? { reason } : {}) } });
 }
 
 // 썸네일 '전체 다시 생성'(3개 새로) 편의 액션 — force=true로 thumbnails.requested 재발행(run-in-place).

@@ -55,7 +55,7 @@ export interface ProposalStageResult {
 export async function runProposalStage<TOut>(
   spec: ProposalStageSpec<TOut>,
   deps: ProposalStageDeps,
-  opts: { force?: boolean } = {},
+  opts: { force?: boolean; reason?: string } = {}, // reason: '다시 생성' 사용자 이유(transient·프롬프트용). 비/공백이면 무영향.
 ): Promise<ProposalStageResult> {
   const { runId, descriptor } = spec;
   const { supa } = deps;
@@ -113,7 +113,7 @@ export async function runProposalStage<TOut>(
       .order("created_at", { ascending: false });
     const attempt = (priors?.length ?? 0); // 기존 제안 개수 = 다음 회차 nonce
     const priorCandidates = (priors?.[0]?.candidates as unknown as Candidate[] | undefined) ?? [];
-    prep.system = buildRegenerateAugmentedSystem(prep.system, priorCandidates, attempt);
+    prep.system = buildRegenerateAugmentedSystem(prep.system, priorCandidates, attempt, opts.reason);
   }
 
   // 3) AI 정확히 1회 — 비용가드·fixtures·스키마강제는 callLLM이 담당.

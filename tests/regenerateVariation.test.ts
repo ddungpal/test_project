@@ -52,6 +52,29 @@ describe("buildRegenerateAugmentedSystem(순수 변주)", () => {
     const b = buildRegenerateAugmentedSystem("BASE", [{ payload: { title: "A안" } }], 2);
     expect(a).toBe(b);
   });
+
+  // reason(선택적 사용자 이유) 주입 — 미전달/공백이면 바이트 동일(불변식), 있으면 프롬프트에 반영.
+  const priors = [{ payload: { title: "A안" } }];
+
+  it("reason 미전달(undefined) → reason 인자 생략 출력과 정확히 동일(불변식)", () => {
+    const withoutArg = buildRegenerateAugmentedSystem("BASE", priors, 1);
+    const withUndefined = buildRegenerateAugmentedSystem("BASE", priors, 1, undefined);
+    expect(withUndefined).toBe(withoutArg);
+  });
+
+  it("reason 빈문자열·공백뿐 → 동일(미주입)", () => {
+    const base = buildRegenerateAugmentedSystem("BASE", priors, 1);
+    expect(buildRegenerateAugmentedSystem("BASE", priors, 1, "")).toBe(base);
+    expect(buildRegenerateAugmentedSystem("BASE", priors, 1, "   ")).toBe(base);
+  });
+
+  it("reason 있음 → 그 이유 문자열 포함 + 이전 후보 차별화 지시도 유지", () => {
+    const out = buildRegenerateAugmentedSystem("BASE", priors, 1, "더 자극적으로");
+    expect(out).toContain("더 자극적으로");
+    expect(out).toContain("A안"); // 이전 후보 차별화 지시 유지
+    expect(out).toContain("뚜렷이 다른"); // 기존 변주 지시 유지
+    expect(out).not.toBe(buildRegenerateAugmentedSystem("BASE", priors, 1)); // reason 없음과 다름
+  });
 });
 
 describe("promptHash 차등(핵심) — 재생성이 새 hash를 내고 forward는 불변", () => {

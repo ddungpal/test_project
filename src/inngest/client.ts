@@ -9,7 +9,8 @@ import { Inngest, EventSchemas } from "inngest";
 // softAck: SOFT 비용캡 일시정지 후 사람이 승인하고 재개할 때 true(반장 마감).
 // levelSplit: 촉이 수준 분해 모드(키워드를 시청자 수준별로 나눠 제안) — topic.requested에서만 사용.
 // force: '다시 생성' — 멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음).
-type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean };
+// reason: '다시 생성' 시 사용자가 적은 선택적 이유(transient·프롬프트용, DB 미저장). 없으면 기존과 동일.
+type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean; reason?: string };
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };

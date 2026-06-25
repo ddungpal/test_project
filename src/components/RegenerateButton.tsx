@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { regenerateStage } from "@/app/actions/topicRun";
 import { LiveRefresh } from "@/components/LiveRefresh";
@@ -18,6 +18,8 @@ export function RegenerateButton({ runId, stage, proposalId }: { runId: string; 
   const [error, setError] = useState<string | null>(null);
   const [startId, setStartId] = useState<string | null>(null); // 제출 시점 proposalId(null=유휴). 이게 바뀌면 완료.
   const [timedOut, setTimedOut] = useState(false);
+  const [reason, setReason] = useState(""); // 선택 입력 — 왜 다시 생성하는지. 비/공백이면 백엔드에서 미전송 처리.
+  const reasonId = useId();
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const submitted = startId !== null;
@@ -27,6 +29,7 @@ export function RegenerateButton({ runId, stage, proposalId }: { runId: string; 
     if (startId !== null && proposalId !== startId) {
       setStartId(null);
       setTimedOut(false);
+      setReason(""); // 재생성 완료 → 다음 입력을 위해 이유칸 비움
     }
   }, [proposalId, startId]);
 
@@ -42,7 +45,7 @@ export function RegenerateButton({ runId, stage, proposalId }: { runId: string; 
     setError(null);
     startTransition(async () => {
       try {
-        await regenerateStage(runId, stage);
+        await regenerateStage(runId, stage, reason); // 빈/공백 reason은 Max 쪽에서 미전송 → 기존 동작과 동일
         setStartId(proposalId); // 현재 proposalId 기록 → 새 행 도착해 바뀌면 완료
         router.refresh();
       } catch (e) {
@@ -54,6 +57,18 @@ export function RegenerateButton({ runId, stage, proposalId }: { runId: string; 
 
   return (
     <div>
+      <label htmlFor={reasonId} className="mb-1.5 block text-xs font-bold text-trus-white/60">
+        다시 생성 이유 (선택)
+      </label>
+      <textarea
+        id={reasonId}
+        value={reason}
+        onChange={(e) => setReason(e.target.value)}
+        disabled={pending || submitted}
+        rows={2}
+        placeholder="왜 다시 생성하나요? (선택) 예: 더 자극적인 후킹으로"
+        className="mb-2 block w-full max-w-md resize-none border border-trus-yellow/40 bg-transparent px-3 py-2 text-sm text-trus-white placeholder:text-trus-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-50"
+      />
       <button
         onClick={onClick}
         disabled={pending || submitted}

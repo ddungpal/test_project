@@ -34,6 +34,7 @@ export function buildRegenerateAugmentedSystem(
   baseSystem: string,
   priorCandidates: Pick<Candidate, "payload">[],
   attempt: number,
+  reason?: string, // 사용자가 '다시 생성' 시 적은 선택적 이유(transient·프롬프트용). 비/공백이면 출력 불변(픽스처 보존).
 ): string {
   if (!baseSystem) return baseSystem;
 
@@ -45,6 +46,10 @@ export function buildRegenerateAugmentedSystem(
   ];
   for (const c of priorCandidates) {
     lines.push(`- ${summarizePayload(c.payload)}`);
+  }
+  // reason은 비어있지 않을 때만 덧붙인다 → 미전달/공백이면 위 배열만 join되어 기존과 바이트 동일.
+  if (reason && reason.trim()) {
+    lines.push(`사용자 요청 이유: "${reason.trim()}" — 이 이유를 반영해 이전 안과 다른 새 안을 내라.`);
   }
   return baseSystem + lines.join("\n");
 }
