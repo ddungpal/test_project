@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "ctr-weighted-learning",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-25T17:04:09+0900",
+      "summary": "앱 내 재학습(styleRelearnSweep)을 JSON→DB 소스로 전환(loadAbResultsFromDb, component 분기) + 썸네일·제목 둘 다 학습/sweep + CTR(24h) 합성가중(ctrWeightedScore: ab모드 verdictWeight×CTR정규화·CTR없으면 동일·single모드 CTR크기·inconclusive→0, config.ab ctrNormCap/ctrBoostFactor env) + 제목 스타일 로더/어펜더(loadActiveTitleStyle/appendTitleStyle) + hook_maker 조건부 주입(활성 title 프로필 있을 때만, 없으면 promptHash·픽스처 불변). 순환import는 verdictWeight 로직을 abVerdict로 이전 후 재export로 해결. draft까지만(자동 activate 금지). CLI JSON 시드 경로 유지. AC 3개(typecheck/test 348/build) exit 0. 실학습 효과는 관리자 입력→재학습→활성화 후 새 런으로 확인.",
+      "completed_at": "2026-06-25T17:22:46+0900"
     },
     {
       "step": 2,
