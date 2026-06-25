@@ -33,7 +33,11 @@
     {
       "step": 3,
       "name": "local-gen-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "2/3 PASS",
+      "started_at": "2026-06-26T01:04:08+0900",
+      "summary": "제목/썸네일 '다시 생성' UI를 '다시 생성($0)'(로컬·hybrid 기본)과 'LLM으로 새로 써줘'(forceLlm) 두 갈래로 분기하고, 끊겨 있던 forceLlm 전송 배선을 연결(서버액션→이벤트→inngest함수→executeProposalStage, step0~2 생성로직 불변). ① topicRun.ts: regenerateStage/regenerateThumbnails에 forceLlm? 인자 + 조건부 spread 이벤트 전달(exactOptional 준수, 미전달 시 페이로드 바이트 동일=하위호환). ② inngest/client.ts: StageData.forceLlm? 추가. hookStage.ts/thumbnailStage.ts가 forceLlm: event.data.forceLlm 전달(전송 배선만, 생성로직 무변경). ③ RegenerateButton.tsx: onClick(forceLlm) 분기·버튼 2개(로컬=노란외곽선·주, LLM=흰외곽선·보조), confirm·완료감지(proposalId 변경) 공유. ThumbnailStudio.tsx: '3개 전체 다시 생성' 2버튼 분기 + 카드 헤더 출처 배지(생성 중 아닐 때). 슬롯('이 칸만') 경로는 thumbnailSlotStage(runProposalStage 아님)라 미변경. ④ 출처 배지: candidateSource(evidence_ids) 순수헬퍼(proposalTypes.ts) — 'skeleton' 정확 매칭이면 로컬, 아니면 LLM(자동 폴백도 자연히 LLM 표시=혼동 없음). CandidateSourceBadge.tsx(신규, TRUS 3색·직각·무그림자, 로컬=노란외곽선/LLM=흰외곽선). ProposalSelector(제목 카드)·ThumbnailStudio(썸네일 카드)에 표시. ⑤ (선택) 활성 스켈레톤 없을 때 비활성 안내는 생략 — page 신규 데이터페치 비용 대비 배지 사후표시로 충분. tests/candidateSource.test.ts +7(부분일치 오판·null·폴백 toBe 단언). AC: typecheck=0, test=441 passed(0), build=0(stale .next 없이 한방). step0~2 계약(localCopyGen·stageContract·schema·maker 생성로직) 불변·범위 외 fixture 없음.",
+      "completed_at": "2026-06-26T01:21:49+0900"
     }
   ],
   "created_at": "2026-06-26T00:25:41+0900"
