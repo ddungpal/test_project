@@ -1,0 +1,27 @@
+{
+  "project": "produce script",
+  "phase": "copy-learning-admin",
+  "goal": "썸네일+제목 문구 학습 관리자 페이지 + CTR(24h) 기반 학습. 김짠부가 영상별로 (썸네일 변형 A/B/C 문구+점유율 / 제목: 체크박스 A/B/C 3개+점유율 또는 최종 1개) + CTR(24h) + A/B 결과를 owner 전용 페이지에서 DB(ab_variants component_type∈{thumbnail,title} + performance_metrics d1)에 멱등 저장 → '재학습' → style_profiles(thumbnail_copy/title) draft 생성 → 검수·활성화. 생성 시 thumbnail_maker는 loadActiveThumbnailStyle, hook_maker(제목)는 새 loadActiveTitleStyle를 주입(조건부=활성 프로필 있을 때만, 없으면 promptHash 불변·픽스처 보존). 핵심제약: 앱 내 재학습(styleRelearnSweep)이 JSON(loadAbResults)을 읽으므로 DB 소스로 전환해야 루프가 닫힘. 점수=CTR(영상 크기)×A/B(영상 내 귀속); 제목 A/B 있으면 동일, 없으면 영상간 CTR 상관(고CTR 제목=winner, 저CTR=loser). A/B(체류) 인자 유지로 낚시 방지. draft까지만(자동 activate 금지). AC 오프라인 $0. step 0(저장)→1(학습+주입)→2(UI).",
+  "steps": [
+    {
+      "step": 0,
+      "name": "ab-data-store",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-25T16:52:29+0900",
+      "summary": "썸네일·제목 A/B 입력 저장 백엔드: 읽기헬퍼 getCopyLearnVideos + 서버액션 saveCopyAbResults(ab_variants·performance_metrics d1 멱등 upsert, judgeComponent 재계산, contents.ab_* 캐시, auditLog copy_ab_saved) + 순수매핑 copyLearnMap. AC 3개(typecheck/test 333/build) exit 0.",
+      "completed_at": "2026-06-25T17:04:08+0900"
+    },
+    {
+      "step": 1,
+      "name": "ctr-weighted-learning",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "copy-learn-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-25T16:52:29+0900"
+}
