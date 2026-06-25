@@ -98,11 +98,11 @@
     {
       "dir": "copy-local-gen",
       "status": "running",
-      "progress": "1/4",
-      "running_step": "1 (learn-emit-skeletons)",
+      "progress": "2/4",
+      "running_step": "2 (local-gen-wiring)",
       "attempt": 1,
-      "elapsed_seconds": 660,
-      "heartbeat_at": "2026-06-26T00:45:02+0900"
+      "elapsed_seconds": 1080,
+      "heartbeat_at": "2026-06-26T01:03:30+0900"
     }
   ]
 }

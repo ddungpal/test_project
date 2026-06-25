@@ -36,6 +36,35 @@ export interface LocalGenContext {
   target?: string; // 타깃/수준(예: 사회초년생, 입문)
 }
 
+/**
+ * 런 컨텍스트(topic + 선택적 리서치 사실)에서 슬롯 채움 재료(LocalGenContext)를 만든다(순수·결정적).
+ *   ★ DB·네트워크·Date·random 금지 — 인자만 사용. step2가 run에서 topic(+facts)을 읽어 주입한다.
+ *   ★ 결정성: 같은 입력 → 같은 출력. 추출 못한 슬롯(keyword/target/number)은 객체에 키 자체를 넣지 않는다
+ *     (exactOptionalPropertyTypes: undefined 할당 금지). 빈 슬롯은 fillLine이 후보를 폐기하므로 안전.
+ *   ★ 억지 추출 금지: 정형화 가능한 것만(첫 숫자+단위, 흔한 타깃어 부분일치). 못 뽑으면 생략이 정답.
+ */
+export function buildLocalGenContext(topic: string, facts?: { claim: string }[]): LocalGenContext {
+  const t = typeof topic === "string" ? topic : "";
+  const ctx: LocalGenContext = { topic: t };
+
+  // number: topic(+facts.claim)에서 첫 숫자(+단위)를 결정적으로 추출. 없으면 생략.
+  const factText = Array.isArray(facts) ? facts.map((f) => (f && typeof f.claim === "string" ? f.claim : "")).join(" ") : "";
+  const haystack = `${t} ${factText}`;
+  const numMatch = haystack.match(/\d[\d,.]*\s*(?:%|원|만원|억|년|배|개|위|명|일|주|개월|살)?/);
+  if (numMatch) {
+    const num = numMatch[0].trim();
+    if (num.length > 0) ctx.number = num;
+  }
+
+  // target: topic에 흔한 타깃어가 부분일치하면 그 표준어를 결정적으로 채운다(가벼운 매칭만). 없으면 생략.
+  const TARGETS = ["사회초년생", "직장인", "주부", "입문", "초보", "신입", "은퇴", "프리랜서", "자영업"] as const;
+  const target = TARGETS.find((w) => t.includes(w));
+  if (target) ctx.target = target;
+
+  // keyword: 결정적 추출이 어려우므로 생략(undefined). 못 뽑은 슬롯 쓰는 후보는 step0가 폐기 → 안전.
+  return ctx;
+}
+
 /** 인식 슬롯 키. 템플릿에 이 외 토큰이 {} 형태로 남으면 빈슬롯 누출로 간주(폐기). */
 //   export: step1 normalizeSkeletons 가 동일 화이트리스트로 학습 산출 스켈레톤을 검증하기 위해 재사용한다
 //   (검증 의미를 한 곳에 모은다 — 슬롯 정의가 두 군데로 갈라지는 것 방지).

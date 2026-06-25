@@ -4,6 +4,7 @@ import { describe, it, expect } from "vitest";
 import {
   fillTitleSkeletons,
   fillThumbnailSkeletons,
+  buildLocalGenContext,
   type TitleSkeleton,
   type ThumbnailSkeleton,
   type LocalGenContext,
@@ -129,5 +130,48 @@ describe("fillThumbnailSkeletons (순수)", () => {
   it("빈 skeletons/undefined면 빈 배열(throw 없음)", () => {
     expect(fillThumbnailSkeletons([], CTX, { count: 2 })).toEqual([]);
     expect(fillThumbnailSkeletons(undefined as unknown as ThumbnailSkeleton[], CTX, { count: 2 })).toEqual([]);
+  });
+});
+
+describe("buildLocalGenContext (순수·결정적) — 런 컨텍스트 → 슬롯 재료", () => {
+  it("topic은 그대로 들어간다", () => {
+    expect(buildLocalGenContext("연봉 3천 이하 절세").topic).toBe("연봉 3천 이하 절세");
+  });
+
+  it("같은 입력은 같은 출력(결정적)", () => {
+    const a = buildLocalGenContext("3년 적금 비교", [{ claim: "금리 4% 적용" }]);
+    const b = buildLocalGenContext("3년 적금 비교", [{ claim: "금리 4% 적용" }]);
+    expect(a).toEqual(b);
+  });
+
+  it("topic에서 첫 숫자+단위를 number 슬롯으로 추출한다", () => {
+    expect(buildLocalGenContext("3년 묶이는 예금").number).toBe("3년");
+    expect(buildLocalGenContext("연 4% 이자").number).toBe("4%");
+    expect(buildLocalGenContext("월급 200만원").number).toBe("200만원");
+  });
+
+  it("topic에 숫자가 없으면 facts.claim에서 숫자를 추출한다", () => {
+    const ctx = buildLocalGenContext("적금 고르는 법", [{ claim: "최고 5% 금리" }]);
+    expect(ctx.number).toBe("5%");
+  });
+
+  it("숫자가 어디에도 없으면 number 키 자체를 넣지 않는다(undefined 할당 금지)", () => {
+    const ctx = buildLocalGenContext("예금 고르는 법");
+    expect("number" in ctx).toBe(false);
+  });
+
+  it("topic에 흔한 타깃어가 있으면 target 슬롯을 채운다", () => {
+    expect(buildLocalGenContext("사회초년생 재테크").target).toBe("사회초년생");
+    expect(buildLocalGenContext("직장인 절세 꿀팁").target).toBe("직장인");
+  });
+
+  it("타깃어가 없으면 target 키 자체를 넣지 않는다", () => {
+    const ctx = buildLocalGenContext("예금 vs 적금");
+    expect("target" in ctx).toBe(false);
+  });
+
+  it("keyword는 결정적 추출 어려워 항상 생략한다(억지 추출 금지)", () => {
+    const ctx = buildLocalGenContext("사회초년생 3년 예금");
+    expect("keyword" in ctx).toBe(false);
   });
 });

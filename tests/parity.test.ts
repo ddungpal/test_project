@@ -36,7 +36,7 @@ function fakeDriver(name: "claude-p" | "api", payload: object): LlmBackendDriver
 }
 
 function cfg(over: Partial<LlmConfig> = {}): LlmConfig {
-  return { backend: "claude-p", fixtures: "off", softCapUsd: 7, hardCapUsd: 10, maxRework: 2, research: { maxClaims: 4, maxConcepts: 4, koreanOfficialDomains: [] }, search: { defaultTtlSeconds: 86_400, volatilityTtlSeconds: { static: 2_592_000, slow: 604_800, fast: 3_600 } }, ab: { decisiveMargin: 0.1, marginalMargin: 0.03, ctrNormCap: 10, ctrBoostFactor: 0.3, viewsConfFloor: 0.5 }, ...over };
+  return { backend: "claude-p", fixtures: "off", copyGenMode: "hybrid", softCapUsd: 7, hardCapUsd: 10, maxRework: 2, research: { maxClaims: 4, maxConcepts: 4, koreanOfficialDomains: [] }, search: { defaultTtlSeconds: 86_400, volatilityTtlSeconds: { static: 2_592_000, slow: 604_800, fast: 3_600 } }, ab: { decisiveMargin: 0.1, marginalMargin: 0.03, ctrNormCap: 10, ctrBoostFactor: 0.3, viewsConfFloor: 0.5 }, ...over };
 }
 
 describe("promptHash 결정성", () => {

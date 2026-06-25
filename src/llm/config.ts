@@ -22,6 +22,8 @@ function envNum(key: string, fallback: number): number {
 export interface LlmConfig {
   backend: LlmBackend;
   fixtures: FixtureMode;
+  /** 제목·썸네일 로컬 생성 모드(copy-local-gen). hybrid=생성·재생성 로컬 우선·'새로 써줘'는 LLM / llm=항상 LLM / local=로컬만(폴백 없음). */
+  copyGenMode: "hybrid" | "llm" | "local";
   softCapUsd: number;
   hardCapUsd: number;
   maxRework: number;
@@ -60,6 +62,10 @@ export function loadConfig(): LlmConfig {
   if (!["replay", "record", "off"].includes(fixtures)) {
     throw new Error(`LLM_FIXTURES must be 'replay' | 'record' | 'off', got "${fixtures}"`);
   }
+  const copyGenMode = envStr("COPY_GEN_MODE", "hybrid");
+  if (!["hybrid", "llm", "local"].includes(copyGenMode)) {
+    throw new Error(`COPY_GEN_MODE must be 'hybrid' | 'llm' | 'local', got "${copyGenMode}"`);
+  }
   const softCapUsd = envNum("COST_SOFT_CAP_USD", 7);
   const hardCapUsd = envNum("COST_HARD_CAP_USD", 10);
   if (softCapUsd > hardCapUsd) {
@@ -68,6 +74,7 @@ export function loadConfig(): LlmConfig {
   return {
     backend,
     fixtures,
+    copyGenMode: copyGenMode as "hybrid" | "llm" | "local",
     softCapUsd,
     hardCapUsd,
     maxRework: envNum("MAX_REWORK", 2),

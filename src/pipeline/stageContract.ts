@@ -31,6 +31,27 @@ export interface ProposalStageSpec<TOut> {
   prepare(supa: Supa): Promise<{ system: string; input: unknown; schema: JsonSchema; maxTokens?: number; sources?: ProposalSource[] }>;
   /** 검증된 LLM 출력 → 후보 배열(stage_proposals.candidates). 2번째 인자(opt)=prepare가 만든 input(파생 필드·가드용). */
   toCandidates(out: TOut, input?: unknown): Candidate[];
+  /** 활성 스켈레톤+런 주제로 로컬 후보 생성($0). 반환 null=로컬 불가→callLLM 폴백. mode=llm/forceLlm이면 호출 안 함. */
+  localCandidates?(supa: Supa, prep: { input: unknown }, ctx: { offset: number }): Promise<Candidate[] | null>;
+}
+
+/**
+ * 로컬 생성 vs LLM 단락 판정(순수) — 'callLLM 스킵' 의사결정의 단일 진실.
+ *   forceLlm 또는 mode==="llm" → 항상 "llm"(localCandidates 호출 안 함은 호출부 책임).
+ *   mode==="local" → 항상 "local"(localCount가 null/0이어도 로컬, callLLM 절대 안 함).
+ *   mode==="hybrid" → 로컬 후보가 1개 이상(localCount>0)이면 "local", 아니면 "llm" 폴백.
+ *   ★ localCount=null = 로컬 불가(훅 없음·스켈레톤 없음·mode=llm·forceLlm) → hybrid에선 항상 "llm".
+ */
+export function decideLocalGen(args: {
+  mode: "hybrid" | "llm" | "local";
+  forceLlm: boolean;
+  localCount: number | null;
+}): "local" | "llm" {
+  const { mode, forceLlm, localCount } = args;
+  if (forceLlm || mode === "llm") return "llm";
+  if (mode === "local") return "local";
+  // hybrid
+  return localCount !== null && localCount > 0 ? "local" : "llm";
 }
 
 export interface ProposalStageDeps {
@@ -55,10 +76,10 @@ export interface ProposalStageResult {
 export async function runProposalStage<TOut>(
   spec: ProposalStageSpec<TOut>,
   deps: ProposalStageDeps,
-  opts: { force?: boolean; reason?: string } = {}, // reason: '다시 생성' 사용자 이유(transient·프롬프트용). 비/공백이면 무영향.
+  opts: { force?: boolean; reason?: string; forceLlm?: boolean } = {}, // reason: '다시 생성' 사용자 이유(transient·프롬프트용). 비/공백이면 무영향. forceLlm: 로컬 스킵하고 LLM 강제('새로 써줘', 동작은 step3).
 ): Promise<ProposalStageResult> {
   const { runId, descriptor } = spec;
-  const { supa } = deps;
+  const { supa, config } = deps;
   const run = await getRun(supa, runId);
 
   // 진입 판정(순수): force=false면 기존 멱등·정상·가드 분기와 정확히 동치.
@@ -98,12 +119,11 @@ export async function runProposalStage<TOut>(
   // 2) 결정적 prep(AI 없음).
   const prep = await spec.prepare(supa);
 
-  // 2-1) 재생성(force=run-in-place)만 prep.system을 변주 — '다시 생성'이 이전과 바이트 동일한 후보를 내던 버그 수정.
-  //   prepare는 supa만 받아 force를 모른다(같은 run·주제 → 동일 system+input → 동일 promptHash → 동일 후보).
-  //   여기서 이 (run, stage)의 기존 제안 개수=다음 회차 nonce(attempt), 최근 candidates=priorCandidates로
-  //   '이전 안과 뚜렷이 다르게' 변주 지시를 덧붙여 promptHash를 차등화한다.
-  //   ⚠ run-forward 등 다른 경로는 prep을 절대 건드리지 않는다 → forward promptHash 불변(기존 parity/eval 픽스처 보존).
-  //   ponytail: 재생성은 새 promptHash라 replay 전용($0 동결)에선 픽스처 미스 throw가 정상(설계). replay는 동결 재생용, 재생성은 record로.
+  // 2-1) 회차 nonce(offset)·이전 후보: run-in-place(force 재생성)면 이 (run, stage)의 기존 제안 개수=다음 회차 nonce,
+  //   최근 candidates=priorCandidates. forward는 offset=0·이전 후보 없음(기존 동작 동치).
+  //   offset은 로컬 생성 변주(스켈레톤 회전)와 LLM 변주(buildRegenerateAugmentedSystem) 둘 다의 nonce로 공유한다.
+  let offset = 0;
+  let priorCandidates: Candidate[] = [];
   if (entry === "run-in-place") {
     const { data: priors } = await supa
       .from("stage_proposals")
@@ -111,29 +131,68 @@ export async function runProposalStage<TOut>(
       .eq("run_id", runId)
       .eq("stage", descriptor.stage)
       .order("created_at", { ascending: false });
-    const attempt = (priors?.length ?? 0); // 기존 제안 개수 = 다음 회차 nonce
-    const priorCandidates = (priors?.[0]?.candidates as unknown as Candidate[] | undefined) ?? [];
-    prep.system = buildRegenerateAugmentedSystem(prep.system, priorCandidates, attempt, opts.reason);
+    offset = priors?.length ?? 0; // 기존 제안 개수 = 다음 회차 nonce
+    priorCandidates = (priors?.[0]?.candidates as unknown as Candidate[] | undefined) ?? [];
   }
 
-  // 3) AI 정확히 1회 — 비용가드·fixtures·스키마강제는 callLLM이 담당.
-  const res = await callLLM<TOut>(
-    {
-      roleId: descriptor.roleId,
-      system: prep.system,
-      input: prep.input,
-      schema: prep.schema,
-      runId,
-      ...(prep.maxTokens !== undefined ? { maxTokens: prep.maxTokens } : {}),
-    },
-    { config: deps.config, costGuard: deps.costGuard },
-  );
+  // 2-2) 로컬 생성 시도(copy-local-gen). mode=llm/forceLlm이면 로컬 미허용 → 훅 미호출(localCount=null → 항상 LLM).
+  //   localCandidates 훅이 없는 단계(topic/structure/research/script)도 localCount=null → 항상 LLM(기존 동작 불변).
+  const mode = config.copyGenMode;
+  const localAllowed = mode !== "llm" && !opts.forceLlm;
+  const localCands =
+    localAllowed && spec.localCandidates
+      ? await spec.localCandidates(supa, { input: prep.input }, { offset })
+      : null;
+  const decision = decideLocalGen({
+    mode,
+    forceLlm: !!opts.forceLlm,
+    localCount: spec.localCandidates && localAllowed ? (localCands?.length ?? 0) : null,
+  });
+
+  // 2-3) 분기 결과(candidates + 비용/메타). 두 경로가 이후 insert·전이를 공유한다.
+  let candidates: Candidate[];
+  let costUsd: number;
+  let provider: string;
+  let latencyMs: number;
+  let promptHash: string;
+
+  if (decision === "local") {
+    // ★ 로컬 경로: callLLM 절대 호출 안 함($0·픽스처 무영향). localCands가 null(mode=local에서 훅 부재)이면 빈 후보.
+    candidates = localCands ?? [];
+    provider = "local";
+    costUsd = 0;
+    latencyMs = 0;
+    promptHash = "local";
+  } else {
+    // LLM 경로(기존 동작 동치). run-in-place만 prep.system을 변주 — '다시 생성'이 이전과 바이트 동일한 후보를 내던 버그 수정.
+    //   ⚠ run-forward 등은 prep을 절대 건드리지 않는다 → forward promptHash 불변(기존 parity/eval 픽스처 보존).
+    //   ponytail: 재생성은 새 promptHash라 replay 전용($0 동결)에선 픽스처 미스 throw가 정상(설계).
+    if (entry === "run-in-place") {
+      prep.system = buildRegenerateAugmentedSystem(prep.system, priorCandidates, offset, opts.reason);
+    }
+    // 3) AI 정확히 1회 — 비용가드·fixtures·스키마강제는 callLLM이 담당.
+    const res = await callLLM<TOut>(
+      {
+        roleId: descriptor.roleId,
+        system: prep.system,
+        input: prep.input,
+        schema: prep.schema,
+        runId,
+        ...(prep.maxTokens !== undefined ? { maxTokens: prep.maxTokens } : {}),
+      },
+      { config: deps.config, costGuard: deps.costGuard },
+    );
+    candidates = spec.toCandidates(res.data, prep.input);
+    provider = res.provider;
+    costUsd = res.costUsd;
+    latencyMs = res.latencyMs;
+    promptHash = res.promptHash;
+  }
 
   // 4) proposed 저장(컨펌 전 = 저장 후 표시).
-  const candidates = spec.toCandidates(res.data, prep.input);
   const { data: proposal, error: pe } = await supa
     .from("stage_proposals")
-    .insert({ run_id: runId, stage: descriptor.stage, candidates: candidates as unknown as Json, prompt_run_ref: res.promptHash })
+    .insert({ run_id: runId, stage: descriptor.stage, candidates: candidates as unknown as Json, prompt_run_ref: promptHash })
     .select("id")
     .single();
   if (pe) throw new Error(`stage_proposals insert 실패: ${pe.message}`);
@@ -163,10 +222,10 @@ export async function runProposalStage<TOut>(
   //    run-in-place(force 재생성)는 전이 없이 같은 proposedState로 비용/모델/지연만 update —
   //    상태가 안 바뀌니 DB 전이 트리거 무관(migration 불필요). 새 proposal만 추가된다.
   const patch = {
-    cost_usd: run.cost_usd + res.costUsd,
-    model: `${res.provider}`,
-    prompt_version: res.promptHash,
-    latency_ms: res.latencyMs,
+    cost_usd: run.cost_usd + costUsd,
+    model: `${provider}`,
+    prompt_version: promptHash,
+    latency_ms: latencyMs,
   };
   if (entry === "run-in-place") {
     const { data: upd, error: ue } = await supa
@@ -184,6 +243,6 @@ export async function runProposalStage<TOut>(
 
   return {
     runId, stage: descriptor.stage, proposalId: proposal.id, candidates,
-    state: descriptor.proposedState, costUsd: res.costUsd, provider: res.provider, skipped: false,
+    state: descriptor.proposedState, costUsd, provider, skipped: false,
   };
 }
