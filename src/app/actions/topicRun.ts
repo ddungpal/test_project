@@ -14,6 +14,7 @@ import { enterScriptReview, approveScript, requestScriptRework } from "../../pip
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
+import { cleanupRetrospectives } from "../../agents/retrospectivist/runRetrospective.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 import type { SeedRunInput } from "../../lib/dashboard/seedTypes.js";
 
@@ -141,7 +142,11 @@ async function detachOrphanTrainingSources(supa: Supa, contentId: string): Promi
 /**
  * 편 하드 삭제 — produced content 삭제 → DB 캐스케이드로 run + 모든 자식(제안·선택·리서치·대본·
  *   lineage·비용·content_links) 제거. ★ imported(참조용 기존편)는 source 가드로 절대 삭제 안 됨.
- *   ★ 삭제 전 detachOrphanTrainingSources 로 provenance 고아 행을 정리(pts_has_source CHECK 충돌 방지).
+ *   ★ 삭제 전 두 CHECK 충돌을 선제 정리:
+ *     ① detachOrphanTrainingSources — pts_has_source(provenance 고아 행).
+ *     ② cleanupRetrospectives — retrospectives 캐스케이드 삭제 시 insights.source_retrospective_id SET NULL 이
+ *        A3 CHECK(insights_retro_consistent: retro FK ⇔ source_type='retrospective')와 충돌하는 것 방지
+ *        (draft 회고-insight 삭제·승격분은 human_authored 로 detach 보존 후 retrospectives 선삭제).
  */
 export async function deleteRun(runId: string): Promise<void> {
   const ownerId = await requireOwner();
@@ -150,6 +155,7 @@ export async function deleteRun(runId: string): Promise<void> {
   if (error) throw new Error(`런 조회 실패: ${error.message}`);
   if (!run) return; // 이미 없음 = 멱등
   await detachOrphanTrainingSources(supa, run.content_id); // pts_has_source CHECK 충돌 선제 방어.
+  await cleanupRetrospectives(supa, run.content_id); // insights_retro_consistent(A3) CHECK 충돌 선제 방어(승격분 보존).
   const { data: del, error: de } = await supa
     .from("contents")
     .delete()
