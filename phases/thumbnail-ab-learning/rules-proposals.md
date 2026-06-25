@@ -1,1 +1,0 @@
-- 제안: 기존 메트릭 컬럼(ctr_pct 등)에 다른 지표를 재사용해 적재할 때는 payload.metric에 실제 지표명을 박아 정체를 명시한다 (근거: watch_share_pct를 ctr_pct 슬롯에 넣는 ab-ingest에서 CTR 오기재를 막은 패턴 — 향후 다른 지표 적재 시 컬럼명만 보고 오해하는 실수 방지. 관련: scripts/ingest-ab.ts AB_METRIC)

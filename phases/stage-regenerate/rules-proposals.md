@@ -1,1 +1,0 @@
-- 제안: `npm run build`가 webpack chunk MODULE_NOT_FOUND(예: `./323.js`)로 깨지면 stale `.next` 캐시다 — `rm -rf .next` 후 재빌드로 판별한다 (근거: 코드 변경과 무관한 캐시 오류를 실패로 오판하지 않기 위해)

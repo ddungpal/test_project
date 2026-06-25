@@ -1,4 +1,4 @@
-<!-- harness:freshness last_reviewed=2026-06-10 -->
+<!-- harness:freshness last_reviewed=2026-06-25 -->
 # 프로젝트 규칙 (Living Rules)
 
 > CLAUDE.md를 린하게 유지하기 위해, **영역 한정·상세 규칙**은 여기에 둔다.
@@ -9,9 +9,11 @@
 
 각 규칙은 한 줄로, 검증 가능하게. "왜"가 비자명하면 `(이유: ...)`를 붙인다.
 
-- {예: 날짜·시간은 항상 UTC로 저장하고 표시할 때만 변환한다 (이유: 타임존 버그 방지)}
-- {예: DB 마이그레이션은 되돌릴 수 있어야 한다 (up/down 모두 작성)}
-- {예: 새 환경변수는 `.env.example`에도 추가한다}
+- 새 환경변수는 `.env.example`에도 추가한다 (이유: 운영·협업자 설정 누락 방지).
+- `npm run build`가 `PageNotFoundError`(예 /audit)나 webpack chunk `MODULE_NOT_FOUND`(예 `./323.js`)로 깨지면 stale `.next` 캐시를 먼저 의심한다 — `rm -rf .next` 후 재빌드로 판별한다 (이유: 코드 변경과 무관한 캐시 오류를 실패로 오판 금지).
+- 기존 메트릭 컬럼(예 `ab_variants.ctr_pct`)에 다른 지표를 재사용해 적재할 때는 그 정체를 코드·주석으로 명시한다 (이유: watch_share/views를 ctr_pct 슬롯에 넣는 패턴 — 컬럼명만 보고 CTR로 오해하는 실수 방지).
+- step 산출물 커밋 전 `git status`로 명세에 없는 신규 `fixtures/parity/*`(record 모드 부산물)가 섞였는지 확인하고 범위 외 fixture는 제외한다 (이유: 무관 record fixture가 커밋에 딸려가는 것 방지).
+- 하네스 step 완료 시 코드뿐 아니라 `phases/<phase>/index.json`의 해당 step을 `completed` + `summary`로 갱신한다 (이유: status가 pending으로 남고 output이 stale 브리핑만 담는 실수 방지).
 
 ---
 

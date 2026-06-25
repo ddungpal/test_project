@@ -1,1 +1,0 @@
-- 제안: build 실패 시 먼저 `rm -rf .next` 후 재시도한다 (근거: stale .next 캐시가 무관한 PageNotFoundError(/audit 등)를 유발 — 코드 변경 무관 오진 방지)
