@@ -19,7 +19,15 @@ import { callLLM } from "../src/llm/callLLM.js";
 import { CostGuard, InMemoryCostLedger } from "../src/llm/costGuard.js";
 import { loadConfig } from "../src/llm/config.js";
 import { FixtureMissError } from "../src/llm/fixtures.js";
-import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
+import {
+  judgeComponent,
+  ctrWeightedScore,
+  verdictWeight,
+  LIFT_CAP,
+  LIFT_SCALE,
+  type AbScoreInput,
+} from "../src/performance/abVerdict.js";
+import type { AbComponent } from "../src/performance/types.js";
 import type { AbVariantKey } from "../src/performance/types.js";
 import type { AbDecisiveness } from "../src/domain/enums.js";
 import {
@@ -63,6 +71,10 @@ export interface AbResultVideo {
   relative_lift_pct?: number;
   verdict?: AbDecisiveness;
   variants: AbResultVariant[];
+  /** 영상(24h) CTR(%). DB 소스에서 채운다(§13.2 CTR 합성). 파일 시드엔 보통 없음(undefined → CTR 무가중·하위호환). */
+  video_ctr24h?: number | null;
+  /** 학습 모드. "single"=영상 내 비교 없음(제목 단일 — 영상간 CTR 대비). 미지정 → "ab"(영상 내 A/B). */
+  learn_mode?: "ab" | "single";
 }
 
 /** prep 입력 한 변형(LLM 전달용 — copy 는 의미 있는 한 문자열로 합침). */
@@ -90,42 +102,9 @@ export interface AbStyleInputVideo {
   losers: AbStyleVariant[];
 }
 
-/**
- * lift 미세조정 상수(§13.2 보강).
- *   가중 = base × (1 + clamp(lift, 0, LIFT_CAP)/LIFT_SCALE). lift 0/미지정 → base(하위호환).
- *   - LIFT_CAP: lift 정규화 상한(%). 이 이상은 같은 신호로 본다(소표본 과적합·폭주 방지).
- *   - LIFT_SCALE: lift→배수 변환 스케일. CAP/SCALE 이 base 대비 최대 증폭률(15/60=0.25 → 최대 +25%).
- */
-export const LIFT_CAP = 15;
-export const LIFT_SCALE = 60;
-
-/** decisive/marginal 의 기본 가중(lift 무시 시 정확히 이 값). inconclusive 는 항상 0. */
-function baseWeight(verdict: AbDecisiveness): number {
-  switch (verdict) {
-    case "decisive":
-      return 1.0;
-    case "marginal":
-      return 0.5;
-    default:
-      return 0;
-  }
-}
-
-/**
- * §13.2 가중치 — A/B 결정력 → 학습 가중(+ relative_lift_pct 미세조정).
- *   decisive 1.0 / marginal 0.5 / inconclusive 0(학습 보류)를 base 로,
- *   lift 가 주어지면 base × (1 + clamp(lift,0,CAP)/SCALE) 로 단조 미세조정한다.
- *   - lift 미지정/0/음수 → base 와 정확히 동일(하위호환). inconclusive 는 lift 무관 항상 0.
- *   - clamp 상한(CAP)으로 폭주 방지: 매우 큰 lift 도 base×(1+CAP/SCALE) 를 넘지 않는다.
- *   결정적·단조(높은 lift → 높은 weight, 단 상한 이하). 순수 함수.
- */
-export function verdictWeight(verdict: AbDecisiveness, relativeLiftPct?: number): number {
-  const base = baseWeight(verdict);
-  if (base === 0) return 0; // inconclusive: lift 무관 항상 0.
-  if (relativeLiftPct === undefined) return base; // 하위호환: 미지정이면 정확히 base.
-  const lift = Math.min(Math.max(relativeLiftPct, 0), LIFT_CAP); // [0, CAP] 로 클램프(음수→0).
-  return base * (1 + lift / LIFT_SCALE);
-}
+// §13.2 가중치 로직(verdictWeight·LIFT_CAP·LIFT_SCALE)은 순환 import 차단을 위해 abVerdict.ts 로 이전했다.
+//   여기서는 하위호환을 위해 그대로 재export 한다(기존 테스트·import 보존). CTR 합성은 ctrWeightedScore.
+export { verdictWeight, LIFT_CAP, LIFT_SCALE };
 
 /** copy_top/copy_main/copy_box/copy_sub 중 있는 것만 합쳐 의미 있는 한 문자열로. */
 function joinCopy(v: AbResultVariant): string {
@@ -135,15 +114,18 @@ function joinCopy(v: AbResultVariant): string {
     .join(" / ");
 }
 
-/** 한 영상의 변형들을 judgeComponent('thumbnail') 로 재계산. watch_share_pct 를 ctr_pct 슬롯에 주입. */
-function recomputeVerdict(video: AbResultVideo): { decisiveness: AbDecisiveness; decided: boolean } {
+/** 한 영상의 변형들을 judgeComponent(component) 로 재계산. watch_share_pct 를 ctr_pct 슬롯에 주입. */
+function recomputeVerdict(
+  video: AbResultVideo,
+  component: AbComponent = "thumbnail",
+): { decisiveness: AbDecisiveness; decided: boolean; margin: number | null } {
   const config = loadConfig();
   const variants: AbScoreInput[] = video.variants.map((v) => ({
     variant: v.variant,
     ctr_pct: v.watch_share_pct ?? null,
   }));
-  const verdict = judgeComponent("thumbnail", variants, config.ab);
-  return { decisiveness: verdict.decisiveness ?? "inconclusive", decided: verdict.decided };
+  const verdict = judgeComponent(component, variants, config.ab);
+  return { decisiveness: verdict.decisiveness ?? "inconclusive", decided: verdict.decided, margin: verdict.margin };
 }
 
 /**
@@ -151,10 +133,11 @@ function recomputeVerdict(video: AbResultVideo): { decisiveness: AbDecisiveness;
  *   buildAbStyleInput 이 positive(decisive/marginal)만 반환하는 것과 상보적 — 같은 영상이 양쪽에 들지 않는다.
  *   판정 권위는 judgeComponent 재계산(파일 verdict 무관). 순수 함수(테스트 import용, console 출력 없음 — buildAbStyleInput 이 경고 담당).
  */
-export function buildEquivalentSignals(videos: AbResultVideo[]): EquivalentSignal[] {
+export function buildEquivalentSignals(videos: AbResultVideo[], component: AbComponent = "thumbnail"): EquivalentSignal[] {
   const out: EquivalentSignal[] = [];
   for (const video of videos) {
-    const { decisiveness } = recomputeVerdict(video);
+    if (video.learn_mode === "single") continue; // single(영상 내 비교 없음)은 등가신호 개념 미적용.
+    const { decisiveness } = recomputeVerdict(video, component);
     if (decisiveness !== "inconclusive") continue; // positive 는 buildAbStyleInput 담당.
     out.push({
       topic: video.topic,
@@ -169,10 +152,40 @@ export function buildEquivalentSignals(videos: AbResultVideo[]): EquivalentSigna
  *   inconclusive 영상은 통째 스킵(보수적 — §13.2 학습 보류). 단 그 등가신호는 buildEquivalentSignals 가 별도 보존.
  *   판정 권위는 judgeComponent 재계산. 파일 verdict 와 다르면 console.warn 만(throw 금지). 순수 함수(테스트 import용).
  */
-export function buildAbStyleInput(videos: AbResultVideo[]): AbStyleInputVideo[] {
+export function buildAbStyleInput(
+  videos: AbResultVideo[],
+  component: AbComponent = "thumbnail",
+  config = loadConfig(),
+): AbStyleInputVideo[] {
   const out: AbStyleInputVideo[] = [];
   for (const video of videos) {
-    const { decisiveness } = recomputeVerdict(video);
+    const isSingle = video.learn_mode === "single";
+
+    if (isSingle) {
+      // single 모드(제목 단일·영상 내 비교 없음) — 영상간 CTR 대비로 합성된 winner/loser.
+      //   가중은 CTR 크기 자체(ctrWeightedScore mode="single"). winner 변형 1개.
+      const winnerVar = video.variants.find((v) => v.is_winner === true);
+      if (!winnerVar) {
+        console.warn(`⚠️ winner 변형 없음(single ${video.topic}) — 스킵`);
+        continue;
+      }
+      const weight = ctrWeightedScore(
+        { decisiveness: "decisive", videoCtr24h: video.video_ctr24h ?? null, mode: "single" },
+        config.ab,
+      );
+      if (weight <= 0) continue; // CTR 없거나 0 → 학습 신호 없음(저CTR은 loser 합성에서 처리).
+      const loserVars = video.variants.filter((v) => v !== winnerVar);
+      out.push({
+        topic: video.topic,
+        verdict: "decisive", // 영상간 대비에서 상위 → 양의 예시. (decisiveness 슬롯 의미: 학습 신호 등급)
+        weight,
+        winner: { copy: joinCopy(winnerVar), visual: winnerVar.visual ?? "" },
+        losers: loserVars.map((v) => ({ copy: joinCopy(v), visual: v.visual ?? "" })),
+      });
+      continue;
+    }
+
+    const { decisiveness, margin } = recomputeVerdict(video, component);
 
     // 파일에 적힌 verdict 와 재계산이 다르면 경고만(분모 차이로 다를 수 있음 — 재계산이 권위).
     if (video.verdict && video.verdict !== decisiveness) {
@@ -190,10 +203,20 @@ export function buildAbStyleInput(videos: AbResultVideo[]): AbStyleInputVideo[] 
     }
     const loserVars = video.variants.filter((v) => v !== winnerVar);
 
+    // weight: CTR 합성(ctrWeightedScore). relative_lift_pct 가 있으면 base 미세조정에 사용.
+    //   CTR(video_ctr24h) 없으면(undefined→null) verdictWeight 와 정확히 동일(하위호환).
+    const relativeLiftPct = video.relative_lift_pct ?? (margin !== null && margin > 0 ? margin * 100 : undefined);
+    const weight = ctrWeightedScore(
+      relativeLiftPct === undefined
+        ? { decisiveness, videoCtr24h: video.video_ctr24h ?? null, mode: "ab" }
+        : { decisiveness, relativeLiftPct, videoCtr24h: video.video_ctr24h ?? null, mode: "ab" },
+      config.ab,
+    );
+
     out.push({
       topic: video.topic,
       verdict: decisiveness,
-      weight: verdictWeight(decisiveness, video.relative_lift_pct),
+      weight,
       winner: { copy: joinCopy(winnerVar), visual: winnerVar.visual ?? "" },
       losers: loserVars.map((v) => ({ copy: joinCopy(v), visual: v.visual ?? "" })),
     });
@@ -241,19 +264,23 @@ export interface AbStyleLearnResult {
  */
 export async function learnAbStylePatterns(
   videos: AbResultVideo[],
+  component: AbComponent = "thumbnail",
   config = loadConfig(),
 ): Promise<AbStyleLearnResult> {
-  const inputVideos = buildAbStyleInput(videos);
+  const inputVideos = buildAbStyleInput(videos, component, config);
   if (!inputVideos.length) throw new Error("학습 가능한 영상 0편 — 전부 inconclusive 이거나 winner 부재");
 
   const winners = inputVideos.map((v) => ({ topic: v.topic, weight: v.weight, ...v.winner }));
   const losers = inputVideos.flatMap((v) => v.losers.map((l) => ({ topic: v.topic, ...l })));
   const signalCount = inputVideos.reduce((s, v) => s + v.weight, 0);
-  const equivalentSignals = buildEquivalentSignals(videos);
+  const equivalentSignals = buildEquivalentSignals(videos, component);
 
+  const isTitle = component === "title";
   const input = {
     creator: "김짠부",
-    note: "아래는 A/B 테스트로 성과가 확인된 썸네일들이다. '이긴' 표현 방식을 학습하라. equivalent_signals 는 A/B 가 동등했던 차원이니 과하게 학습하지 말라.",
+    note: isTitle
+      ? "아래는 성과(CTR)가 확인된 영상 '제목'들이다. CTR 이 높은(이긴) 제목의 표현 방식을 학습하라. equivalent_signals 는 차이가 미미했던 차원이니 과하게 학습하지 말라."
+      : "아래는 A/B 테스트로 성과가 확인된 썸네일들이다. '이긴' 표현 방식을 학습하라. equivalent_signals 는 A/B 가 동등했던 차원이니 과하게 학습하지 말라.",
     winners,
     losers,
     equivalent_signals: equivalentSignals,
@@ -262,7 +289,14 @@ export async function learnAbStylePatterns(
   const ledger = new InMemoryCostLedger();
   const costGuard = new CostGuard({ softCapUsd: config.softCapUsd, hardCapUsd: config.hardCapUsd, sink: ledger });
   const out = await callLLM<StyleExtractionOutput>(
-    { roleId: "style_extractor", system: AB_STYLE_SYSTEM, input, schema: STYLE_EXTRACTION_SCHEMA, runId: RUN_ID, maxTokens: 4096 },
+    {
+      roleId: "style_extractor",
+      system: isTitle ? TITLE_STYLE_SYSTEM : AB_STYLE_SYSTEM,
+      input,
+      schema: STYLE_EXTRACTION_SCHEMA,
+      runId: RUN_ID,
+      maxTokens: 4096,
+    },
     { config, costGuard },
   );
 
@@ -400,6 +434,25 @@ export const AB_STYLE_SYSTEM = [
   "- 한국어로 작성한다.",
 ].join("\n");
 
+/** 제목 성과 분석 시스템 프롬프트. 썸네일 미러 — 대상이 '제목'(텍스트). visual 은 제목엔 거의 무의미 → '해당 없음'으로 둔다. */
+export const TITLE_STYLE_SYSTEM = [
+  "너는 유튜브 크리에이터 '김짠부'(재테크 채널)의 영상 제목 성과 분석가다.",
+  "아래 입력 데이터는 CTR(클릭률)로 성과가 확인된 '이긴' 제목(winner)과 '진' 제목(losers)들이다. 각 영상에는 학습 가중치(weight)가 붙어 있다.",
+  "",
+  "목표: 다른 AI(훅이)가 김짠부 스타일로 'CTR 이 검증된' 새 제목을 만들 수 있도록, 따라 쓸 수 있는 '제목 스타일 사양'을 만든다.",
+  "원칙:",
+  "- 이긴 제목들의 공통 표현 방식(후킹·프레이밍·강조어·길이)을 뽑아 copy 패턴으로 채운다.",
+  "- 진 것 대비 무엇이 달랐는지를 banned(약점·피해야 할 표현)에 적는다 — 진 표현은 banned 의 근거다.",
+  "- weight 가 높은(고CTR) 제목의 표현을 더 강한 신호로 본다. 가중치를 학습에 반영한다.",
+  "- visual(인물·레이아웃·색·숫자·장치)은 제목에 해당 없음 — face/color_usage/number_treatment 는 '해당 없음(제목)'으로 채우고 배열은 비운다.",
+  "- 여러 영상에서 반복되는 승리 패턴은 high-confidence 로, 1~2 사례뿐이면 tentative 로 분류해 tentative_notes 에 '저표본 경고'를 적는다. 전반적으로 표본이 적으면 confidence 를 'tentative' 로 둔다.",
+  "- equivalent_signals 는 차이가 미미했던 차원 — 과하게 학습하지 말라는 신호다. banned·강신호로 단정하지 않는다.",
+  "- 추측 금지. 입력에 실재하는 표현만 적고, 예시는 입력에서 그대로 인용한다(날조 시 무효).",
+  "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
+  "- 낚시(과장·허위 클릭베이트)를 권장하지 않는다. CTR 이 높았던 '정직한' 표현 방식만 사양으로 삼는다.",
+  "- 한국어로 작성한다.",
+].join("\n");
+
 /**
  * `--from` 경로 — 검수본 patterns 를 LLM 재호출 없이 그대로 style_profiles(draft) 로 INSERT.
  *   DB INSERT 규약은 기존 LLM 경로와 동일(version=max+1, status='draft', component_type='thumbnail_copy',
@@ -489,7 +542,7 @@ async function main() {
   console.log(`\n🧠 A/B 성과 스타일 학습 중… (backend=${config.backend} · fixtures=${config.fixtures})`);
   let learned;
   try {
-    learned = await learnAbStylePatterns(videos, config);
+    learned = await learnAbStylePatterns(videos, "thumbnail", config);
   } catch (e) {
     if (e instanceof FixtureMissError) {
       console.error(`\n⚠️ fixture 없음 — 첫 실행은 LLM_FIXTURES=record 로 돌려 실호출(claude-p=$0)하고 fixture를 만드세요.`);

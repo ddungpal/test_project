@@ -10,9 +10,15 @@ import type { Supa } from "../pipeline/runState.js";
 import type { TablesInsert } from "../lib/supabase/database.types.js";
 import { loadConfig, type LlmConfig } from "../llm/config.js";
 import { learnAbStylePatterns } from "../../scripts/learn-ab-style.js";
-import { loadAbResults } from "../../scripts/ingest-ab.js";
+import { loadAbResultsFromDb } from "./abLearnSource.js";
+import type { AbComponent } from "./types.js";
 
-const PROFILE_TYPE = "thumbnail_copy" as const;
+/** component → style_profiles.component_type. thumbnail→thumbnail_copy(기존), title→title. */
+const PROFILE_TYPE_BY_COMPONENT: Record<AbComponent, "thumbnail_copy" | "title"> = {
+  thumbnail: "thumbnail_copy",
+  title: "title",
+};
+const PROFILE_TYPE = "thumbnail_copy" as const; // 하위호환(기존 참조 보존).
 
 /**
  * 순수 적격 판정 — 마지막 학습 표본수 대비 현재 A/B 표본이 minDelta 이상 늘었나.
@@ -34,29 +40,38 @@ export interface StyleRelearnResult {
   lastLearnedSampleCount: number;
 }
 
+/** component 별 sweep 결과 + 집계(둘 다 도는 다중 component sweep). */
+export interface StyleRelearnSweepResult {
+  thumbnail: StyleRelearnResult;
+  title: StyleRelearnResult;
+}
+
 /**
- * 현재 thumbnail A/B 표본수 = ab_variants(component_type='thumbnail') 행 수(DB 기준, 파일 watch 아님).
+ * 현재 A/B 표본수 = ab_variants(component_type) 행 수(DB 기준, 파일 watch 아님).
  *   비어 있으면 0 → sweep 은 no-op(안전).
  */
-async function countCurrentAbSamples(supa: Supa): Promise<number> {
+async function countCurrentAbSamples(supa: Supa, dbComponent: "title" | "thumbnail"): Promise<number> {
   const { count, error } = await supa
     .from("ab_variants")
     .select("id", { count: "exact", head: true })
-    .eq("component_type", "thumbnail");
-  if (error) throw new Error(`ab_variants 카운트 실패: ${error.message}`);
+    .eq("component_type", dbComponent);
+  if (error) throw new Error(`ab_variants(${dbComponent}) 카운트 실패: ${error.message}`);
   return count ?? 0;
 }
 
-/** 최신 thumbnail_copy style_profile(version desc 1행). 없으면 null. */
-async function loadLatestStyleProfile(supa: Supa): Promise<{ id: string; version: number } | null> {
+/** 최신 style_profile(component_type, version desc 1행). 없으면 null. */
+async function loadLatestStyleProfile(
+  supa: Supa,
+  profileType: "thumbnail_copy" | "title",
+): Promise<{ id: string; version: number } | null> {
   const { data, error } = await supa
     .from("style_profiles")
     .select("id, version")
-    .eq("component_type", PROFILE_TYPE)
+    .eq("component_type", profileType)
     .order("version", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (error) throw new Error(`style_profiles 최신 조회 실패: ${error.message}`);
+  if (error) throw new Error(`style_profiles(${profileType}) 최신 조회 실패: ${error.message}`);
   if (!data) return null;
   return { id: data.id, version: data.version ?? 0 };
 }
@@ -79,11 +94,17 @@ async function countTrainingSources(supa: Supa, styleProfileId: string): Promise
  *   적격이면 learnAbStylePatterns(LLM 1회) → style_profiles(draft, version=max+1) INSERT
  *     + 현재 thumbnail ab_variants 행마다 provenance(ab_variant_id 링크) INSERT → 다음 sweep 에서 멱등.
  */
-export async function styleRelearnSweep(supa: Supa, opts: { minDelta?: number; config?: LlmConfig } = {}): Promise<StyleRelearnResult> {
-  const config = opts.config ?? loadConfig();
+async function styleRelearnSweepComponent(
+  supa: Supa,
+  component: AbComponent,
+  opts: { minDelta?: number; config: LlmConfig },
+): Promise<StyleRelearnResult> {
+  const { config } = opts;
+  const profileType = PROFILE_TYPE_BY_COMPONENT[component];
+  const dbComp = component === "title" ? "title" : "thumbnail";
 
-  const currentSampleCount = await countCurrentAbSamples(supa);
-  const latest = await loadLatestStyleProfile(supa);
+  const currentSampleCount = await countCurrentAbSamples(supa, dbComp);
+  const latest = await loadLatestStyleProfile(supa, profileType);
   const lastLearnedSampleCount = latest ? await countTrainingSources(supa, latest.id) : 0;
 
   // exactOptionalPropertyTypes — minDelta 는 있을 때만 넘긴다(undefined 명시 할당 금지).
@@ -97,33 +118,37 @@ export async function styleRelearnSweep(supa: Supa, opts: { minDelta?: number; c
     return { eligible: false, created: null, currentSampleCount, lastLearnedSampleCount };
   }
 
-  // 적격 — 학습 본체(claude-p=$0). 파일(ab-results.json)을 학습 입력으로 쓰되 표본수는 DB 기준.
-  const videos = loadAbResults();
-  const learned = await learnAbStylePatterns(videos, config);
+  // 적격 — 학습 입력은 DB(관리자 입력 반영). 표본수도 DB 기준. 학습 본체(claude-p=$0).
+  const videos = await loadAbResultsFromDb(supa, component);
+  if (videos.length === 0) {
+    // DB 표본은 카운트됐지만 학습 입력 합성이 0편(예: CTR 전무) → 학습 보류(과금 0).
+    return { eligible: true, created: null, currentSampleCount, lastLearnedSampleCount };
+  }
+  const learned = await learnAbStylePatterns(videos, component, config);
 
   // style_profiles(draft, version=max+1) INSERT. activate 금지(사람게이트).
   const nextVersion = (latest?.version ?? 0) + 1;
   const { data: sp, error: se } = await supa
     .from("style_profiles")
-    .insert({ component_type: PROFILE_TYPE, version: nextVersion, patterns: learned.patterns as never, status: "draft" })
+    .insert({ component_type: profileType, version: nextVersion, patterns: learned.patterns as never, status: "draft" })
     .select("id")
     .single();
-  if (se) throw new Error(`style_profiles draft insert 실패: ${se.message}`);
+  if (se) throw new Error(`style_profiles(${profileType}) draft insert 실패: ${se.message}`);
 
-  // provenance — 현재 thumbnail ab_variants 행마다 링크. ab_variant_id 를 채워 pts_has_source 충족 + 멱등 기준.
+  // provenance — 현재 component ab_variants 행마다 링크. ab_variant_id 를 채워 pts_has_source 충족 + 멱등 기준.
   //   weight 는 best-effort(행의 weight 가 있으면 사용, 없으면 null).
   const { data: variants, error: ve } = await supa
     .from("ab_variants")
     .select("id, weight")
-    .eq("component_type", "thumbnail");
+    .eq("component_type", dbComp);
   if (ve) {
     // 부분기록 방지 — provenance 못 채우면 멱등이 깨지므로 방금 만든 draft 를 되돌린다.
     await supa.from("style_profiles").delete().eq("id", sp.id);
-    throw new Error(`ab_variants 조회 실패(draft 롤백됨): ${ve.message}`);
+    throw new Error(`ab_variants(${dbComp}) 조회 실패(draft 롤백됨): ${ve.message}`);
   }
 
   const rows: TablesInsert<"profile_training_sources">[] = (variants ?? []).map((v) => ({
-    profile_type: PROFILE_TYPE,
+    profile_type: profileType,
     style_profile_id: sp.id,
     ab_variant_id: v.id,
     weight: v.weight,
@@ -137,4 +162,26 @@ export async function styleRelearnSweep(supa: Supa, opts: { minDelta?: number; c
   }
 
   return { eligible: true, created: sp.id, currentSampleCount, lastLearnedSampleCount };
+}
+
+/**
+ * A/B 스타일 재학습 sweep — 썸네일·제목 둘 다 도는 다중 component sweep.
+ *   각 component 마다 표본이 늘었으면 재학습 draft 1건 생성(activate 안 함·사람게이트). 멱등.
+ *   ★ 입력 소스는 DB(loadAbResultsFromDb) — 관리자 입력이 그대로 학습에 반영된다.
+ *   ★ thumbnail→thumbnail_copy, title→title 프로필. 한 component 가 적격 아니면 그 component 만 skip(다른 건 진행).
+ */
+export async function styleRelearnSweep(
+  supa: Supa,
+  opts: { minDelta?: number; config?: LlmConfig } = {},
+): Promise<StyleRelearnSweepResult> {
+  const config = opts.config ?? loadConfig();
+  const perComp = (component: AbComponent) =>
+    opts.minDelta === undefined
+      ? styleRelearnSweepComponent(supa, component, { config })
+      : styleRelearnSweepComponent(supa, component, { config, minDelta: opts.minDelta });
+
+  // 순차 실행(과금·DB 경합 단순화). thumbnail 먼저, title 다음.
+  const thumbnail = await perComp("thumbnail");
+  const title = await perComp("title");
+  return { thumbnail, title };
 }

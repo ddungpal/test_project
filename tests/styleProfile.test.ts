@@ -1,7 +1,7 @@
 // 썸네일 스타일 환류(PhaseA Step1) 순수 함수 테스트 — DB·LLM 무관.
 //   핵심: appendThumbnailStyle이 프로필 없을 때 시스템 프롬프트를 바이트 단위로 보존한다(픽스처 해시 보존).
 import { describe, it, expect } from "vitest";
-import { appendThumbnailStyle, type ActiveThumbnailStyle } from "../src/agents/shared/styleProfile.js";
+import { appendThumbnailStyle, appendTitleStyle, type ActiveThumbnailStyle } from "../src/agents/shared/styleProfile.js";
 
 const BASE = "너는 훅이다.\n제목·썸네일을 제안한다.";
 
@@ -40,5 +40,27 @@ describe("appendThumbnailStyle (순수)", () => {
     expect(appendThumbnailStyle(BASE, { id: "style:x", version: 1, patterns: null })).toBe(BASE);
     expect(appendThumbnailStyle(BASE, { id: "style:x", version: 1, patterns: "깨짐" })).toBe(BASE);
     expect(appendThumbnailStyle(BASE, { id: "style:x", version: 1, patterns: ["a", "b"] })).toBe(BASE);
+  });
+});
+
+describe("appendTitleStyle (순수) — 썸네일 미러", () => {
+  it("프로필이 있으면 제목 스타일 섹션과 id·patterns를 시스템에 덧붙인다", () => {
+    const out = appendTitleStyle(BASE, PROFILE);
+    expect(out).not.toBe(BASE);
+    expect(out.startsWith(BASE)).toBe(true);
+    expect(out).toContain("김짠부 제목 스타일 사양");
+    expect(out).not.toContain("김짠부 썸네일 스타일 사양"); // 제목 섹션이지 썸네일이 아니다
+    expect(out).toContain("style:abc-123");
+    expect(out).toContain("연봉 N 이하 꼭 보세요");
+  });
+
+  it("프로필이 null이면 시스템을 바이트 단위로 보존한다(해시 불변·조건부 주입)", () => {
+    expect(appendTitleStyle(BASE, null)).toBe(BASE);
+  });
+
+  it("patterns가 빈/깨진 값이면 보존한다(가드)", () => {
+    expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: {} })).toBe(BASE);
+    expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: null })).toBe(BASE);
+    expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: ["a"] })).toBe(BASE);
   });
 });

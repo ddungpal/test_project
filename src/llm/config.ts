@@ -42,6 +42,10 @@ export interface LlmConfig {
   ab: {
     decisiveMargin: number;
     marginalMargin: number;
+    /** CTR(24h) 가중 정규화 상한·증폭계수(§13.2 CTR 합성). ctrNormCap=정규화 분모 상한(이상 같은 신호로 클램프),
+     *  ctrBoostFactor=정규화 CTR→배수 증폭(0이면 CTR 무가중·기존 verdictWeight 동일). */
+    ctrNormCap: number;
+    ctrBoostFactor: number;
   };
 }
 
@@ -81,6 +85,8 @@ export function loadConfig(): LlmConfig {
     ab: {
       decisiveMargin: envNum("AB_DECISIVE_MARGIN", 0.1), // 차순위 대비 +10% 리프트 → decisive
       marginalMargin: envNum("AB_MARGINAL_MARGIN", 0.03), // +3% 이상 → marginal
+      ctrNormCap: envNum("AB_CTR_NORM_CAP", 10), // CTR 정규화 분모 상한(이 이상 CTR 은 같은 신호 — 과적합·폭주 방지)
+      ctrBoostFactor: envNum("AB_CTR_BOOST_FACTOR", 0.3), // 정규화 CTR → 가중 증폭 계수(0 이면 CTR 무가중 = 기존 verdictWeight)
     },
   };
 }

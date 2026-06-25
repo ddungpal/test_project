@@ -52,3 +52,39 @@ export function appendThumbnailStyle(system: string, profile: ActiveThumbnailSty
     patternsJson,
   ].join("\n");
 }
+
+// ── 제목 스타일 환류(copy-learning-admin step1) — 썸네일 미러. 훅이(제목)에 active 'title' 스타일을 주입. ──
+//   ★ thumbnail 과 동일 규칙: 프로필 없거나 patterns 비면 input/system 불변(해시·픽스처 보존). 조건부 주입.
+
+/** active 제목 스타일 프로필(component_type='title')의 형태. ActiveThumbnailStyle 미러. */
+export type ActiveTitleStyle = ActiveThumbnailStyle;
+
+/** active 제목 스타일 프로필을 로드(최신 version 1행). 없으면 null. */
+export async function loadActiveTitleStyle(supa: Supa): Promise<ActiveTitleStyle | null> {
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("id, version, patterns")
+    .eq("component_type", "title")
+    .eq("status", "active")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`active 제목 스타일 조회 실패: ${error.message}`);
+  if (!data) return null;
+  return { id: `style:${data.id}`, version: data.version ?? 0, patterns: data.patterns };
+}
+
+/** 시스템 프롬프트에 제목 스타일 지시 섹션을 덧붙인다(순수). 프로필 null/빈 patterns면 원본 그대로(해시 불변). */
+export function appendTitleStyle(system: string, profile: ActiveTitleStyle | null): string {
+  if (!profile || !hasUsablePatterns(profile.patterns)) return system;
+  const patternsJson = JSON.stringify(profile.patterns, null, 2);
+  return [
+    system,
+    "",
+    "── 김짠부 제목 스타일 사양(반드시 따라 쓰기) ──",
+    "CTR(클릭률)로 성과가 검증된 제목들을 분석해 추출한 '따라 쓸 수 있는 제목 스타일 사양'이다.",
+    "제목 후보를 아래 copy 패턴(후킹·강조어·길이)에 맞춰 제안하고, banned 항목은 피하라. 낚시·과장은 금지(CTR 이 높았던 정직한 표현만).",
+    `이 사양을 따른 후보는 evidence_ids에 그 id(${profile.id})를 포함하라.`,
+    patternsJson,
+  ].join("\n");
+}
