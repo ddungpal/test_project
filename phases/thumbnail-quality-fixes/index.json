@@ -1,0 +1,27 @@
+{
+  "project": "produce script",
+  "phase": "thumbnail-quality-fixes",
+  "goal": "유저테스트 2차 — 썸네일 단계 4건. (0) 제목 확정 폼에서 썸네일 5필드(메인문구1·2·작은박스1·2·레이아웃) 제거(ProposalSelector EditFields title_thumb 분기) — 썸네일은 thumbnail 단계에서만. (1·2 합산) 썸네일 문구 품질: ① 박스 ≤6자·메인 ≤14자 강제(schema maxLength + 프롬프트 글자수 지침) ② thumbnail_maker가 과거 레퍼런스를 type='title'(제목)이 아니라 type='thumbnail_copy'(김짠부 실제 썸네일문구 24개)로 읽게 수정 ③ 고조회 외부 레퍼런스(제목 단계 gatherTitleReferences 재사용) 썸네일에도 배선 ④ active 스타일프로필(이미 존재)·길이 지침을 프롬프트에 더 강하게 반영. (3) 썸네일 다시생성 사유 입력: 전체=공용 1칸·개별=카드별, reason을 전체(thumbnailStage)·슬롯(thumbnailSlot) 경로 끝까지 관통(buildRegenerateAugmentedSystem reason 재사용). AC 오프라인 $0(typecheck/test/build). thumbnail_maker 프롬프트 변경→promptHash 변경: eval 신규형만+골든 손작성/claude-p record로 $0 유지.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "title-edit-cleanup",
+      "status": "completed",
+      "started_at": "2026-06-25T14:26:40+0900",
+      "team_round": "1/3 PASS",
+      "summary": "ProposalSelector EditFields의 title_thumb 분기에서 썸네일 5필드(메인문구1·2·작은박스1·2·레이아웃 textarea)와 setMain/setBox 헬퍼 제거. 제목 input만 유지. selectionReason·TitlePayload 타입·topic/structure 분기 무변경. AC 통과: typecheck=0, test=0(316 passed), build=0(클린 빌드).",
+      "completed_at": "2026-06-25T14:32:34+0900"
+    },
+    {
+      "step": 1,
+      "name": "thumbnail-copy-learning",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "thumbnail-regen-reason",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-25T14:26:40+0900"
+}
