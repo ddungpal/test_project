@@ -46,6 +46,8 @@ export interface LlmConfig {
      *  ctrBoostFactor=정규화 CTR→배수 증폭(0이면 CTR 무가중·기존 verdictWeight 동일). */
     ctrNormCap: number;
     ctrBoostFactor: number;
+    /** 24h 조회수 신뢰도 하한(저조회 영상 학습 약화하되 0으로 죽이진 않음). vconf∈[floor,1]. */
+    viewsConfFloor: number;
   };
 }
 
@@ -87,6 +89,7 @@ export function loadConfig(): LlmConfig {
       marginalMargin: envNum("AB_MARGINAL_MARGIN", 0.03), // +3% 이상 → marginal
       ctrNormCap: envNum("AB_CTR_NORM_CAP", 10), // CTR 정규화 분모 상한(이 이상 CTR 은 같은 신호 — 과적합·폭주 방지)
       ctrBoostFactor: envNum("AB_CTR_BOOST_FACTOR", 0.3), // 정규화 CTR → 가중 증폭 계수(0 이면 CTR 무가중 = 기존 verdictWeight)
+      viewsConfFloor: envNum("AB_VIEWS_CONF_FLOOR", 0.5), // 24h 조회수 신뢰도 하한(저조회 영상 학습 약화하되 0으로 죽이진 않음)
     },
   };
 }

@@ -67,6 +67,118 @@ describe("ctrWeightedScore (CTR 합성 가중)", () => {
   });
 });
 
+// 24h 조회수 신뢰도 가중(vconf) — views/reference 없으면 무가중(하위호환). TH 에 viewsConfFloor 포함.
+const THV = { ...TH, viewsConfFloor: 0.5 };
+
+describe("ctrWeightedScore — 조회수 신뢰도 가중(vconf)", () => {
+  it("views/reference 둘 다 미지정 → 기존 값과 동일(하위호환 회귀 가드)", () => {
+    // THV(floor 포함)·TH(floor 미지정) 모두 views 없으면 vconf=1.0 → 기존과 동일.
+    expect(ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "ab" }, THV)).toBe(
+      ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "ab" }, TH),
+    );
+    expect(ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "single" }, THV)).toBe(
+      ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "single" }, TH),
+    );
+  });
+
+  it("내부 기본 floor=0.5: viewsConfFloor 미지정(TH)이어도 views 케이스가 동작한다", () => {
+    // TH 엔 viewsConfFloor 없음 → 내부 기본 0.5 적용. views=0 → vconf=floor=0.5.
+    const base = verdictWeight("decisive");
+    const w = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: null, videoViews24h: 0, viewsReference: 1000, mode: "ab" }, TH);
+    expect(w).toBeCloseTo(base * 0.5, 10);
+  });
+
+  it("ab 모드: views=reference(최고 reach) → vconf=1.0 → 기존과 동일", () => {
+    const ref = 50_000;
+    const withViews = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: ref, viewsReference: ref, mode: "ab" },
+      THV,
+    );
+    const baseline = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "ab" }, THV);
+    expect(withViews).toBeCloseTo(baseline, 10);
+  });
+
+  it("ab 모드: views≪reference(저조회) → 점수 < 기존, 단 >= base*(...)*floor", () => {
+    const ref = 50_000;
+    const baseline = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "ab" }, THV);
+    const low = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: 500, viewsReference: ref, mode: "ab" },
+      THV,
+    );
+    expect(low).toBeLessThan(baseline); // 저조회 → 약화.
+    expect(low).toBeGreaterThanOrEqual(baseline * THV.viewsConfFloor); // floor 아래로 안 죽임.
+  });
+
+  it("single 모드: vconf 가 동일하게 곱해짐. reference null → vconf=1.0", () => {
+    const ref = 50_000;
+    const baseline = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "single" }, THV);
+    const low = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: 500, viewsReference: ref, mode: "single" },
+      THV,
+    );
+    expect(low).toBeLessThan(baseline);
+    expect(low).toBeGreaterThanOrEqual(baseline * THV.viewsConfFloor);
+    // reference null → vconf=1.0 → baseline 과 동일.
+    const refNull = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: 500, viewsReference: null, mode: "single" },
+      THV,
+    );
+    expect(refNull).toBeCloseTo(baseline, 10);
+  });
+
+  it("경계: views=0 → vconf=floor", () => {
+    const base = verdictWeight("decisive");
+    const w = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: null, videoViews24h: 0, viewsReference: 1000, mode: "ab" }, THV);
+    expect(w).toBeCloseTo(base * THV.viewsConfFloor, 10);
+  });
+
+  it("경계: views 음수/NaN → vconf=1.0(방어)", () => {
+    const baseline = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "ab" }, THV);
+    const neg = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: -100, viewsReference: 1000, mode: "ab" },
+      THV,
+    );
+    const nan = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: NaN, viewsReference: 1000, mode: "ab" },
+      THV,
+    );
+    // 음수·NaN views 둘 다 무가중 방어 → vconf=1.0 → baseline 과 동일.
+    expect(neg).toBeCloseTo(baseline, 10);
+    expect(nan).toBeCloseTo(baseline, 10);
+  });
+
+  it("경계: reference<=0 → vconf=1.0", () => {
+    const baseline = ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, mode: "ab" }, THV);
+    const zeroRef = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: 500, viewsReference: 0, mode: "ab" },
+      THV,
+    );
+    const negRef = ctrWeightedScore(
+      { decisiveness: "decisive", videoCtr24h: 6, videoViews24h: 500, viewsReference: -5, mode: "ab" },
+      THV,
+    );
+    expect(zeroRef).toBeCloseTo(baseline, 10);
+    expect(negRef).toBeCloseTo(baseline, 10);
+  });
+
+  it("vconf 단조성: views↑ → vconf↑(같은 reference)", () => {
+    const ref = 50_000;
+    const mk = (views: number) =>
+      ctrWeightedScore({ decisiveness: "decisive", videoCtr24h: 6, videoViews24h: views, viewsReference: ref, mode: "ab" }, THV);
+    const a = mk(1_000);
+    const b = mk(10_000);
+    const c = mk(40_000);
+    expect(b).toBeGreaterThan(a);
+    expect(c).toBeGreaterThan(b);
+  });
+
+  it("inconclusive 는 vconf 무관 항상 0(일찍 return)", () => {
+    expect(
+      ctrWeightedScore({ decisiveness: "inconclusive", videoCtr24h: 6, videoViews24h: 50_000, viewsReference: 50_000, mode: "ab" }, THV),
+    ).toBe(0);
+  });
+});
+
 // ── loadAbResultsFromDb 목 supa ──
 
 interface MockTables {

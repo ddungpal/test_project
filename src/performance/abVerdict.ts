@@ -131,6 +131,10 @@ export interface CtrWeightArgs {
   videoCtr24h: number | null;
   /** "ab"=영상 내 A/B 귀속(verdictWeight × CTR) · "single"=영상 내 비교 없음, CTR 크기 자체가 신호. */
   mode: "ab" | "single";
+  /** 영상(24h) 조회수. 신뢰도 가중용. null/미지정 → vconf=1.0(하위호환). */
+  videoViews24h?: number | null;
+  /** 코퍼스 상대 기준(학습대상 영상들의 24h 조회수 최댓값). 호출자가 산출해 주입. null/0 → vconf=1.0. */
+  viewsReference?: number | null;
 }
 
 /** CTR(%)을 [0,1] 부근으로 정규화 — log1p(clamp(ctr,0,cap)) / log1p(cap). cap=0 또는 음수면 0(무가중). */
@@ -138,6 +142,15 @@ function normCtr(videoCtr24h: number, cap: number): number {
   if (cap <= 0) return 0;
   const ctr = Math.min(Math.max(videoCtr24h, 0), cap); // [0, cap] 클램프(음수·폭주 차단).
   return Math.log1p(ctr) / Math.log1p(cap); // 단조 증가, [0,1].
+}
+
+// ponytail: reference=코퍼스 max(단순·아웃라이어에 log로 둔감). 표본 커져 단일 바이럴이 압도하면 p90 등 percentile로 교체(env 노브 신설).
+/** 조회수 신뢰도 [floor,1]. views/reference 없거나 음수·NaN·reference<=0 → 1.0(무가중·하위호환·방어). */
+function viewsConfidence(views: number | null | undefined, reference: number | null | undefined, floor: number): number {
+  if (views === null || views === undefined || !Number.isFinite(views) || views < 0) return 1.0; // 미지정·NaN·음수 → 무가중 방어.
+  if (reference === null || reference === undefined || !Number.isFinite(reference) || reference <= 0) return 1.0; // 기준 없음 → 무가중.
+  const v = Math.min(views, reference); // [0, reference] 클램프(상한). views>=0 보장됨.
+  return floor + (1 - floor) * (Math.log1p(v) / Math.log1p(reference)); // 단조 증가, [floor, 1].
 }
 
 /**
@@ -150,22 +163,27 @@ function normCtr(videoCtr24h: number, cap: number): number {
  *   ★ CTR 없을 때(videoCtr24h=null) ab 모드는 verdictWeight 와 정확히 동일(회귀 방지).
  *   ★ A/B(체류) 인자 유지 — single 도 순수 CTR 최적화가 아니라 CTR '상관' 신호로만(낚시 드리프트 방지).
  */
-export function ctrWeightedScore(args: CtrWeightArgs, thresholds: AbThresholds & { ctrNormCap: number; ctrBoostFactor: number }): number {
-  const { decisiveness, relativeLiftPct, videoCtr24h, mode } = args;
+export function ctrWeightedScore(
+  args: CtrWeightArgs,
+  thresholds: AbThresholds & { ctrNormCap: number; ctrBoostFactor: number; viewsConfFloor?: number },
+): number {
+  const { decisiveness, relativeLiftPct, videoCtr24h, mode, videoViews24h, viewsReference } = args;
   const cap = thresholds.ctrNormCap;
   const boost = thresholds.ctrBoostFactor;
+  const floor = thresholds.viewsConfFloor ?? 0.5; // 미지정 시 내부 기본(views 미지정이면 vconf=1.0이라 무영향).
+  const vconf = viewsConfidence(videoViews24h, viewsReference, floor); // views/reference 없으면 1.0(하위호환).
 
   if (mode === "single") {
     // 영상 내 A/B 없음 → CTR 크기 자체가 가중. CTR 없으면 0(비교 신호 부재).
     if (videoCtr24h === null || !Number.isFinite(videoCtr24h)) return 0;
-    return normCtr(videoCtr24h, cap); // [0,1] — 고CTR=강신호, 저CTR=약신호(loser 대비).
+    return normCtr(videoCtr24h, cap) * vconf; // [0,1] — 고CTR=강신호, 저CTR=약신호(loser 대비). 저조회 영상은 vconf로 약화.
   }
 
   // mode="ab": 영상 내 귀속 base × CTR 증폭.
   const base = relativeLiftPct === undefined ? verdictWeight(decisiveness) : verdictWeight(decisiveness, relativeLiftPct);
-  if (base === 0) return 0; // inconclusive: CTR 무관 항상 0.
-  if (videoCtr24h === null || !Number.isFinite(videoCtr24h)) return base; // 하위호환: CTR 없으면 base 그대로.
-  return base * (1 + boost * normCtr(videoCtr24h, cap));
+  if (base === 0) return 0; // inconclusive: CTR·조회수 무관 항상 0(일찍 return).
+  if (videoCtr24h === null || !Number.isFinite(videoCtr24h)) return base * vconf; // CTR 없으면 base × vconf(views도 null이면 vconf=1.0 → 정확히 base).
+  return base * (1 + boost * normCtr(videoCtr24h, cap)) * vconf;
 }
 
 /**
