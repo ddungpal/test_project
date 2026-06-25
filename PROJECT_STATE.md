@@ -23,6 +23,7 @@ _Last updated: 2026-06-25(밤 세션 — copy-views-weight 머지) · 단계: **
 - **(병렬·사람게이트) Phase C 실연결**: 채널 OAuth → `.env` `YT_OAUTH_CLIENT_ID/SECRET/REFRESH_TOKEN` → `PERFORMANCE_SOURCE=youtube`+`PERFORMANCE_FIXTURES=record` 1회 → 이후 replay($0). **코드 변경 없이 켜짐.**
 - **(병렬·사람게이트) Phase D 실전환**: 김짠부가 한 단계 "이제 됐다" + 신호데이터(채택률·eval) 축적 → `AX_STAGES=<stage>`로 그 단계 AX 전환(롤백 가능).
 - **(병렬·사람게이트) A/B 학습 루프 가동**: ①C 효과 적용=claude-p로 `learn-ab-style` 재실행→draft→`activate-style` ②B 효과=새 Test&Compare→`ab-results.json`→`ingest-ab`→`style/relearn.requested` 트리거→draft 검수→activate. (코드는 ✅, 이후 사람 승인 루프.)
+- **▶ (추후 진행·사용자 방향) 썸네일 이미지(visual) 추가**: 현재 학습은 **카피(문구)만** — visual 차원(인물·색·레이아웃·장치)은 입력 공란이라 학습 불가(2026-06-25 재학습 tentative_notes에 명시). 사용자 계획=나중에 **실제 썸네일 이미지를 추가하는 방향**으로 시작. 선결: 김짠부 과거 썸네일 데이터(`contents.thumbnail_url` 수집/라벨) + 이미지 입력 경로(업로드/URL). 설계 후보=캔버스→HTML/CSS 템플릿(인물 슬롯+카피 자동배치) / 이미지생성(한글·인물일관성 약점→후순위). 상세 설계메모=아래 "썸네일 재개점 설계 메모".
 - **(deferred·코드) 하네스 top-index 자동등록**: 새 phase가 `phases/index.json`에 미등록(watch는 mtime기반이라 무방, 저우선).
 
 ## 📜 세션 로그 (2026-06-25 밤) — `copy-views-weight` phase: 24h 조회수 신뢰도 가중 (하네스, main ff-머지)
@@ -31,6 +32,7 @@ _Last updated: 2026-06-25(밤 세션 — copy-views-weight 머지) · 단계: **
 - **step1 `views-data-wiring`**(`336c479`): `CopyAbInput.views24h`→`mapCtr24hToMetricRow`가 performance_metrics d1 overall 행에 `views` 멱등 저장→`loadAbResultsFromDb`가 views select·`video_views24h` 채움(ab·single 둘 다)→`buildAbStyleInput` 진입부에서 `viewsReference=코퍼스 max(views)` **1회** 산출→`ctrWeightedScore` 2곳 주입. `copyLearnView.CopyLearnVideo.views24h`(프리필). 하위호환 회귀 가드(views 없으면 weight 불변)·promptHash 무영향(forward 픽스처 보존). 테스트 5.
 - **step2 `views-input-ui`**(`47a31e6`): `/copy-learn` 폼 영상별 **24h 조회수 입력칸**(ctr24h 패턴 미러·TRUS 3색·정수)+접힌 헤더에 `toLocaleString()` 천단위 노출. 파싱 순수모듈 분리(`src/components/copyViewsParse.ts`: 빈칸·음수·비숫자→null, "0"→0 — vitest alias·서버액션 의존 회피). 새 게이지 없음(상대 기준이라 단일 절대표시 오해 방지). 테스트 6.
 - **실효과는 실데이터 후**: 가중 로직만 변경 — 실제 학습 변화는 `/copy-learn`에서 24h 조회수 포함 실데이터 입력→재학습→활성화→새 런으로 확인(기존 copy-learn 검증 루프 동일).
+- **✅ 라이브 검증(2026-06-25 밤)**: 실데이터 10영상(thumbnail A/B + title single) 입력·재학습. 임시 진단스크립트로 DB 확인 — views 10영상 전부 저장(21,550~275,969)·`loadAbResultsFromDb`가 `viewsReference(max)=275,969` 산출·weight에 vconf 반영(tentative_notes가 weight 1.61/1.57/~0.95 직접 인용). **재학습 결과 confidence="tentative"는 조회수 버그가 아니라 LLM의 소표본 판정**(notes: "N<10·단일채널·losers 동일카피·equivalent_signals 비어"). 현 10영상이 전부 2만~28만뷰라 vconf 0.90~1.0 좁은 구간(차등 약함=정상) — 저조회 우연 고CTR이 섞일 때 vconf가 크게 벌어지는 게 설계 목적. **조회수↔visual은 별개**: 학습은 카피만, visual(이미지)은 입력 공란이라 미학습(위 추후 진행 항목).
 - **→ 남음**: ①origin push(현재 로컬 main만) ②feat-copy-views-weight 브랜치 삭제(보존됨) ③rules-proposals 5건+rules.md 신선도(15일) 정리 ④실데이터 라이브 검증.
 
 ## 📜 세션 로그 (2026-06-25 저녁) — 실사용 검증 중 `/copy-learn` UI 3건 수정 (main 푸시)
