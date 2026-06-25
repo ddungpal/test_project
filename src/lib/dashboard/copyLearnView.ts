@@ -42,6 +42,58 @@ function payloadToText(payload: unknown): string[] {
   return out;
 }
 
+// ── 최근 스타일 draft/active 조회(copy-learning-admin step2) — UI "최근 draft 보기"용. ──
+
+export type CopyStyleComponentType = "thumbnail_copy" | "title";
+export type CopyStyleStatus = "draft" | "active" | "retired";
+
+export interface CopyStyleDraft {
+  id: string;
+  componentType: CopyStyleComponentType;
+  version: number | null;
+  status: CopyStyleStatus;
+  createdAt: string;
+  patternKeys: string[]; // patterns(jsonb) 최상위 키 목록(요약). 빈/비객체면 [].
+}
+
+/** patterns(jsonb)에서 최상위 키만 추출(요약용). 비객체·null·배열이면 []. */
+function patternKeysOf(patterns: unknown): string[] {
+  if (patterns === null || typeof patterns !== "object" || Array.isArray(patterns)) return [];
+  return Object.keys(patterns as Record<string, unknown>);
+}
+
+/**
+ * thumbnail_copy·title 의 최근 draft/active 프로필을 component별 최신순(version desc)으로 조회.
+ *   각 component 최대 `perComponent`개(기본 5). UI가 검수·활성화 후보로 쓴다.
+ */
+export async function getCopyStyleDrafts(perComponent = 5): Promise<CopyStyleDraft[]> {
+  const supa = createAdminClient();
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("id, component_type, version, status, patterns, created_at")
+    .in("component_type", ["thumbnail_copy", "title"])
+    .order("version", { ascending: false, nullsFirst: false });
+  if (error) throw new Error(`style_profiles 조회 실패: ${error.message}`);
+
+  const counts = new Map<string, number>();
+  const out: CopyStyleDraft[] = [];
+  for (const r of data ?? []) {
+    const ct = r.component_type as CopyStyleComponentType;
+    const n = counts.get(ct) ?? 0;
+    if (n >= perComponent) continue;
+    counts.set(ct, n + 1);
+    out.push({
+      id: r.id,
+      componentType: ct,
+      version: r.version,
+      status: r.status as CopyStyleStatus,
+      createdAt: r.created_at,
+      patternKeys: patternKeysOf(r.patterns),
+    });
+  }
+  return out;
+}
+
 export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
   const supa = createAdminClient();
   const { data: contents, error } = await supa

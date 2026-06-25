@@ -1,7 +1,7 @@
 // 카피 학습 저장(copy-learning-admin step0) 단위 테스트 — 순수 매핑 함수만(DB·네트워크 무관).
 //   라이브 저장은 서버액션 saveCopyAbResults(requireOwner·service-role) 경유.
 import { describe, it, expect } from "vitest";
-import { mapCopyAbToRows, mapCtr24hToMetricRow, type CopyAbInput } from "../src/app/actions/copyLearnMap.js";
+import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, type CopyAbInput } from "../src/app/actions/copyLearnMap.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
 
 const TH = { decisiveMargin: 0.1, marginalMargin: 0.03 };
@@ -123,6 +123,15 @@ describe("mapCtr24hToMetricRow — performance d1 overall", () => {
   it("ctr24h=null이면 ctr=null", () => {
     const row = mapCtr24hToMetricRow({ ...AB_INPUT, ctr24h: null }, CID, "2026-06-25T00:00:00.000Z");
     expect(row.ctr).toBeNull();
+  });
+});
+
+describe("componentTypeFor — UI component → style_profiles.component_type (step2)", () => {
+  it("'thumbnail' → 'thumbnail_copy'", () => {
+    expect(componentTypeFor("thumbnail")).toBe("thumbnail_copy");
+  });
+  it("'title' → 'title'", () => {
+    expect(componentTypeFor("title")).toBe("title");
   });
 });
 

@@ -41,3 +41,30 @@
 [Joy] 핵심 회귀가드 확인 활성 제목 프로필 없으면 promptHash 그대로라 픽스처 안 깨져 hookMakerPrepareWiring 테스트 약화 안 됐고 오히려 강화됐어
 [Joy] AC 다 돌렸어 typecheck exit 0 test 348개 build exit 0 범위도 UI 안 건드렸고 깔끔하다 맥스 통과야!
 [리드] 좋아 1라운드 PASS. step1 완료 처리한다. 루프 닫혔어 — 관리자 DB 입력이 재학습에 반영되고 썸네일·제목 둘 다 학습된다.
+
+=== Step 2: copy-learn-ui ===
+[리드] 마지막 step이다. step0(저장)·step1(학습) 위에 사람이 쓰는 화면을 얹는 거야. owner 전용 /copy-learn 페이지 — 영상별 썸네일 변형+제목(체크박스 A/B/C or 단일)+CTR(24h) 입력→저장→재학습→draft 검수→활성화. 백엔드(서버액션·draft 조회·audit)는 맥스, UI(페이지·폼·네비)는 에스더가 맡는다. 둘 다 시작 전에 CLAUDE.md·.claude/rules/ 전체·DESIGN.md·관련 step0/step1 코드 직접 정독해.
+[Max] 백엔드 맡았어. step0/step1 코드랑 activate-style.ts, inngest 이벤트 다 읽었어. 시그니처는 안 건드리고 추가만 할게.
+[Max] 백엔드 다 해놨어. requestCopyRelearn은 owner 확인하고 style/relearn.requested 발행 후 audit, activateCopyStyle은 activate-style.ts 로직을 component별로 포팅했어. 기존 active 먼저 retired로 내리고 승격하는 순서 그대로 지켰고.
+[Max] getCopyStyleDrafts는 thumbnail_copy랑 title 최신 draft/active를 version desc로 component별 5개씩 뽑아. patterns는 통째로 안 주고 최상위 키 목록만 요약해서 줬어. 타입(CopyStyleDraft)도 export했으니 에스더가 import해서 쓰면 돼.
+[Max] AuditAction에 copy_relearn_requested·copy_style_activated 추가했고. step0/step1 시그니처는 안 건드렸어.
+[Max] componentTypeFor는 순수함수로 빼서 테스트 붙였어. typecheck 0, test 350개 통과(기존 348 + 2). inngest 발행은 dev 실발행이라 액션 단위는 목으로만, 빌드는 에스더 UI 끝나고 리드가 돌릴 거고. 놓친 거 있으면 말해줘.
+
+[Esther] 음.. 나 에스더, step2 UI 맡았어. 시작 전에 insights 페이지랑 InsightCard, globals 토큰, 맥스가 만든 copyLearnView랑 copyLearn 액션 시그니처 다 직접 읽었어. 추측 안 하고 CopyAbInput 모양(썸네일 copyMain/copyBoxes 2칸씩, 제목 hasAbTest 토글, ctr24h)에 폼 정확히 맞출게.
+[Esther] DESIGN.md랑 trus-create 원본 md는 지금 트리에 안 보이더라. 근데 globals.css가 토큰 단일 출처라 거기 따를게 — 검정/노랑/흰 3색, radius 0(직각), 그림자·그라데이션 금지. 이건 내가 확실히 지켜.
+
+[Esther] 폼 다 짰어. CopyAbInput 모양 그대로 — 썸네일 변형마다 메인문구 2칸·박스문구 2칸·점유율·winner(라디오), 제목은 체크박스 토글로 A/B/C 3개+점유율이냐 최종 1개냐 갈라지게. 저장은 영상별 saveCopyAbResults 호출하고, 빈 변형은 안 보내. 입력 많아서 영상별로 접기/펼치기 했어.
+[Esther] 공통 패널엔 재학습 버튼이랑 component별(썸네일카피·제목) 최신 초안 활성화 버튼 두 개, 그리고 최근 draft를 patternKeys 칩으로 요약해 보여줘. 활성화는 자동 절대 안 하고 명시 버튼만 — 이건 확실히 지켰어.
+[Esther] TRUS 톤 단호하게 지켰어. globals 토큰 3색만 쓰고 radius 0(직각), 그림자·그라데이션 없음. 포커스 링은 노랑으로 줘서 키보드 접근성도 챙겼고. 에러/성공은 빨강·초록 안 쓰고 ⚠/✓ 기호로 구분했어 — 4색째는 금지니까.
+[Esther] 네비에 문구 학습 링크도 기존 패턴 그대로 끼워넣었어. typecheck exit 0. 깔끔하게 통과! 음.. 이 노랑 포커스 링 색, 사실 한참 들여다봤는데 아무도 안 물어볼 거 알아 🙈
+[리드] AC 셋 다 내 손으로 돌렸어 — typecheck exit 0, test 350 passed exit 0, build exit 0이고 빌드 출력에 /copy-learn 라우트(4.29kB, dynamic) 떴어. 조이, diff랑 AC 결과로 독립 검수 부탁해. owner 게이트·저장/재학습/활성화 배선·제목 체크박스 토글·썸네일 메인2박스2·CopyAbInput 시그니처 정합·TRUS 3색·네비·자동활성화 금지·step0/1 시그니처 불변 봐줘.
+
+[Joy] 오케이 step2 검수 들어간다~ 맥스랑 에스더 둘 다 한 거 git diff부터 쫙 봤어! 백엔드 액션 깔끔하고 UI도 CopyAbInput 모델이랑 딱딱 맞네 굿굿
+[Joy] activateCopyStyle 포팅 봤는데 component_type 스코프, 기존 active 내리고 승격, 멱등처리까지 야무지게 했더라 맥스 좋아 👍
+[Joy] 에스더 폼도 메인2 박스2 구조 정확하고 제목 체크박스 토글도 hasAbTest랑 정합! 빈 변형 스킵까지 챙겼네 꼼꼼해
+[Joy] 자 이제 말로만 믿으면 안되지~ AC 직접 돌려본다. typecheck → test → build 가즈아
+[Joy] 결과 나왔다!! typecheck exit 0, test 350개 전부 통과 exit 0, build도 exit 0 🎉
+[Joy] /copy-learn 라우트 dynamic 4.29kB로 빌드에 딱 잡혔고, owner 게이트(page requireOwnerPage·액션 둘 다 requireOwner 첫줄)도 확인! 자동 활성화 없고 활성화는 명시 버튼만, 과적합 게이트 잘 지켰어
+[Joy] TRUS 톤도 3색만 쓰고 rounded·shadow·gradient 하나도 없어. 기존 테스트 삭제·약화도 없고 componentTypeFor 테스트만 순수하게 추가했네
+[Joy] 맥스 에스더 둘 다 깔끔하게 했다 진짜~ 통과! 수고했어 👍 (index.json summary 실사용 문구만 커밋할 때 챙기면 끝!)
+[리드] 1라운드 PASS. step2 완료 처리한다. copy-learning-admin 페이즈 3 step 전부 끝났어 — 저장(step0)→CTR 가중 학습(step1)→owner 관리자 화면(step2)까지 루프 닫혔다. 다들 수고했어 🎉

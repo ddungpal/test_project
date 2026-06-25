@@ -111,6 +111,12 @@ export function mapCopyAbToRows(input: CopyAbInput, contentId: string, threshold
   return { abRows, thumbnailVerdict };
 }
 
+/** UI의 component 선택("thumbnail"|"title") → style_profiles.component_type. 썸네일 카피는 thumbnail_copy. */
+export type CopyComponent = "thumbnail" | "title";
+export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "title" {
+  return component === "thumbnail" ? "thumbnail_copy" : "title";
+}
+
 /** performance_metrics d1 overall 1행(순수 변환). ctr=ctr24h. */
 export function mapCtr24hToMetricRow(input: CopyAbInput, contentId: string, nowIso: string): TablesInsert<"performance_metrics"> {
   return {

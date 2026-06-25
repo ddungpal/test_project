@@ -15,7 +15,9 @@ export type AuditAction =
   | "run_deleted"
   | "insight_status"
   | "insight_edited"
-  | "copy_ab_saved";
+  | "copy_ab_saved"
+  | "copy_relearn_requested"
+  | "copy_style_activated";
 
 export interface AuditEntry {
   actorId: string;

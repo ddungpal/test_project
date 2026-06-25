@@ -29,6 +29,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <a href="/insights" className="hover:text-trus-yellow">
                 인사이트
               </a>
+              <a href="/copy-learn" className="hover:text-trus-yellow">
+                문구 학습
+              </a>
               <a href="/audit" className="hover:text-trus-yellow">
                 감사
               </a>
