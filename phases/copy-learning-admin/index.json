@@ -24,7 +24,11 @@
     {
       "step": 2,
       "name": "copy-learn-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-25T17:22:46+0900",
+      "summary": "owner 전용 /copy-learn 관리자 페이지: 서버액션 requestCopyRelearn(inngest style/relearn.requested 발행+audit)·activateCopyStyle(component별 active 1개 유지 포팅·기존 active retired 후 승격·멱등+audit) + copyLearnView.getCopyStyleDrafts(thumbnail_copy·title 최근 draft/active version desc·patternKeys 요약) + AuditAction 2개. 페이지(force-dynamic·requireOwnerPage·devBypass) + CopyLearningForm(영상별 접기/펼치기·썸네일 변형 A/B/C[메인2·박스2·점유율·winner]·제목 체크박스 토글[A/B/C+점유율 or 단일]·CTR24h·영상별 저장·공통 재학습/최근draft/component별 활성화 버튼·useTransition·자동활성화 금지) + 네비 '문구 학습' 링크. TRUS 3색·직각·무그림자. step0/1 시그니처 불변. AC 3개(typecheck/test 350/build, /copy-learn dynamic 4.29kB) exit 0. 실사용: /copy-learn 입력→재학습→활성화→새 런 확인(사용자).",
+      "completed_at": "2026-06-25T17:37:01+0900"
     }
   ],
   "created_at": "2026-06-25T16:52:29+0900"
