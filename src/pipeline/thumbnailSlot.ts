@@ -56,6 +56,7 @@ export async function regenerateThumbnailSlot(
   deps: StageRuntimeDeps,
   runId: string,
   slotIdx: number,
+  reason?: string, // '다시 생성' 시 사용자가 적은 선택적 이유(transient·프롬프트용). 비/공백이면 출력 바이트 불변(픽스처 보존).
 ): Promise<ThumbnailSlotResult> {
   const { supa } = deps;
 
@@ -87,7 +88,7 @@ export async function regenerateThumbnailSlot(
   const spec = thumbnailStageSpec(runId);
   const prep = await spec.prepare(supa);
   const attempt = priors.length; // 기존 제안 개수 = 회차 nonce
-  const augmentedSystem = buildRegenerateAugmentedSystem(prep.system, existing, attempt);
+  const augmentedSystem = buildRegenerateAugmentedSystem(prep.system, existing, attempt, reason);
 
   const res = await callLLM<ThumbnailMakerOutput>(
     {

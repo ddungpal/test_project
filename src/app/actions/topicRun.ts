@@ -186,14 +186,15 @@ export async function regenerateStage(runId: string, stage: "topic" | "titles" |
 }
 
 // 썸네일 '전체 다시 생성'(3개 새로) 편의 액션 — force=true로 thumbnails.requested 재발행(run-in-place).
-export async function regenerateThumbnails(runId: string): Promise<void> {
-  await regenerateStage(runId, "thumbnail");
+export async function regenerateThumbnails(runId: string, reason?: string): Promise<void> {
+  await regenerateStage(runId, "thumbnail", reason);
 }
 
 // 썸네일 '개별 슬롯 다시 생성'(3칸 중 slotIdx만 교체·나머지 보존) — 무전이 in-place(상태 유지).
-export async function regenerateThumbnailSlot(runId: string, slotIdx: number): Promise<void> {
+export async function regenerateThumbnailSlot(runId: string, slotIdx: number, reason?: string): Promise<void> {
   await requireOwner();
-  await inngest.send({ name: "run/thumbnail-slot.requested", data: { runId, slotIdx } });
+  // reason은 비/공백이면 미포함(exactOptionalPropertyTypes — undefined 명시대입 금지). 없으면 기존 페이로드와 동일.
+  await inngest.send({ name: "run/thumbnail-slot.requested", data: { runId, slotIdx, ...(reason && reason.trim() ? { reason } : {}) } });
 }
 
 // 셜록 리서치(§8.2 단계경계 버튼) — request(이벤트) → 검수 진입 → 트리아지 승인(§11).

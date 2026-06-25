@@ -11,6 +11,6 @@ export const thumbnailSlotStageFn = inngest.createFunction(
   { event: "run/thumbnail-slot.requested" },
   async ({ event, step }) =>
     step.run("thumbnail-slot-regenerate", () =>
-      withStageRuntime(event.data.runId, (deps) => regenerateThumbnailSlot(deps, event.data.runId, event.data.slotIdx)),
+      withStageRuntime(event.data.runId, (deps) => regenerateThumbnailSlot(deps, event.data.runId, event.data.slotIdx, event.data.reason)),
     ),
 );

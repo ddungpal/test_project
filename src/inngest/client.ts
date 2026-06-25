@@ -16,7 +16,7 @@ type PipelineEvents = {
   "run/titles.requested": { data: StageData };
   "run/thumbnails.requested": { data: StageData }; // 썸네일메이커(선택된 제목 → 썸네일 3개)
   // 썸네일 슬롯 1개 재생성(3칸 중 slotIdx만 교체·나머지 보존) — 무전이 in-place(thumbnails_proposed 유지).
-  "run/thumbnail-slot.requested": { data: { runId: string; slotIdx: number; softAck?: boolean } };
+  "run/thumbnail-slot.requested": { data: { runId: string; slotIdx: number; softAck?: boolean; reason?: string } };
   "run/structure.requested": { data: StageData };
   "run/research.requested": { data: StageData }; // 셜록 셀(fan-out/join)
   "run/script.requested": { data: StageData }; // 짠펜(최종 합류)

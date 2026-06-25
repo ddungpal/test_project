@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { regenerateThumbnails, regenerateThumbnailSlot, confirmThumbnails } from "@/app/actions/topicRun";
 import { LiveRefresh } from "@/components/LiveRefresh";
@@ -29,6 +29,10 @@ export function ThumbnailStudio({
   const [busy, setBusy] = useState<Busy>(null); // 진행 중인 작업(카드별 표시·버튼 disable용)
   const [startId, setStartId] = useState<string | null>(null); // 재생성 제출 시점 proposalId(null=유휴). 바뀌면 완료.
   const [timedOut, setTimedOut] = useState(false);
+  const [allReason, setAllReason] = useState(""); // 전체 다시 생성 공용 사유(선택). 비/공백이면 백엔드에서 미전송.
+  const [slotReasons, setSlotReasons] = useState<Record<number, string>>({}); // 카드별 사유(선택). idx→reason.
+  const allReasonId = useId();
+  const slotReasonBaseId = useId();
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   const submitted = startId !== null;
@@ -39,6 +43,8 @@ export function ThumbnailStudio({
       setStartId(null);
       setBusy(null);
       setTimedOut(false);
+      setAllReason(""); // 재생성 완료 → 다음 입력 위해 사유칸 비움(RegenerateButton 패턴)
+      setSlotReasons({});
     }
   }, [proposalId, startId]);
 
@@ -108,34 +114,66 @@ export function ThumbnailStudio({
                   <CandidateBody stage="thumbnail" payload={c.payload} />
                 </div>
               </div>
-              <button
-                onClick={() => runRegen(c.idx, () => regenerateThumbnailSlot(runId, c.idx))}
-                disabled={disabledAll}
-                className="m-3 mt-0 border border-trus-white/30 px-3 py-2 text-xs font-bold text-trus-white/80 hover:border-trus-yellow hover:text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
-              >
-                {slotBusy ? "이 칸 생성 중…" : "이 썸네일만 다시 생성"}
-              </button>
+              <div className="m-3 mt-0 flex flex-col gap-2">
+                {/* 카드별 사유(선택) — 이 칸만 다시 생성할 때 왜 다시인지. 비/공백이면 미전송(기존 동작). */}
+                <label htmlFor={`${slotReasonBaseId}-${c.idx}`} className="sr-only">
+                  {String.fromCharCode(65 + c.idx)} 칸 다시 생성 이유 (선택)
+                </label>
+                <input
+                  id={`${slotReasonBaseId}-${c.idx}`}
+                  type="text"
+                  value={slotReasons[c.idx] ?? ""}
+                  onChange={(e) => setSlotReasons((prev) => ({ ...prev, [c.idx]: e.target.value }))}
+                  disabled={disabledAll}
+                  placeholder="이 칸 왜 다시? (선택)"
+                  className="block w-full border border-trus-white/25 bg-transparent px-2 py-1.5 text-xs text-trus-white placeholder:text-trus-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+                />
+                <button
+                  onClick={() => runRegen(c.idx, () => regenerateThumbnailSlot(runId, c.idx, slotReasons[c.idx]))}
+                  disabled={disabledAll}
+                  className="border border-trus-white/30 px-3 py-2 text-xs font-bold text-trus-white/80 hover:border-trus-yellow hover:text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+                >
+                  {slotBusy ? "이 칸 생성 중…" : "이 썸네일만 다시 생성"}
+                </button>
+              </div>
             </div>
           );
         })}
       </div>
 
       {/* 하단 액션 — 보조(전체 다시 생성, outline)와 주 액션(확정, 노란 채움)을 좌우로 갈라 위계를 분명히. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-trus-white/20 pt-4">
-        <button
-          onClick={() => runRegen("all", () => regenerateThumbnails(runId))}
-          disabled={disabledAll}
-          className="border border-trus-yellow/50 px-5 py-2.5 text-sm font-bold text-trus-yellow hover:border-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
-        >
-          {busy === "all" ? "전체 생성 중…" : "3개 전체 다시 생성"}
-        </button>
-        <button
-          onClick={onConfirm}
-          disabled={disabledAll}
-          className="bg-trus-yellow px-6 py-2.5 text-sm font-black text-trus-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trus-yellow disabled:opacity-40"
-        >
-          {busy === "confirm" ? "확정 중…" : "이 3개로 확정"}
-        </button>
+      <div className="flex flex-col gap-3 border-t-2 border-trus-white/20 pt-4">
+        {/* 전체 공용 사유(선택) — 3개 전체 다시 생성 시 함께 전달. 비/공백이면 미전송(기존 동작). */}
+        <div className="max-w-md">
+          <label htmlFor={allReasonId} className="mb-1.5 block text-xs font-bold text-trus-white/60">
+            전체 다시 생성 이유 (선택)
+          </label>
+          <textarea
+            id={allReasonId}
+            value={allReason}
+            onChange={(e) => setAllReason(e.target.value)}
+            disabled={disabledAll}
+            rows={2}
+            placeholder="왜 다시? (선택) 예: 박스 문구 더 짧게"
+            className="block w-full resize-none border border-trus-yellow/40 bg-transparent px-3 py-2 text-sm text-trus-white placeholder:text-trus-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+          />
+        </div>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button
+            onClick={() => runRegen("all", () => regenerateThumbnails(runId, allReason))}
+            disabled={disabledAll}
+            className="border border-trus-yellow/50 px-5 py-2.5 text-sm font-bold text-trus-yellow hover:border-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+          >
+            {busy === "all" ? "전체 생성 중…" : "3개 전체 다시 생성"}
+          </button>
+          <button
+            onClick={onConfirm}
+            disabled={disabledAll}
+            className="bg-trus-yellow px-6 py-2.5 text-sm font-black text-trus-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trus-yellow disabled:opacity-40"
+          >
+            {busy === "confirm" ? "확정 중…" : "이 3개로 확정"}
+          </button>
+        </div>
       </div>
 
       {submitted && !timedOut && (
