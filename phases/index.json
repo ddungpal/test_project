@@ -74,6 +74,15 @@
       "dir": "usertest-fixes-1",
       "status": "completed",
       "completed_at": "2026-06-25T11:12:07+0900"
+    },
+    {
+      "dir": "title-external-refs",
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (title-reference-rewrite)",
+      "attempt": 1,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-06-25T11:55:46+0900"
     }
   ]
 }

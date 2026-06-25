@@ -5,12 +5,14 @@ import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
 import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
+import { gatherTitleReferences, type ExternalTitleRef } from "./externalRefs.js";
 
 export interface HookMakerInput {
   topic: string;
   tone: { id: string; version: number; components: unknown } | null;
   reference_titles: { id: string; text: string }[]; // 과거 완성 제목(corpus) — 톤 레퍼런스
   learned_insights?: LearnedInsight[]; // 환류(슬라이스 4): 승인된 'title' 학습 규칙 — 있을 때만(픽스처 해시 보존)
+  reference_titles_external?: ExternalTitleRef[]; // 외부 고조회 유튜브 제목 — 옵트인(TITLE_REFERENCES=youtube)·있을 때만(해시 보존)
 }
 
 export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ system: string; input: HookMakerInput; schema: JsonSchema }> {
@@ -38,6 +40,10 @@ export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ sys
   // 환류(슬라이스 4) — 승인된 'title' 학습 규칙만 주입(썸네일 규칙은 thumbnail_maker로 이동). 있을 때만(없으면 해시 보존).
   const learned = await loadApprovedInsights(supa, ["title"]);
   if (learned.length) input.learned_insights = learned;
+
+  // 외부 제목 레퍼런스(옵트인) — 고조회 관련 유튜브 제목. 게이트 off/실패/0이면 [] → 필드 부재(promptHash 불변·$0 보존).
+  const externalRefs = await gatherTitleReferences(topic);
+  if (externalRefs.length) input.reference_titles_external = externalRefs;
 
   // system 합성: learned_insights만. 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
   const system = appendLearnedInsights(HOOK_MAKER_SYSTEM, learned);

@@ -1,0 +1,1 @@
+- 제안: step 산출물 커밋 전 git status로 명세에 없는 신규 fixtures/parity/* (record 부산물)가 섞이지 않았는지 확인하고, 무관한 fixture는 제외한다 (근거: title-external-refs step0 검수 중 명세에 없던 untracked parity fixture 8개(hook_maker·thumbnail_maker·topic_scout)가 작업 트리에 섞여 있었음 — 기존 골든 불변이라 회귀는 없었으나 범위 외 산출물이 커밋에 딸려갈 위험)
