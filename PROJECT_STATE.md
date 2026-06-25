@@ -4,7 +4,7 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-26(밤 세션 — copy-local-gen 머지) · 단계: **유저테스트 + `/copy-learn` 학습 관리자 완료 후 실사용 검증 중. 최근 main 머지 3건: ①`copy-views-weight`(24h 조회수 신뢰도 가중) ②`deleteRun` pts_has_source CHECK 충돌 수정(편 삭제 실패) ③`copy-local-gen`(하이브리드 $0 생성). copy-local-gen=하네스 4 step·전부 PASS, main tip=`8938e74`, vitest 369→441·typecheck 0. 내용=재학습(API)이 patterns에 '스켈레톤'까지 방출 → 제목/썸네일 생성·다시생성이 활성 스켈레톤을 로컬로 채워 callLLM 스킵($0), 'LLM 새로써줘'는 폴백(`COPY_GEN_MODE` 기본 hybrid). 스켈레톤 없거나 mode=llm이면 기존 경로 바이트 동일(하위호환·forward 픽스처 불변). ▶▶ 다음 재개점=실사용 검증: `/copy-learn`에서 재학습→스켈레톤 생성→활성화→새 런에서 제목/썸네일이 로컬 $0로 생성되는지 + 문구 품질(정형화 정도) 확인. 미푸시(로컬 main만)·feat 브랜치 미삭제. 상세=아래 세션로그(2026-06-26·06-25).**_
+_Last updated: 2026-06-26(밤 — 썸네일 문구 품질 개선 진행 중) · 단계: **실사용 검증 중 썸네일 문구 품질 작업. ▶▶▶ 내일(다음 세션) 최우선 목표 = 썸네일 메인문구를 "조회수 잘나온 레퍼런스 + 김짠부 스타일 결합"으로 개선 → 방법 A·B를 하네스 phase로 만들고 돌려서 개선 확인. 오늘 main 푸시 완료(tip=`ca46dcd`, vitest 441·typecheck 0): deleteRun 2차 삭제버그(insights A3) 수정 + 썸네일 박스 6→12자(잘림 해소·"곱버스/이유3"→온전한 라벨구) + 썸네일 메인 14→20자+단정톤 강화. 제목(hook_maker)은 maxLength 없음=제약버그 없음 확인(제목 OK). ▶▶ 핵심 진단(내일 출발점)=썸네일 생성기가 김짠부 실제 썸네일을 0개 보고 있음(reference_thumbnail_copies가 corpus_components에서 읽는데 0건). 24개 우승 썸네일은 ab_variants에 있으나 학습때만 쓰고 생성엔 안 보여줌 → 추상 tentative 패턴만 보고 추론 → 약하고 안 김짠부다움. 상세=아래 "▶ 다음 작업" + 세션로그.**_
 
 > ⚠️ 라이브 dev 운영 메모(이번 세션 학습):
 > - **dev 기동**: `pnpm dev`/`pnpm inngest:dev` 래퍼는 pnpm 빌드스크립트 승인 게이트(sharp/protobufjs)에서 막힘 → 바이너리 직접 사용: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest`.
@@ -12,6 +12,23 @@ _Last updated: 2026-06-26(밤 세션 — copy-local-gen 머지) · 단계: **유
 > - **`next build`는 떠 있는 dev `.next`를 깬다** → 검증 빌드는 dev stop → build → restart 순서로. 깨지면 dev 재시작이면 복구.
 > - **$0 유지**: `.env` `LLM_BACKEND=claude-p` + 새 런 시 `SEARCH_BACKEND=mock`(tavily 과금 회피). 실리서치 보려면 `tavily`.
 > - 다른 프로젝트(auto-research-agent)가 PM2로 3000 선점할 수 있음 → `npx pm2@7.0.1 stop ara-web ara-worker`로 비움.
+
+## ▶▶▶ 내일 최우선 — 썸네일 메인문구 개선 (방법 A phase + B, 돌려서 개선 확인)
+**목표: 썸네일 메인문구 후킹을 "조회수 잘나온 레퍼런스 + 김짠부 스타일 결합"으로 강화. 방법 A·B를 하네스 phase로 만들고 돌려서 문구가 개선되는지 확인.** (사용자가 가장 중요시.)
+
+**근본 진단(왜 약한가)**: `thumbnail_maker/prepare.ts:34`가 `reference_thumbnail_copies`를 `corpus_components`(type='thumbnail_copy', is_final)에서 읽는데 **라이브 0건** → 생성기가 **김짠부 실제 썸네일을 하나도 안 봄.** 추상 패턴 v2(tentative·N=7 손실압축) + 외부 고조회 *제목*(yt) + 말투만 봄. 정작 우승 썸네일 24개("월 200 재테크 로드맵 / 이 순서를 모르면 3년을 버립니다", "100만 원 이상 있다면 필수 시청" 등 점유율·CTR·조회수 포함)는 **`ab_variants`(copy-learn 입력)에 있으나 학습 때만 쓰고 생성엔 미노출.** → 베낄 구체 예시 없어 추상 규칙만으로 추론 → 약하고 안 김짠부다움. **추상 규칙 << few-shot 실제 예시.**
+
+**방법 A (가장 큰 레버·즉효, phase로 구현)**: `reference_thumbnail_copies`를 (빈) corpus_components 대신 **`ab_variants` 우승 썸네일에서 성과순 랭킹해 상위 6~8개**를 few-shot으로 주입.
+- 랭킹 = 점유율 × CTR × **조회수 신뢰도(vconf, `ctrWeightedScore`/`viewsConfidence` 재사용)** — = "조회수 잘나온 레퍼런스".
+- `thumbnail_maker/prepare.ts` reference 쿼리를 ab_variants(component_type=thumbnail, is_winner) + performance_metrics(ctr·views) 조인·랭킹으로 교체(또는 신규 헬퍼). 실제 메인·박스 문구를 텍스트로.
+- `thumbnail_maker/schema.ts` SYSTEM에 "아래는 김짠부 실제 고성과 썸네일 — 이 스타일로 써라(베끼지 말고 재창작·기존 anti-dup 가드 유지)" 지시 추가.
+- 주의: reference가 채워지면 promptHash 변경 → 픽스처 record 재생성($0, eval은 출력형태만). 비면 기존 동작.
+
+**방법 B (보완·사용자 데이터)**: 사용자가 **썸네일 예시 30+개 보유**(A·B 함께 가능 수치). copy-learn에 입력→재학습→활성화 → confidence tentative→high(현 v2가 "N<10이라 tentative"였음, 30이면 임계 넘김) + A의 예시 풀도 30개로 커짐. **단 B 강도는 형태 의존**: 영상별 A/B(변형 2~3+점유율)면 강한 신호, 단일(영상당 1개)이면 single mode라 약함 → 가능하면 A/B 형태로 입력 권장.
+
+**진행 순서(내일)**: ① 방법 A를 하네스 phase로 설계·생성·실행(run.py) → ② 사용자가 30개 copy-learn 입력→재학습(B)→활성화 → ③ 새 런으로 썸네일 메인이 김짠부답게(단정·목표선언·고성과 예시 닮게) 나오는지 확인. (학습/생성 claude-p $0.)
+**참고 파일**: `src/agents/thumbnail_maker/prepare.ts`(reference 쿼리)·`schema.ts`(SYSTEM·이미 박스12/메인20 반영됨)·`src/performance/abVerdict.ts`(`ctrWeightedScore`/`viewsConfidence` 랭킹 재사용)·`src/performance/abLearnSource.ts`(ab_variants+performance 조인 패턴)·`src/agents/shared/styleProfile.ts`(loadActiveThumbnailStyle).
+**dev 재기동(내일)**: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest`, `npm run preflight`. (오늘 띄운 서버는 세션 종료로 내려갈 수 있음.)
 
 ## ▶ 다음 작업 (NEXT — 2026-06-25 저녁 세션종료 시점)
 - **▶▶ 실사용 검증 (진행 중·사용자가 가장 중요시)**: dev `http://localhost:3000`에서 계속.
@@ -25,6 +42,13 @@ _Last updated: 2026-06-26(밤 세션 — copy-local-gen 머지) · 단계: **유
 - **(병렬·사람게이트) A/B 학습 루프 가동**: ①C 효과 적용=claude-p로 `learn-ab-style` 재실행→draft→`activate-style` ②B 효과=새 Test&Compare→`ab-results.json`→`ingest-ab`→`style/relearn.requested` 트리거→draft 검수→activate. (코드는 ✅, 이후 사람 승인 루프.)
 - **▶ (추후 진행·사용자 방향) 썸네일 이미지(visual) 추가**: 현재 학습은 **카피(문구)만** — visual 차원(인물·색·레이아웃·장치)은 입력 공란이라 학습 불가(2026-06-25 재학습 tentative_notes에 명시). 사용자 계획=나중에 **실제 썸네일 이미지를 추가하는 방향**으로 시작. 선결: 김짠부 과거 썸네일 데이터(`contents.thumbnail_url` 수집/라벨) + 이미지 입력 경로(업로드/URL). 설계 후보=캔버스→HTML/CSS 템플릿(인물 슬롯+카피 자동배치) / 이미지생성(한글·인물일관성 약점→후순위). 상세 설계메모=아래 "썸네일 재개점 설계 메모".
 - **(deferred·코드) 하네스 top-index 자동등록**: 새 phase가 `phases/index.json`에 미등록(watch는 mtime기반이라 무방, 저우선).
+
+## 📜 세션 로그 (2026-06-26 밤2) — 썸네일 문구 품질(박스·메인) + 삭제 2차버그 + 제목 점검
+**실사용 검증 중 썸네일 문구 품질 직접 수정(소규모·하네스 아님)·각각 push. typecheck/441 그린.**
+- **deleteRun 2차 삭제버그 수정**(`78f9b9d`): 회고 있는 편 삭제 시 retrospectives 캐스케이드→insights.source_retrospective_id SET NULL→A3 CHECK(insights_retro_consistent) 충돌. deleteRun이 삭제 전 `cleanupRetrospectives`(검증된 detach 정책) 호출로 해소. 이제 deleteRun이 pts+insights 두 CHECK 모두 선제 방어.
+- **썸네일 박스 품질**(`f4d98b6`): 박스가 "곱버스/이유3/왕초보"처럼 잘리던 원인=schema `thumbnail_boxes` maxLength=6 + SYSTEM "6자·쪼개라"가 김짠부 실제 우승 박스(7~9자 라벨구)보다 빡셈. → maxLength **6→12** + SYSTEM 박스 가이드를 "온전한 라벨구(방법·대상·시점·혜택·추천·총정리)·쪼개기 금지"로 + eval.test 계약 ≤6→≤12. **사용자 확인=박스 좋아짐.**
+- **썸네일 메인 강화**(`ca46dcd`): 메인이 약한 원인 2개=①maxLength=14가 우승 메인(15~22자 단정선언)보다 빡세 절단 ②base 톤 중립이라 묘사·교육조로 흐름. → maxLength **14→20** + SYSTEM "단정·명령·목표선언으로 세게(묘사·교육조·의문나열 금지)·emphasis_words/main_copy_notes 준수" + eval.test ≤14→≤20. **사용자=메인 아직 약함·안 김짠부다움 → 위 '내일 최우선 방법 A·B'로 이어짐(근본=레퍼런스 0건).**
+- **제목(hook_maker) 점검**: title은 maxLength 없음(`{minLength:1}`만) → 절단 제약버그 없음. 학습 스타일은 active일 때 appendTitleStyle로 주입됨(현 title v1 active). **사용자=제목 OK.** 제목 품질 레버는 제약 아니라 A/B 제목 데이터(현 single mode·tentative).
 
 ## 📜 세션 로그 (2026-06-26) — `copy-local-gen`(하이브리드 $0 생성) + `deleteRun` 삭제버그 수정 (main ff-머지)
 **① 편 삭제 버그 수정(`78f9b9d`, push 완료)**: `/copy-learn` 재학습 후 편 삭제 시 `삭제 실패: profile_training_sources ... pts_has_source` 에러. 원인=contents 삭제→ab_variants/performance_metrics 캐스케이드 삭제→pts.ab_variant_id `ON DELETE SET NULL`→유일출처였으면 num_nonnulls=0→`pts_has_source`(출처≥1) CHECK 위반→삭제 트랜잭션 롤백. 수정=`deleteRun`이 삭제 전 `detachOrphanTrainingSources`로 유일출처 pts만 선삭제(다중출처는 DB SET NULL 보존). cleanupRetrospectives detach 패턴과 동일 클래스. 읽기검증=차단 콘텐츠 2개·유일출처 pts 8건 정확히 정리 대상. ⚠️**잠재 2차 버그(미수정)**: 회고 있는 콘텐츠 삭제 시 retrospectives 캐스케이드→insights.source_retrospective_id SET NULL→A3 CHECK(`insights_retro_consistent`) 같은 클래스로 깨짐. 현재 테스트 콘텐츠엔 회고 없어 미발현. 같은 detach로 막을 수 있음(원하면 후속).
