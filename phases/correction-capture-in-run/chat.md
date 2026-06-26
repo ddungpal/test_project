@@ -21,3 +21,17 @@
 [Joy] 다 통과! typecheck 0, test 509개 다 초록불(신규 헬퍼 6케이스 포함), build는 처음에 PageNotFoundError 떴는데 rules대로 .next 캐시라 의심해서 지우고 다시 돌리니 깔끔하게 0 떴어. 교정 패널 transition도 재생성/확정이랑 잘 분리됐고 백엔드도 안 건드렸네. 시그니처도 다 실제대로 맞췄고. 굿굿 통과야 맥스 수고했어!
 
 [리드] PASS 확정. step0 completed로 마크했어. 수고했어 둘 다 — 다음은 step1(/copy-learn 교정 입력 폼 제거→읽기전용)이야.
+
+=== Step 1: copy-learn-correction-readonly ===
+
+[리드] 맥스, step1 맡아줘. CopyLearningForm에서 교정 '입력 폼'(AddCorrectionCard — 컴포넌트 선택·생성/이상 카피 입력·저장·차이분석 버튼)을 통째로 들어내고, 읽기전용 교정 목록(CorrectionCard)만 남겨줘. 캡처는 step0에서 런 화면으로 옮겼으니까. 안내 문구는 "런 화면 썸네일 단계에서 입력" 쪽으로 갱신하고, saveCorrection/analyzeCorrectionDiff 서버액션은 절대 삭제 금지(런 화면이 씀) — copy-learn에서의 import/호출만 정리해줘. getCorrections·재학습 버튼·page 배선은 유지. 미사용 import 깔끔히.
+
+[Max] step1 시작했어. copy-learn 교정 입력 폼(AddCorrectionCard) 걷어내고 읽기전용 목록만 남기는 작업. grep으로 보니 saveCorrection이랑 분석뷰는 런 화면(ThumbnailStudio)이 따로 쓰고 있어서 copy-learn 쪽만 떼면 돼.
+[Max] 입력 카드랑 거기서만 쓰던 diff 뷰 들어냈고, 미사용 import도 정리했어. 안내 문구는 런 화면에서 입력한다는 취지로 바꿨고. 이제 typecheck/test/build 돌려본다.
+[Max] 다 통과했어. typecheck 0, 테스트 509개 다 초록, build도 깔끔해. /copy-learn copy-learn은 7.23kB로 좀 가벼워졌고. 입력 폼은 사라지고 목록만 남았으니 한번 봐줘. 놓친 거 있으면 말해줘.
+
+[Joy] 오 맥스 빠르다~ 나 git diff부터 보고 typecheck 돌려볼게! CopyLearningForm.tsx 하나만 건드렸네, 깔끔한 출발 굿굿
+[Joy] diff 깔끔하네! AddCorrectionCard랑 CorrectionDiffView 통째로 빠졌고 백엔드 saveCorrection은 ThumbnailStudio 런화면에서 멀쩡히 쓰고 있어. import 잔재도 없어. 이제 typecheck/test/build 돌린다
+[Joy] 굿굿 typecheck exit 0, test 509개 전부 통과, build도 깔끔하게 exit 0 떴어! copy-learn 번들도 폼 빠지면서 가벼워졌네. CorrectionCard는 펼침/접기만 있는 진짜 읽기전용이고 안내문구도 런화면으로 잘 바뀜. 백엔드 액션은 안 건드렸으니 step0 런화면도 안전. 통과시킬게 맥스 수고했어 
+
+[리드] PASS 확정. AC 내가 직접 돌린 것도 typecheck/test/build 전부 exit 0이야. step1 completed로 마크했어. 이걸로 correction-capture-in-run phase 두 step(런 캡처 + copy-learn 읽기전용) 다 끝났네 — 캡처 지점이 런 화면 단일 출처로 정리됐어. 둘 다 수고했어!
