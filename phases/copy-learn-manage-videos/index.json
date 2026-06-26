@@ -1,0 +1,22 @@
+{
+  "project": "produce script",
+  "phase": "copy-learn-manage-videos",
+  "goal": "/copy-learn 영상 카드에 ① 삭제 ② 업로드일 수정 기능 추가. 삭제는 위험: contents 삭제가 ab_variants/performance_metrics 캐스케이드 → pts_has_source CHECK, retrospectives→insights A3 CHECK 두 함정(과거 여러 번 고침). deleteRun이 detachOrphanTrainingSources+cleanupRetrospectives+source='produced' 가드로 안전 처리하므로 그 시퀀스를 재사용(중복 구현 금지=드리프트 방지). topicRun.ts는 'use server'라 헬퍼 export 불가 → cascade를 비-'use server' 모듈로 추출해 deleteRun과 새 deleteLearningVideo가 공유. 업로드일은 updateContentTitle 미러. step 0(백엔드: cascade 추출+deleteLearningVideo+updateContentUploadDate+audit)→1(VideoCard UI: 삭제버튼 confirm + 업로드일 칸). AC 오프라인 $0.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "content-lifecycle-actions",
+      "status": "completed",
+      "team_round": "3/3 PASS",
+      "started_at": "2026-06-26T14:37:30+0900",
+      "summary": "cascade(detachOrphanTrainingSources+cleanupRetrospectives+source='produced' delete)를 비-'use server' 모듈 src/app/actions/contentLifecycle.ts로 추출(deleteProducedContent). detachOrphanTrainingSources를 topicRun.ts에서 이동·export, deleteRun을 deleteProducedContent 호출로 리팩터(외부 동작·에러 메시지·audit run_deleted 불변, 죽은 type Supa import 정리). copyLearn.ts에 deleteLearningVideo(requireOwner→deleteProducedContent→0이면 throw→audit content_deleted)·updateContentUploadDate(requireOwner→isYmd YYYY-MM-DD 가드→upload_date update→0행 throw→audit content_upload_date_updated) 추가. isYmd 순수 함수 분리+vitest. AuditAction union·AUDIT_ACTION_LABEL에 content_deleted(영상 삭제)/content_upload_date_updated(업로드일 수정) 추가. Joy 검수 PASS — AC: typecheck/test(459 통과)/build 모두 exit 0.",
+      "completed_at": "2026-06-26T14:49:28+0900"
+    },
+    {
+      "step": 1,
+      "name": "manage-videos-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-26T14:37:30+0900"
+}
