@@ -5,6 +5,7 @@
 //   ★ appendLearnedInsights(환류 슬라이스 4) 패턴을 그대로 미러링한다.
 
 import type { Supa } from "../../pipeline/runState.js";
+import type { WinningThumbnailRef } from "../thumbnail_maker/winningRefs.js";
 
 export interface ActiveThumbnailStyle {
   id: string; // "style:<uuid>" — evidence 링크용
@@ -86,5 +87,35 @@ export function appendTitleStyle(system: string, profile: ActiveTitleStyle | nul
     "제목 후보를 아래 copy 패턴(후킹·강조어·길이)에 맞춰 제안하고, banned 항목은 피하라. 낚시·과장은 금지(CTR 이 높았던 정직한 표현만).",
     `이 사양을 따른 후보는 evidence_ids에 그 id(${profile.id})를 포함하라.`,
     patternsJson,
+  ].join("\n");
+}
+
+// ── 우승 썸네일 few-shot(thumbnail-winning-refs step1) — 썸네일메이커 prepare 에 주입하는 순수 합성. ──
+//   ★ appendThumbnailStyle 미러: refs 없거나 빈 배열이면 원본 system 그대로 반환(바이트 불변 → promptHash 보존).
+//   ★ 있을 때만 '실제 고성과 우승작' few-shot 섹션을 SYSTEM 뒤에 덧붙인다. 기존 SYSTEM 규칙은 덮어쓰지 않는다.
+
+/** 빈 문자열/공백을 따옴표로 감싼 사람이 읽을 슬롯으로(없으면 빈칸). noUncheckedIndexedAccess 안전. */
+function quoteSlot(v: string | undefined): string {
+  return v && v.trim().length > 0 ? `"${v.trim()}"` : '""';
+}
+
+/** 우승 썸네일 한 줄: `- (id) 메인: "a" / "b"  · 박스: "c" / "d"`. main/boxes 0~2개 안전 처리. */
+function winningRefLine(ref: WinningThumbnailRef): string {
+  const main = `${quoteSlot(ref.main[0])} / ${quoteSlot(ref.main[1])}`;
+  const boxes = `${quoteSlot(ref.boxes[0])} / ${quoteSlot(ref.boxes[1])}`;
+  return `- (${ref.id}) 메인: ${main}  · 박스: ${boxes}`;
+}
+
+/** 시스템 프롬프트에 우승 썸네일 few-shot 섹션을 덧붙인다(순수). refs 없거나 빈 배열이면 원본 그대로(해시 불변). */
+export function appendWinningThumbnailRefs(system: string, refs: WinningThumbnailRef[] | undefined): string {
+  if (!refs || refs.length === 0) return system;
+  return [
+    system,
+    "",
+    "── 김짠부 실제 고성과 썸네일(점유율·CTR·조회수로 검증된 우승작) ──",
+    "아래는 김짠부 채널에서 실제로 성과가 가장 좋았던 썸네일이다. 이 톤·구조·후킹 강도로 새 후보를 써라.",
+    "★그대로 베끼지 마라 — 표현·단어를 재구성해 김짠부답되 매번 새롭게(거의 동일하면 anti-dup ref_similarity 가드에 걸린다).",
+    "이 스타일을 따른 후보는 evidence_ids에 해당 id(style:winner:…)를 포함하라.",
+    ...refs.map(winningRefLine),
   ].join("\n");
 }

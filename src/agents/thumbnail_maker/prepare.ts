@@ -5,8 +5,9 @@ import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
 import { THUMBNAIL_MAKER_SCHEMA, THUMBNAIL_MAKER_SYSTEM } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
-import { loadActiveThumbnailStyle, appendThumbnailStyle, type ActiveThumbnailStyle } from "../shared/styleProfile.js";
+import { loadActiveThumbnailStyle, appendThumbnailStyle, appendWinningThumbnailRefs, type ActiveThumbnailStyle } from "../shared/styleProfile.js";
 import { gatherTitleReferences, type ExternalTitleRef } from "../hook_maker/externalRefs.js";
+import { loadWinningThumbnailRefs } from "./winningRefs.js";
 
 export interface ThumbnailMakerInput {
   topic: string;
@@ -16,6 +17,8 @@ export interface ThumbnailMakerInput {
   learned_insights?: LearnedInsight[]; // 환류(슬라이스 4): 승인된 'thumbnail' 학습 규칙 — 있을 때만(픽스처 해시 보존)
   style_profile?: ActiveThumbnailStyle; // PhaseA: active 썸네일 스타일 사양 — 있을 때만(없으면 해시 불변)
   reference_titles_external?: ExternalTitleRef[]; // 외부 고조회 유튜브 제목 — 옵트인(TITLE_REFERENCES=youtube)·있을 때만(해시 보존)
+  reference_winning_thumbnails?: { id: string; topic: string; main: string[]; boxes: string[] }[];
+  // 김짠부 실제 고성과 우승 썸네일(ab_variants 성과순 top N) — few-shot. 있을 때만(없으면 promptHash 불변).
 }
 
 export async function prepareThumbnailMaker(supa: Supa, runId: string): Promise<{ system: string; input: ThumbnailMakerInput; schema: JsonSchema }> {
@@ -58,7 +61,11 @@ export async function prepareThumbnailMaker(supa: Supa, runId: string): Promise<
   const externalRefs = await gatherTitleReferences(topic);
   if (externalRefs.length) input.reference_titles_external = externalRefs;
 
-  // system 합성: learned_insights → style_profile 순. 둘 다 없으면 THUMBNAIL_MAKER_SYSTEM 그대로(바이트 불변).
-  const system = appendThumbnailStyle(appendLearnedInsights(THUMBNAIL_MAKER_SYSTEM, learned), style);
+  // thumbnail-winning-refs step1 — 김짠부 실제 고성과 우승 썸네일 few-shot 주입. 있을 때만(0건이면 input/system 불변 → promptHash 보존).
+  const winningRefs = await loadWinningThumbnailRefs(supa);
+  if (winningRefs.length) input.reference_winning_thumbnails = winningRefs;
+
+  // system 합성: learned_insights → style_profile → winning_refs 순. 셋 다 없으면 THUMBNAIL_MAKER_SYSTEM 그대로(바이트 불변).
+  const system = appendWinningThumbnailRefs(appendThumbnailStyle(appendLearnedInsights(THUMBNAIL_MAKER_SYSTEM, learned), style), winningRefs);
   return { system, input, schema: THUMBNAIL_MAKER_SCHEMA };
 }

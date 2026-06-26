@@ -103,11 +103,11 @@
     {
       "dir": "thumbnail-winning-refs",
       "status": "running",
-      "progress": "0/2",
-      "running_step": "0 (winning-refs-core)",
+      "progress": "1/2",
+      "running_step": "1 (winning-refs-wiring)",
       "attempt": 1,
       "elapsed_seconds": 420,
-      "heartbeat_at": "2026-06-26T10:45:51+0900"
+      "heartbeat_at": "2026-06-26T10:53:33+0900"
     }
   ]
 }
