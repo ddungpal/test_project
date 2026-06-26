@@ -147,12 +147,8 @@
     },
     {
       "dir": "thumbnail-topic-curiosity",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (topic-included-warn)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-26T21:21:24+0900"
+      "status": "completed",
+      "completed_at": "2026-06-26T21:22:07+0900"
     }
   ]
 }
