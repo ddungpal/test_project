@@ -119,6 +119,15 @@
       "dir": "copy-learn-manage-videos",
       "status": "completed",
       "completed_at": "2026-06-26T14:55:34+0900"
+    },
+    {
+      "dir": "fixture-record-after-validate",
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (record-after-validate)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-06-26T15:39:59+0900"
     }
   ]
 }

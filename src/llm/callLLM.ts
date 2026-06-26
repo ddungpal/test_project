@@ -85,12 +85,12 @@ export async function callLLM<T>(req: LlmRequest, deps: CallLLMDeps): Promise<Ll
       tokens: usage.inTok + usage.outTok,
       latencyMs,
     });
-    if (config.fixtures === "record") {
-      saveFixture({ promptHash: hash, roleId: req.roleId, model, rawJson, usage, recordedAt: new Date(started).toISOString() });
-    }
-
     try {
       const data = parseAndValidate<T>(req.roleId, req.schema, rawJson);
+      // 검증 통과한 출력만 녹화 — 불량 rawJson 박제 방지(불량 박제 시 record가 그걸 리플레이해 영구 실패).
+      if (config.fixtures === "record") {
+        saveFixture({ promptHash: hash, roleId: req.roleId, model, rawJson, usage, recordedAt: new Date(started).toISOString() });
+      }
       return { data, usage, costUsd, latencyMs, provider: driver.name, promptHash: hash };
     } catch (e) {
       // claude-p 무료 재시도 여지가 남았으면 재호출(예약은 이미 정산됨 → 다음 시도는 $0이라 추가 예약 불필요).
