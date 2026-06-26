@@ -87,7 +87,15 @@ function StageSection({ runId, sv, runState, topic }: { runId: string; sv: Stage
           <CandidateBody stage={stage} payload={effective} />
         </div>
         {/* 제목(title_thumb)은 확정 후 손편집 가능 — editTitle(상태 전이 없음). topic/structure는 미지원. */}
-        {stage === "title_thumb" && <PostConfirmTitleEdit runId={runId} payload={effective} />}
+        {/* proposalId·regenCandidate는 'AI로 다시 생성'(step1) 폴링 완료 감지·draft 채움용(최신 proposal 첫 후보). */}
+        {stage === "title_thumb" && (
+          <PostConfirmTitleEdit
+            runId={runId}
+            payload={effective}
+            proposalId={sv.proposal?.proposalId}
+            regenCandidate={sv.proposal?.candidates?.[0]?.payload}
+          />
+        )}
         {sv.selection.reason && <p className="mt-2 text-xs text-trus-white/50">이유: {sv.selection.reason}</p>}
         <SourceLinks sources={chosenSources} />
       </div>
@@ -161,7 +169,13 @@ function ThumbnailStageSection({
           <p className="mt-2 text-xs text-trus-white/30">확정된 썸네일을 불러올 수 없습니다.</p>
         ) : (
           // 확정 후 카드별 손편집 — editThumbnails(상태 전이 없음). 한 카드만 고쳐도 3개 세트로 보낸다.
-          <PostConfirmThumbnailsEdit runId={runId} items={items} />
+          // proposalId·regenItems는 'AI로 다시 생성'(step1) 폴링 완료 감지·3카드 draft 채움용(최신 proposal 3후보).
+          <PostConfirmThumbnailsEdit
+            runId={runId}
+            items={items}
+            proposalId={sv.proposal?.proposalId}
+            regenItems={(sv.proposal?.candidates ?? []).map((c) => ({ idx: c.idx, payload: c.payload }))}
+          />
         )}
         {sv.selection.reason && <p className="mt-2 text-xs text-trus-white/50">이유: {sv.selection.reason}</p>}
       </div>
