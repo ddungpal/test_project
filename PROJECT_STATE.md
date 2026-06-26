@@ -13,9 +13,19 @@ _Last updated: 2026-06-26(밤 — 썸네일 문구 품질 개선 진행 중) · 
 > - **$0 유지**: `.env` `LLM_BACKEND=claude-p` + 새 런 시 `SEARCH_BACKEND=mock`(tavily 과금 회피). 실리서치 보려면 `tavily`.
 > - 다른 프로젝트(auto-research-agent)가 PM2로 3000 선점할 수 있음 → `npx pm2@7.0.1 stop ara-web ara-worker`로 비움.
 
-## ▶▶▶ 내일 최우선 — 썸네일 메인문구 개선 (방법 A phase + B, 돌려서 개선 확인)
-**목표: 썸네일 메인문구 후킹을 "조회수 잘나온 레퍼런스 + 김짠부 스타일 결합"으로 강화. 방법 A·B를 하네스 phase로 만들고 돌려서 문구가 개선되는지 확인.** (사용자가 가장 중요시.)
+## ▶▶▶ 최우선 — 썸네일 메인문구 개선 (✅방법 A 코드완료·main push / B·라이브검증 남음)
+**목표: 썸네일 메인문구 후킹을 "조회수 잘나온 레퍼런스 + 김짠부 스타일 결합"으로 강화.** (사용자가 가장 중요시.)
 
+### ✅ 방법 A 완료 (2026-06-26, phase `thumbnail-winning-refs` → main `7bb9915` push됨)
+하네스 2 step·각 1라운드 PASS·AC(typecheck0·test450·build0). **근본원인 해소**: 생성기가 김짠부 실제 우승 썸네일을 0개 보던 문제를 `ab_variants`(thumbnail·is_winner) 성과순 top 8 few-shot 주입으로 해결.
+- step0 `winning-refs-core`: `src/agents/thumbnail_maker/winningRefs.ts` 신규 — 순수 `rankWinningThumbnails`(score=점유율ctr_pct × 영상CTR × vconf, null인자×1, 동률 views내림차순) + `loadWinningThumbnailRefs`(ab_variants+perf d1·overall+contents 조인, 우승작0건→`[]`). `abVerdict.ts` `viewsConfidence` export만(재구현금지·단일출처). `tests/winningRefs.test.ts` 9케이스.
+- step1 `winning-refs-wiring`: `prepare.ts` `reference_winning_thumbnails?` 조건부 주입(style_profile 패턴 미러·length>0일 때만) + `styleProfile.ts` `appendWinningThumbnailRefs`(refs 없으면 system 바이트불변) + SYSTEM "실제 고성과 썸네일 — 이 스타일로 재창작(베끼지 마라·anti-dup 유지)". 합성순서 learned→style→winning.
+- **하위호환 계약 검증**: 오프라인엔 우승데이터 없음 → 새 필드 부재 → promptHash 불변 → 기존 픽스처·eval 전부 보존(핵심 안전망). stray fixture 4개 원복(untracked), 하네스 git add -A에 섞인 `.claude/scheduled_tasks.lock` gitignore+추적해제.
+
+### ▶ A의 남은 것 = 라이브 검증 (효과는 데이터 있어야 보임)
+**A는 배선만** — 효과는 `ab_variants`에 우승 썸네일이 있어야 보인다(=방법 B와 합류점). dev 재기동(`./node_modules/.bin/next dev -p 3000`+inngest·`npm run preflight`) → 새 썸네일 런 → 메인문구가 우승작 닮게 강해지는지 확인. (claude-p $0. 우승작 채워지면 promptHash 변경→픽스처 record 재생성 정상.)
+
+### (참고·원안) 근본 진단·방법 설계
 **근본 진단(왜 약한가)**: `thumbnail_maker/prepare.ts:34`가 `reference_thumbnail_copies`를 `corpus_components`(type='thumbnail_copy', is_final)에서 읽는데 **라이브 0건** → 생성기가 **김짠부 실제 썸네일을 하나도 안 봄.** 추상 패턴 v2(tentative·N=7 손실압축) + 외부 고조회 *제목*(yt) + 말투만 봄. 정작 우승 썸네일 24개("월 200 재테크 로드맵 / 이 순서를 모르면 3년을 버립니다", "100만 원 이상 있다면 필수 시청" 등 점유율·CTR·조회수 포함)는 **`ab_variants`(copy-learn 입력)에 있으나 학습 때만 쓰고 생성엔 미노출.** → 베낄 구체 예시 없어 추상 규칙만으로 추론 → 약하고 안 김짠부다움. **추상 규칙 << few-shot 실제 예시.**
 
 **방법 A (가장 큰 레버·즉효, phase로 구현)**: `reference_thumbnail_copies`를 (빈) corpus_components 대신 **`ab_variants` 우승 썸네일에서 성과순 랭킹해 상위 6~8개**를 few-shot으로 주입.
