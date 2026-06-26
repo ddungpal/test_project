@@ -1,0 +1,16 @@
+{
+  "project": "produce script",
+  "phase": "fixture-record-after-validate",
+  "goal": "callLLM record 모드가 스키마 검증 전에 픽스처를 저장(callLLM.ts:88 > parseAndValidate:92)해서, claude-p가 한 번 구조를 틀린 불량 출력이 픽스처로 박제됨. record 모드는 기존 픽스처가 있으면 리플레이(line 50-55)하므로, 이후 같은 입력의 재학습·재시도가 그 불량 박제를 무한 재생 → 결정적 실패. (제목 스타일 재학습이 evidence_summary 누락+필드 오배치로 영구 실패한 실제 사건.) 수정=saveFixture를 parseAndValidate 성공 후에만 호출 → 유효 출력만 캐시·불량은 박제 안 됨 → claude-p 2회 재시도가 제대로 작동. 1 step. AC 오프라인 $0.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "record-after-validate",
+      "status": "completed",
+      "started_at": "2026-06-26T15:32:59+0900",
+      "summary": "callLLM.ts: saveFixture를 reconcile 직후(검증 전)에서 parseAndValidate 성공 직후·return 직전으로 이동 → 검증 통과한 유효 출력만 녹화(불량 rawJson 박제 방지, claude-p 2회 재시도 정상 작동). reconcile·replay·record-리플레이·재시도 루프는 불변. 신규 tests/callLlmRecord.test.ts: fixtures 모듈 모킹(saveFixture/loadFixture spy, 실파일 안 씀)으로 불량→saveFixture 0회+SchemaValidationError, 유효→1회, 1차불량·2차유효→최종성공+유효분만 1회 검증. AC: typecheck 0 / test 462 pass 0 / build 0(초기 PageNotFoundError /insights는 stale .next 캐시 — rm -rf .next 후 0, 코드 무관).",
+      "completed_at": "2026-06-26T15:40:55+0900"
+    }
+  ],
+  "created_at": "2026-06-26T15:32:59+0900"
+}
