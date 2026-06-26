@@ -11,6 +11,7 @@ import type { TablesInsert } from "../lib/supabase/database.types.js";
 import { loadConfig, type LlmConfig } from "../llm/config.js";
 import { learnAbStylePatterns } from "../../scripts/learn-ab-style.js";
 import { loadAbResultsFromDb } from "./abLearnSource.js";
+import { loadCorrectionResults } from "./correctionLearnSource.js";
 import type { AbComponent } from "./types.js";
 
 /** component → style_profiles.component_type. thumbnail→thumbnail_copy(기존), title→title. */
@@ -56,6 +57,21 @@ async function countCurrentAbSamples(supa: Supa, dbComponent: "title" | "thumbna
     .select("id", { count: "exact", head: true })
     .eq("component_type", dbComponent);
   if (error) throw new Error(`ab_variants(${dbComponent}) 카운트 실패: ${error.message}`);
+  return count ?? 0;
+}
+
+/**
+ * 미학습 교정쌍 수 = thumbnail_corrections(component_type) 중 learned_at IS NULL 행 수.
+ *   적격 확장 입력 — 미학습 교정이 1개라도 있으면(ab_variants 불변이어도) 재학습 적격.
+ *   멱등은 learned_at 스탬프로만 — 스탬프되면 다음 sweep 에서 0 으로 빠져 자동 스킵.
+ */
+async function countUnlearnedCorrections(supa: Supa, dbComponent: "title" | "thumbnail"): Promise<number> {
+  const { count, error } = await supa
+    .from("thumbnail_corrections")
+    .select("id", { count: "exact", head: true })
+    .eq("component_type", dbComponent)
+    .is("learned_at", null);
+  if (error) throw new Error(`thumbnail_corrections(${dbComponent}) 미학습 카운트 실패: ${error.message}`);
   return count ?? 0;
 }
 
@@ -106,22 +122,26 @@ async function styleRelearnSweepComponent(
   const currentSampleCount = await countCurrentAbSamples(supa, dbComp);
   const latest = await loadLatestStyleProfile(supa, profileType);
   const lastLearnedSampleCount = latest ? await countTrainingSources(supa, latest.id) : 0;
+  const unlearnedCorrectionCount = await countUnlearnedCorrections(supa, dbComp);
 
   // exactOptionalPropertyTypes — minDelta 는 있을 때만 넘긴다(undefined 명시 할당 금지).
-  const isEligible = eligibleForStyleRelearn(
+  const abEligible = eligibleForStyleRelearn(
     opts.minDelta === undefined
       ? { currentAbSampleCount: currentSampleCount, lastLearnedSampleCount }
       : { currentAbSampleCount: currentSampleCount, lastLearnedSampleCount, minDelta: opts.minDelta },
   );
+  // 적격 = ab_variants 증가 OR 미학습 교정 존재. 둘 다 아니면 skip(멱등·무의미 재학습 차단).
+  const isEligible = abEligible || unlearnedCorrectionCount > 0;
 
   if (!isEligible) {
     return { eligible: false, created: null, currentSampleCount, lastLearnedSampleCount };
   }
 
-  // 적격 — 학습 입력은 DB(관리자 입력 반영). 표본수도 DB 기준. 학습 본체(claude-p=$0).
-  const videos = await loadAbResultsFromDb(supa, component);
+  // 적격 — 학습 입력은 DB(관리자 입력 반영) + 교정쌍(합성 A/B). 표본수도 DB 기준. 학습 본체(claude-p=$0).
+  //   교정만 있고 ab_variants=0 이어도 교정이 videos 에 들어와 학습 진행됨(교정도 0 이면 videos=[]→보류).
+  const videos = [...(await loadAbResultsFromDb(supa, component)), ...(await loadCorrectionResults(supa, component))];
   if (videos.length === 0) {
-    // DB 표본은 카운트됐지만 학습 입력 합성이 0편(예: CTR 전무) → 학습 보류(과금 0).
+    // DB 표본은 카운트됐지만 학습 입력 합성이 0편(예: CTR 전무·교정 0) → 학습 보류(과금 0).
     return { eligible: true, created: null, currentSampleCount, lastLearnedSampleCount };
   }
   const learned = await learnAbStylePatterns(videos, component, config);
@@ -159,6 +179,20 @@ async function styleRelearnSweepComponent(
       await supa.from("style_profiles").delete().eq("id", sp.id);
       throw new Error(`provenance insert 실패(draft 롤백됨): ${pe.message}`);
     }
+  }
+
+  // 교정 멱등 스탬프 — 이번 학습에 포함된 미학습 교정(learned_at IS NULL)을 학습 완료로 표시.
+  //   draft·provenance INSERT 성공 후에만(부분기록 방지). 다음 sweep 에서 미학습 0 → 자동 스킵.
+  //   교정은 전용 테이블이라 provenance(ab_variants 기준)와 분리 — 멱등은 learned_at 으로만.
+  //   nowIso 결정성 불요(학습 작업 스크립트). 스탬프 실패는 throw 로 표면화.
+  if (unlearnedCorrectionCount > 0) {
+    const nowIso = new Date().toISOString();
+    const { error: ue } = await supa
+      .from("thumbnail_corrections")
+      .update({ learned_at: nowIso })
+      .eq("component_type", dbComp)
+      .is("learned_at", null);
+    if (ue) throw new Error(`thumbnail_corrections(${dbComp}) learned_at 스탬프 실패: ${ue.message}`);
   }
 
   return { eligible: true, created: sp.id, currentSampleCount, lastLearnedSampleCount };

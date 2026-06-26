@@ -82,8 +82,8 @@ export interface AbResultVideo {
   video_ctr24h?: number | null;
   /** 영상(24h) 조회수. DB 소스에서 채운다(§13.2 조회수 신뢰도 가중). 파일 시드엔 보통 없음(null → vconf 무가중·하위호환). */
   video_views24h?: number | null;
-  /** 학습 모드. "single"=영상 내 비교 없음(제목 단일 — 영상간 CTR 대비). 미지정 → "ab"(영상 내 A/B). */
-  learn_mode?: "ab" | "single";
+  /** 학습 모드. "single"=영상 내 비교 없음(제목 단일 — 영상간 CTR 대비). "correction"=교정쌍(이상=winner·생성=loser, CTR 없음·사람 명시 선호 → decisive 고정 가중). 미지정 → "ab"(영상 내 A/B). */
+  learn_mode?: "ab" | "single" | "correction";
 }
 
 /** prep 입력 한 변형(LLM 전달용 — copy 는 의미 있는 한 문자열로 합침). */
@@ -145,7 +145,7 @@ function recomputeVerdict(
 export function buildEquivalentSignals(videos: AbResultVideo[], component: AbComponent = "thumbnail"): EquivalentSignal[] {
   const out: EquivalentSignal[] = [];
   for (const video of videos) {
-    if (video.learn_mode === "single") continue; // single(영상 내 비교 없음)은 등가신호 개념 미적용.
+    if (video.learn_mode === "single" || video.learn_mode === "correction") continue; // single·correction(영상 내 CTR 비교 없음)은 등가신호 개념 미적용.
     const { decisiveness } = recomputeVerdict(video, component);
     if (decisiveness !== "inconclusive") continue; // positive 는 buildAbStyleInput 담당.
     out.push({
@@ -177,6 +177,28 @@ export function buildAbStyleInput(
 
   const out: AbStyleInputVideo[] = [];
   for (const video of videos) {
+    const isCorrection = video.learn_mode === "correction";
+
+    if (isCorrection) {
+      // correction 모드(교정쌍) — 이상=winner, 생성=loser. CTR·결정력 비교 없음(사람 명시 선호).
+      //   → decisive 고정 가중(verdictWeight("decisive")=1.0). judgeComponent·CTR·vconf 무관(안 탐 → 안전).
+      //   single 블록과 동형이되, CTR 가중을 타지 않고 고정 1.0. inconclusive 스킵 없음.
+      const winnerVar = video.variants.find((v) => v.is_winner === true);
+      if (!winnerVar) {
+        console.warn(`⚠️ winner 변형 없음(correction ${video.topic}) — 스킵`);
+        continue;
+      }
+      const loserVars = video.variants.filter((v) => v !== winnerVar);
+      out.push({
+        topic: video.topic,
+        verdict: "decisive", // 교정은 사람 명시 선호 → 항상 강신호(decisive 슬롯 의미: 학습 신호 등급).
+        weight: verdictWeight("decisive"), // =1.0 고정(CTR·vconf 무관).
+        winner: { copy: joinCopy(winnerVar), visual: winnerVar.visual ?? "" },
+        losers: loserVars.map((v) => ({ copy: joinCopy(v), visual: v.visual ?? "" })),
+      });
+      continue;
+    }
+
     const isSingle = video.learn_mode === "single";
 
     if (isSingle) {

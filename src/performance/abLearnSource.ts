@@ -19,7 +19,8 @@ function dbComponent(component: AbComponent): "title" | "thumbnail" {
 }
 
 /** payload(Json)에서 카피 텍스트 복원. 썸네일=copy_top/main/box, 제목=title → copy_main 슬롯. */
-function payloadToVariantFields(payload: unknown, component: AbComponent): Pick<AbResultVariant, "copy_top" | "copy_main" | "copy_box" | "copy_sub" | "visual"> {
+//   ★ correctionLearnSource 도 재사용(교정 payload 는 ab_variants 와 동일 모양 — 드리프트 0). 재구현 금지.
+export function payloadToVariantFields(payload: unknown, component: AbComponent): Pick<AbResultVariant, "copy_top" | "copy_main" | "copy_box" | "copy_sub" | "visual"> {
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) return {};
   const p = payload as Record<string, unknown>;
   const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() ? v.trim() : undefined);
