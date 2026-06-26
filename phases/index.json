@@ -143,11 +143,11 @@
     {
       "dir": "post-confirm-edit",
       "status": "running",
-      "progress": "0/2",
-      "running_step": "0 (edit-actions)",
+      "progress": "1/2",
+      "running_step": "1 (post-confirm-edit-ui)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-26T20:48:09+0900"
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-06-26T20:59:13+0900"
     },
     {
       "dir": "thumbnail-topic-curiosity",

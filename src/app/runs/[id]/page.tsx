@@ -12,6 +12,8 @@ import { RegenerateButton } from "@/components/RegenerateButton";
 import { CandidateBody } from "@/components/CandidateBody";
 import { RequestStageButton } from "@/components/RequestStageButton";
 import { ThumbnailStudio } from "@/components/ThumbnailStudio";
+import { PostConfirmTitleEdit } from "@/components/PostConfirmTitleEdit";
+import { PostConfirmThumbnailsEdit } from "@/components/PostConfirmThumbnailsEdit";
 import { RefreshButton } from "@/components/RefreshButton";
 import { EnterReviewButton } from "@/components/EnterReviewButton";
 import { ResearchReview } from "@/components/ResearchReview";
@@ -84,6 +86,8 @@ function StageSection({ runId, sv, runState, topic }: { runId: string; sv: Stage
         <div className="mt-2">
           <CandidateBody stage={stage} payload={effective} />
         </div>
+        {/* 제목(title_thumb)은 확정 후 손편집 가능 — editTitle(상태 전이 없음). topic/structure는 미지원. */}
+        {stage === "title_thumb" && <PostConfirmTitleEdit runId={runId} payload={effective} />}
         {sv.selection.reason && <p className="mt-2 text-xs text-trus-white/50">이유: {sv.selection.reason}</p>}
         <SourceLinks sources={chosenSources} />
       </div>
@@ -156,16 +160,8 @@ function ThumbnailStageSection({
         {items.length === 0 ? (
           <p className="mt-2 text-xs text-trus-white/30">확정된 썸네일을 불러올 수 없습니다.</p>
         ) : (
-          <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            {items.map((it) => (
-              <div key={it.idx} className="border border-trus-white/15 p-3">
-                <span className="mb-2 flex h-5 w-5 items-center justify-center border border-trus-yellow text-xs font-black text-trus-yellow">
-                  {String.fromCharCode(65 + it.idx)}
-                </span>
-                <CandidateBody stage="thumbnail" payload={it.payload} />
-              </div>
-            ))}
-          </div>
+          // 확정 후 카드별 손편집 — editThumbnails(상태 전이 없음). 한 카드만 고쳐도 3개 세트로 보낸다.
+          <PostConfirmThumbnailsEdit runId={runId} items={items} />
         )}
         {sv.selection.reason && <p className="mt-2 text-xs text-trus-white/50">이유: {sv.selection.reason}</p>}
       </div>
