@@ -112,12 +112,8 @@
     },
     {
       "dir": "copy-learn-edit-title",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (edit-title-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 360,
-      "heartbeat_at": "2026-06-26T12:14:26+0900"
+      "status": "completed",
+      "completed_at": "2026-06-26T12:15:05+0900"
     }
   ]
 }
