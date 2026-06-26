@@ -111,6 +111,31 @@ export async function confirmThumbnailSet(supa: Supa, runId: string): Promise<Co
 //     자기 전이가 없어 DB 트리거가 거부한다. 확정 전(proposed)엔 selectProposal/confirmThumbnailSet를 쓴다.
 //   selectedState가 아니면 throw(아직 확정 안 됨 = 손편집 경로가 아님). 최신 proposal에 매단다.
 
+// 해당 stage가 '한 번이라도 확정됐는지' 판정(현재 run.state 무관).
+//   ★ run.state 정확일치 대신 selection 존재로 본다 — 확정 후 다음 단계로 진행해 state가 바뀌어도
+//     손편집은 계속 허용해야 하기 때문(의도: "확정한 적이 있으면 언제든").
+//   ★ stage 횡단: 이 run·stage의 '모든' proposal id를 모아 그 proposal_id들 중 selection이 하나라도
+//     있는지로 본다(최신 proposal 한정 금지) — AI 재생성(post-confirm-regenerate)이 새 proposal을 만들면
+//     확정 selection은 이전 proposal에 매달려 있다. proposal이 없으면(=확정 전) false.
+async function stageIsConfirmed(supa: Supa, runId: string, stage: StageDescriptor["stage"]): Promise<boolean> {
+  const { data: props, error: pe } = await supa
+    .from("stage_proposals")
+    .select("id")
+    .eq("run_id", runId)
+    .eq("stage", stage);
+  if (pe) throw new Error(`${stage} proposal 조회 실패: ${pe.message}`);
+  const ids = (props ?? []).map((p) => (p as { id: string }).id);
+  if (ids.length === 0) return false;
+
+  const { data: sel, error: se } = await supa
+    .from("stage_selections")
+    .select("id")
+    .in("proposal_id", ids)
+    .limit(1);
+  if (se) throw new Error(`${stage} selection 조회 실패: ${se.message}`);
+  return (sel ?? []).length > 0;
+}
+
 // 해당 stage의 최신 proposal을 찾는다(confirmThumbnailSet의 order/limit/maybeSingle 미러).
 async function latestProposal(supa: Supa, runId: string, stage: StageDescriptor["stage"]): Promise<{ id: string }> {
   const { data, error } = await supa
@@ -135,9 +160,8 @@ export async function editSelectedTitle(
   editedBy: string,
 ): Promise<{ selectionId: string }> {
   const desc = STAGE_DESCRIPTORS.title_thumb;
-  const run = await getRun(supa, runId);
-  if (run.state !== desc.selectedState) {
-    throw new Error(`제목 손편집은 '${desc.selectedState}'(확정 후)에서만 가능(현재 '${run.state}').`);
+  if (!(await stageIsConfirmed(supa, runId, desc.stage))) {
+    throw new Error(`제목 손편집은 확정(${desc.stage} 선택 기록) 후에만 가능 — 아직 확정 전.`);
   }
 
   const proposal = await latestProposal(supa, runId, desc.stage);
@@ -180,9 +204,8 @@ export async function editSelectedThumbnails(
     throw new Error(`썸네일 손편집: 정확히 3개(A/B/C)가 필요(현재 ${payloads.length}).`);
   }
 
-  const run = await getRun(supa, runId);
-  if (run.state !== desc.selectedState) {
-    throw new Error(`썸네일 손편집은 '${desc.selectedState}'(확정 후)에서만 가능(현재 '${run.state}').`);
+  if (!(await stageIsConfirmed(supa, runId, desc.stage))) {
+    throw new Error(`썸네일 손편집은 확정(${desc.stage} 선택 기록) 후에만 가능 — 아직 확정 전.`);
   }
 
   const proposal = await latestProposal(supa, runId, desc.stage);
