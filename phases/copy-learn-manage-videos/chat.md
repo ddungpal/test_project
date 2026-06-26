@@ -23,3 +23,29 @@
 [Joy] 재검수 끝! 죽은 import 사라졌고 AC 셋 다 exit 0(test 459 그대로), 회귀 없어. 통과! 🎉
 
 [리드] 좋아 step 0 완료. cascade 추출로 deleteRun이랑 deleteLearningVideo가 한 시퀀스 공유하니까 드리프트 걱정 없어졌어. 다들 수고했어 — UI는 step1에서.
+
+=== Step 1: manage-videos-ui ===
+
+---
+
+## Step 1: manage-videos-ui (영상 삭제 버튼 + 업로드일 수정 UI)
+
+[리드] 에스더, /copy-learn 영상 카드 작업 하나 부탁해. step0이 만든 deleteLearningVideo랑 updateContentUploadDate 두 액션을 카드에 붙이면 돼. 펼친 영역에 업로드일 수정 칸(input type=date) + 저장 버튼, 그리고 하단에 삭제 버튼(confirm 경고 필수). 기존 "영상 이름" 편집 패턴 그대로 미러하면 깔끔해.
+
+[Esther] 응 맡을게. 음.. 기존 영상 이름 편집 패턴이 깔끔하게 잡혀 있어서 그거 그대로 미러하면 되겠다. 업로드일이랑 삭제 각각 별도 state랑 transition으로 띄울게. 서로 안 엉키게.
+
+[Esther] 업로드일 칸은 input type=date로 넣었어. 이게 YYYY-MM-DD만 주니까 서버 isYmd 가드랑 형식이 딱 맞더라고. 프리필은 uploadDate 앞 10자리로 했고 빈값이면 저장 버튼 잠가뒀어.
+
+[Esther] 삭제 버튼은 좀 고민했는데, 위험 동작이라 눈에는 띄어야 하는데 빨강은 절대 못 쓰잖아. 그래서 채움 노랑 말고 흰 테두리만 덜 강조해서 두고, 마우스 올리거나 포커스 가면 그때 노랑 테두리로 경고감을 주는 식으로 갔어. 이건 자신 있어. confirm 통과해야만 실제로 지워지게 했고. 이제 typecheck/test/build 돌려볼게.
+
+[Esther] 다 끝났어. typecheck 0, test 459개 그대로 다 초록, build도 0이야. 이름/업로드일/카피저장/삭제 네 동작 각각 별도 transition이라 서로 안 건드려. 색은 TRUS 3색만 썼고 rounded나 그림자 추가한 거 없어. 조이가 봐줘도 깔끔할 거야. 아 그리고 삭제 버튼 hover 색 고르느라 또 한참 봤는데 아무도 안 물어봤지 🙈
+[리드] 조이, 에스더 작업 검수 좀 부탁해. git diff랑 AC 3개 직접 돌려서 판정해줘. 삭제 confirm 경고랑 각 동작 별도 transition 분리됐는지가 핵심이야.
+
+[Joy] 에스더 step1 검수 시작! git diff부터 봤는데 CopyLearningForm.tsx 하나만 건드렸고 백엔드는 그대로네. 깔끔해 굿굿
+[Joy] 업로드일은 input type date에 프리필 video.uploadDate slice(0,10), 빈값이면 저장버튼 disabled. 삭제는 window.confirm 통과해야만 실행되고 별도 transition으로 분리돼있어. 좋다
+[Joy] 이제 typecheck, test, build 직접 돌려볼게. 결과 보고 판정할게!
+
+[Joy] typecheck exit 0, test 459개 전부 통과 exit 0, build exit 0! 셋 다 그린이야
+[Joy] 시그니처도 맞고 deleteLearningVideo updateContentUploadDate 반환값 안 쓰고 router.refresh로만 반영, 빨강 rounded 그림자 새 의존성 다 없음. aria-label도 다 붙었어. 통과! 에스더 깔끔하게 잘했다
+[Joy] 다 봤어! diff는 CopyLearningForm.tsx 하나만 깔끔하게 바뀌었고 삭제 confirm도 잘 걸려있어. typecheck·test·build 전부 exit 0, 459개 다 통과 🎉
+[리드] 좋아, 통과! 에스더 깔끔하게 잘했고 조이 검수 고마워. step 1 마감한다.

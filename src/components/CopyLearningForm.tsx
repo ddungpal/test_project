@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle } from "@/app/actions/copyLearn";
+import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
 import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
 import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType } from "@/lib/dashboard/copyLearnView";
@@ -149,6 +149,47 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
     });
   }
 
+  // ── 업로드일(contents.upload_date) 편집 — 이름·카피·삭제와 완전 분리된 별도 state/transition/메시지. ──
+  //   <input type="date">는 YYYY-MM-DD 만 주므로 서버 isYmd 가드와 형식이 일치. 빈값이면 저장 버튼 disabled.
+  const [dateDraft, setDateDraft] = useState(video.uploadDate?.slice(0, 10) ?? "");
+  const [dateError, setDateError] = useState<string | null>(null);
+  const [dateOk, setDateOk] = useState<string | null>(null);
+  const [datePending, startDateTransition] = useTransition();
+
+  function onSaveUploadDate() {
+    setDateError(null);
+    setDateOk(null);
+    startDateTransition(async () => {
+      try {
+        await updateContentUploadDate(video.id, dateDraft);
+        setDateOk("업로드일 저장 완료");
+        router.refresh();
+      } catch (e) {
+        setDateError(e instanceof Error ? e.message : "업로드일 저장 실패");
+      }
+    });
+  }
+
+  // ── 영상 삭제 — 비가역·캐스케이드. confirm 통과 후에만 실행. 별도 state/transition(다른 동작과 무간섭). ──
+  const [delError, setDelError] = useState<string | null>(null);
+  const [delPending, startDelTransition] = useTransition();
+
+  function onDelete() {
+    const ok = window.confirm(
+      "이 영상과 관련 데이터(썸네일·제목·성과·회고·런)가 모두 삭제됩니다. 되돌릴 수 없습니다.",
+    );
+    if (!ok) return;
+    setDelError(null);
+    startDelTransition(async () => {
+      try {
+        await deleteLearningVideo(video.id);
+        router.refresh(); // 목록에서 사라짐
+      } catch (e) {
+        setDelError(e instanceof Error ? e.message : "삭제 실패");
+      }
+    });
+  }
+
   function patchThumb(variant: AbVariantKey, patch: Partial<ThumbDraft>) {
     setState((s) => ({ ...s, thumb: { ...s.thumb, [variant]: { ...s.thumb[variant], ...patch } } }));
   }
@@ -248,6 +289,33 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
             </label>
             {titleOk && <span className="mt-2 inline-block text-xs text-trus-yellow">✓ {titleOk}</span>}
             {titleError && <span className="mt-2 inline-block text-xs text-trus-yellow">⚠ {titleError}</span>}
+
+            {/* 업로드일(contents.upload_date) 편집 — 이름 저장과 분리된 별도 액션. <input type=date>는 YYYY-MM-DD. */}
+            <div className="mt-4">
+              <label className="block">
+                <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">업로드일</span>
+                <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <input
+                    type="date"
+                    value={dateDraft}
+                    onChange={(e) => setDateDraft(e.target.value)}
+                    aria-label="업로드일"
+                    className={`max-w-[12rem] ${INPUT_CLS}`}
+                  />
+                  <button
+                    type="button"
+                    onClick={onSaveUploadDate}
+                    disabled={datePending || dateDraft.trim().length === 0}
+                    aria-label="업로드일 저장"
+                    className="shrink-0 bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {datePending ? "저장 중…" : "업로드일 저장"}
+                  </button>
+                </div>
+              </label>
+              {dateOk && <span className="mt-2 inline-block text-xs text-trus-yellow">✓ {dateOk}</span>}
+              {dateError && <span className="mt-2 inline-block text-xs text-trus-yellow">⚠ {dateError}</span>}
+            </div>
           </div>
 
           {/* 영상 CTR(24h) + 24h 조회수 */}
@@ -413,6 +481,23 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
             </button>
             {ok && <span className="text-xs text-trus-yellow">✓ {ok}</span>}
             {error && <span className="text-xs text-trus-yellow">⚠ {error}</span>}
+          </div>
+
+          {/* 위험 구역 — 비가역 삭제. TRUS 3색 안에서 채움 대신 흰 테두리만(덜 강조), confirm 통과 후에만 실행. */}
+          <div className="mt-6 border-t border-trus-white/15 pt-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={delPending}
+                aria-label="이 영상 삭제"
+                className="border border-trus-white/40 px-4 py-1.5 text-sm font-bold text-trus-white/70 hover:border-trus-yellow hover:text-trus-yellow focus:border-trus-yellow focus:text-trus-yellow disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {delPending ? "삭제 중…" : "이 영상 삭제"}
+              </button>
+              <span className="text-xs text-trus-white/40">관련 데이터까지 모두 삭제 · 되돌릴 수 없음</span>
+            </div>
+            {delError && <p className="mt-2 text-xs text-trus-yellow">⚠ {delError}</p>}
           </div>
         </div>
       )}
