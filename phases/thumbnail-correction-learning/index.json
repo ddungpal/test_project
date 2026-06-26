@@ -24,7 +24,11 @@
     {
       "step": 2,
       "name": "correction-relearn-merge",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-26T17:10:01+0900",
+      "completed_at": "2026-06-26T17:26:34+0900",
+      "summary": "교정쌍을 합성 A/B(이상=winner·생성=loser)로 재학습 루프에 합류. ①AbResultVideo.learn_mode 유니온에 'correction' 추가(learn-ab-style.ts). ②buildAbStyleInput correction 경로(single 블록 미러·verdict='decisive'·weight=verdictWeight('decisive')=1.0 고정, CTR/vconf/judgeComponent 안 탐, winner 없으면 console.warn 후 continue). buildEquivalentSignals도 correction 스킵. ③신규 src/performance/correctionLearnSource.ts loadCorrectionResults(supa, component): thumbnail_corrections(component_type) 전부 로드(learned/unlearned)→각 행을 variants[A=ideal winner, B=gen loser]·learn_mode='correction'·topic 폴백 '(교정)'. payloadToVariantFields는 abLearnSource에서 export로 변경해 재사용(재구현 0). ④styleRelearn.ts: videos=[...loadAbResultsFromDb, ...loadCorrectionResults] 합류, 적격=eligibleForStyleRelearn OR countUnlearnedCorrections>0, draft+provenance 성공 후 thumbnail_corrections.learned_at 스탬프(component_type=dbComp AND learned_at IS NULL, nowIso). 멱등은 learned_at만(provenance/pts CHECK 미접촉). 교정 0건이면 sweep 기존 동작 완전 불변(회귀 0). draft까지만(activate 금지). winningRefs는 ab_variants is_winner 기준이라 교정 자동 분리(미변경). AC 3개 exit 0(typecheck·test 503통과(신규 16)·build는 .next 클린 후 stale 캐시 해소). 신규 테스트 tests/correctionRelearn.test.ts(순수+fake supa)·tests/styleRelearnCorrectionSweep.test.ts(learnAbStylePatterns vi.mock으로 LLM 0)."
     },
     {
       "step": 3,
