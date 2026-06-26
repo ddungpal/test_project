@@ -132,12 +132,8 @@
     },
     {
       "dir": "thumbnail-correction-learning",
-      "status": "running",
-      "progress": "3/4",
-      "running_step": "3 (correction-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-26T17:34:34+0900"
+      "status": "completed",
+      "completed_at": "2026-06-26T17:35:30+0900"
     }
   ]
 }
