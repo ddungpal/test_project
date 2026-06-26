@@ -22,5 +22,6 @@
       "summary": "loadWinningThumbnailRefs(step0)를 썸네일메이커 prepare에 배선 + SYSTEM에 우승작 few-shot 주입(Joy 검수 대기). (1) prepare.ts: ThumbnailMakerInput에 reference_winning_thumbnails?{id,topic,main[],boxes[]} 옵셔널 추가. loadWinningThumbnailRefs(supa) 호출 → length>0일 때만 input에 키 추가(style_profile/learned_insights 조건부 패턴 미러, undefined 키 금지). winningRefs.ts import. (2) styleProfile.ts 신규 순수함수 appendWinningThumbnailRefs(system, refs): refs 없/빈 배열이면 원본 system 그대로 반환(바이트 불변→promptHash 보존). 있을 때만 '── 김짠부 실제 고성과 썸네일 ──' 섹션 덧붙임(톤·구조·후킹강도로 재창작, 베끼기 금지, evidence_ids에 style:winner:… 링크). main/boxes 0~2개 안전(quoteSlot 옵셔널 접근, noUncheckedIndexedAccess). (3) system 합성 체인: appendWinningThumbnailRefs(appendThumbnailStyle(appendLearnedInsights(...))). 기존 SYSTEM 규칙(메인20/박스12/단정톤/banned/anti-dup) 무변경, reference_thumbnail_copies·winningRefs.ts·viewsConfidence 미수정. AC: typecheck/test(450 pass)/build 전부 exit 0. 오프라인 우승데이터 0건→새 필드 부재→기존 픽스처·eval 그대로 green."
     }
   ],
-  "created_at": "2026-06-26T10:38:53+0900"
+  "created_at": "2026-06-26T10:38:53+0900",
+  "completed_at": "2026-06-26T10:54:25+0900"
 }
