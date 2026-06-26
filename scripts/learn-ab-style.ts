@@ -548,6 +548,8 @@ export const AB_STYLE_SYSTEM = [
   "목표: 다른 AI(훅이)가 김짠부 스타일로 '성과가 검증된' 새 썸네일을 만들 수 있도록, 따라 만들 수 있는 '썸네일 스타일 사양'을 만든다.",
   "원칙:",
   "- 이긴 것들의 공통 표현 방식(후킹·프레이밍·시각 연출)을 뽑아 copy/visual 패턴으로 채운다.",
+  "- 주제 키워드 노출 경향: 이긴 썸네일이 영상 주제의 핵심 키워드를 메인에 그대로 노출하는(약자·우회·동의어로 바꾸지 않는) 경향이 보이면 copy.structure.main_copy_notes(또는 hook_patterns)에 그 패턴으로 반영한다.",
+  "- 호기심 갭 경향: 내용을 힌트처럼 흘려 클릭을 유도하고 답은 영상 안에서 푸는(스포일러·낚시 아님) 구조가 보이면 copy.structure.small_box_notes·hook_patterns 에 반영한다.",
   "- 진 것 대비 무엇이 달랐는지를 banned(약점·피해야 할 표현)에 적는다 — 진 표현은 banned 의 근거다.",
   "- weight 가 높은(decisive) 영상의 표현을 더 강한 신호로 본다. 가중치를 학습에 반영한다.",
   "- 여러 영상에서 반복 등장하는 승리 패턴은 high-confidence 로, 1~2 사례뿐인 패턴은 tentative 로 분류한다. tentative 패턴은 tentative_notes 에 '저표본 경고'로 적고, 전반적으로 표본이 적으면 confidence 를 'tentative' 로 둔다.",
