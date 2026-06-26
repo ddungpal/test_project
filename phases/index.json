@@ -104,6 +104,15 @@
       "dir": "thumbnail-winning-refs",
       "status": "completed",
       "completed_at": "2026-06-26T10:54:25+0900"
+    },
+    {
+      "dir": "copy-learn-add-videos",
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (retro-sweep-prod-guard)",
+      "attempt": 1,
+      "elapsed_seconds": 300,
+      "heartbeat_at": "2026-06-26T11:30:02+0900"
     }
   ]
 }

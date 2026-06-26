@@ -92,13 +92,24 @@ export async function runRetrospective(supa: Supa, contentId: string, opts: { co
   return { retrospectiveId: retro.id, insightCount, costUsd: res.costUsd, output };
 }
 
-/** 회고 대상 선별(순수) — 성과는 있으나 아직 회고가 없는 콘텐츠만, 입력 순서 유지·중복 제거·bounded. */
-export function eligibleForRetrospective(withPerformance: string[], withRetrospective: string[], limit: number): string[] {
+/**
+ * 회고 대상 선별(순수) — 성과 있음 ∧ 회고 없음 ∧ production_run 있음인 콘텐츠만.
+ *   입력 순서 유지·중복 제거·bounded.
+ *   ★ withRun = production_run ≥1 있는 content_id. 학습 전용 영상(run 없음)은 자동 회고 대상에서 제외
+ *     (빈 맥락 저품질 insight 양산·불필요 LLM 비용 방지). 수동 runRetrospective 호출은 영향 없음.
+ */
+export function eligibleForRetrospective(
+  withPerformance: string[],
+  withRetrospective: string[],
+  withRun: string[],
+  limit: number,
+): string[] {
   const done = new Set(withRetrospective);
+  const hasRun = new Set(withRun);
   const seen = new Set<string>();
   const out: string[] = [];
   for (const id of withPerformance) {
-    if (done.has(id) || seen.has(id)) continue;
+    if (done.has(id) || seen.has(id) || !hasRun.has(id)) continue;
     seen.add(id);
     out.push(id);
     if (out.length >= limit) break;
@@ -123,10 +134,13 @@ export async function retrospectiveSweep(supa: Supa, opts: { limit?: number; con
   if (pe) throw new Error(`performance_metrics 조회 실패: ${pe.message}`);
   const { data: retro, error: re } = await supa.from("retrospectives").select("content_id");
   if (re) throw new Error(`retrospectives 조회 실패: ${re.message}`);
+  const { data: runs, error: rne } = await supa.from("production_runs").select("content_id");
+  if (rne) throw new Error(`production_runs 조회 실패: ${rne.message}`);
 
   const withPerf = [...new Set((perf ?? []).map((r) => r.content_id))];
   const withRetro = (retro ?? []).map((r) => r.content_id).filter((v): v is string => !!v);
-  const eligible = eligibleForRetrospective(withPerf, withRetro, limit);
+  const withRun = [...new Set((runs ?? []).map((r) => r.content_id).filter((v): v is string => !!v))];
+  const eligible = eligibleForRetrospective(withPerf, withRetro, withRun, limit);
 
   const results: SweepResult["results"] = [];
   for (const contentId of eligible) {
