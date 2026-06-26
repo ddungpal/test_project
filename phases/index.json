@@ -152,12 +152,8 @@
     },
     {
       "dir": "post-confirm-regenerate",
-      "status": "running",
-      "progress": "0/2",
-      "running_step": "0 (regen-postconfirm-backend)",
-      "attempt": 1,
-      "elapsed_seconds": 840,
-      "heartbeat_at": "2026-06-26T22:48:34+0900"
+      "status": "completed",
+      "completed_at": "2026-06-26T23:02:00+0900"
     }
   ]
 }
