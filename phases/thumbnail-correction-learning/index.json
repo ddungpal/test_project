@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "correction-diff",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-26T16:59:10+0900",
+      "summary": "교정쌍 생성↔이상 카피 LLM 차이분석. 신규 src/agents/correction_diff/{schema.ts(CorrectionDiff·CORRECTION_DIFF_SCHEMA — added/removed/actionable_rules는 빈배열 가능→required 제외·additionalProperties:false·CORRECTION_DIFF_SYSTEM), prepare.ts(correctionToPromptText 순수함수 — Json만 의존·null/배열/더티 안전)}. analyzeCorrectionDiff 액션(copyLearn.ts): requireOwner→correction 1행 로드→텍스트화→callLLM<CorrectionDiff>(roleId correction_diff·runId 'correction-diff'·CostGuard/InMemoryCostLedger 패턴)→?? [] 기본값→thumbnail_corrections.diff update→correction_analyzed 감사. roles.ts에 correction_diff(sonnet·tools[]) 등록. diff는 표시·기록 전용, style_profiles.patterns 미접촉(학습 권위=step2). AC 3개 exit 0(typecheck·test 487통과·build는 .next 클린 후), LLM 실호출·fixtures stray 없음.",
+      "completed_at": "2026-06-26T17:10:01+0900"
     },
     {
       "step": 2,
