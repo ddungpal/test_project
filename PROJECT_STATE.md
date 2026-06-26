@@ -4,7 +4,7 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-26(밤 — 썸네일 문구 품질 개선 진행 중) · 단계: **실사용 검증 중 썸네일 문구 품질 작업. ▶▶▶ 내일(다음 세션) 최우선 목표 = 썸네일 메인문구를 "조회수 잘나온 레퍼런스 + 김짠부 스타일 결합"으로 개선 → 방법 A·B를 하네스 phase로 만들고 돌려서 개선 확인. 오늘 main 푸시 완료(tip=`ca46dcd`, vitest 441·typecheck 0): deleteRun 2차 삭제버그(insights A3) 수정 + 썸네일 박스 6→12자(잘림 해소·"곱버스/이유3"→온전한 라벨구) + 썸네일 메인 14→20자+단정톤 강화. 제목(hook_maker)은 maxLength 없음=제약버그 없음 확인(제목 OK). ▶▶ 핵심 진단(내일 출발점)=썸네일 생성기가 김짠부 실제 썸네일을 0개 보고 있음(reference_thumbnail_copies가 corpus_components에서 읽는데 0건). 24개 우승 썸네일은 ab_variants에 있으나 학습때만 쓰고 생성엔 안 보여줌 → 추상 tentative 패턴만 보고 추론 → 약하고 안 김짠부다움. 상세=아래 "▶ 다음 작업" + 세션로그.**_
+_Last updated: 2026-06-26(오후~저녁 — copy-learn 실사용 검증 중 7 phase 처리, 전부 main push) · 단계: **실사용 검증 + 학습 루프 강화. tip=`d8fe754`(test 503·typecheck 0). 이번 세션 처리(시간순): ①`thumbnail-winning-refs`(방법 A — ab_variants 우승 썸네일 top8 few-shot 주입) ②`copy-learn-add-videos`(학습영상 추가 + 회고 sweep production_run 가드=위험완화) ③`copy-learn-edit-title`(영상 이름 수정) ④`copy-learn-manage-videos`(삭제+업로드일 — cascade를 contentLifecycle.ts로 추출·재사용) ⑤어투 직접수정(존댓말 명령 강제·반말 banned — THUMBNAIL_MAKER_SYSTEM+재학습 프롬프트) ⑥`fixture-record-after-validate`(callLLM record 버그: 검증 전 저장→불량 박제→영구 실패. saveFixture를 검증 후로) ⑦`style-extract-fold-stray`(claude-p가 banned/skeletons를 patterns 밖 최상위에 둬 결정적 실패 → fold로 흡수) ⑧`thumbnail-correction-learning`(교정 학습 모듈: 이상카피 입력→생성과 차이분석→합성 A/B로 재학습 합류. 마이그레이션 20260626120024 ✅적용됨). ▶▶ 다음 = 라이브 검증(교정 학습 써보기·재학습으로 어투/few-shot 효과 확인) + 방법 B(예시 30+개 입력→재학습→활성화). 상세=아래 세션로그.**_
 
 > ⚠️ 라이브 dev 운영 메모(이번 세션 학습):
 > - **dev 기동**: `pnpm dev`/`pnpm inngest:dev` 래퍼는 pnpm 빌드스크립트 승인 게이트(sharp/protobufjs)에서 막힘 → 바이너리 직접 사용: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest`.
@@ -12,6 +12,18 @@ _Last updated: 2026-06-26(밤 — 썸네일 문구 품질 개선 진행 중) · 
 > - **`next build`는 떠 있는 dev `.next`를 깬다** → 검증 빌드는 dev stop → build → restart 순서로. 깨지면 dev 재시작이면 복구.
 > - **$0 유지**: `.env` `LLM_BACKEND=claude-p` + 새 런 시 `SEARCH_BACKEND=mock`(tavily 과금 회피). 실리서치 보려면 `tavily`.
 > - 다른 프로젝트(auto-research-agent)가 PM2로 3000 선점할 수 있음 → `npx pm2@7.0.1 stop ara-web ara-worker`로 비움.
+
+## 📜 세션 로그 (2026-06-26 오후~저녁) — copy-learn 실사용 검증 중 7 phase + 어투 수정 (전부 main push, tip `d8fe754`)
+**copy-learn(문구 학습)을 실사용하며 발견한 필요·버그를 하네스 phase로 연속 처리. 각 phase 전부 1라운드 PASS·AC 그린. test 450→503. 하네스 운영 정착: stray fixture 격리(/tmp)→복원(roleId별), 머지마다 dev clean 재시작(rm .next).**
+- **`thumbnail-winning-refs`**(방법 A, `7bb9915`): 아래 "방법 A 완료" 섹션 참조.
+- **`copy-learn-add-videos`**(`933bcfd`): 새 학습영상 추가(`createLearningVideo`·stub source='produced'·멱등) + **위험완화**: `eligibleForRetrospective`에 `withRun` 추가 → 회고 sweep이 production_run 있는 영상만(학습 전용 영상 자동회고 차단, 기존 9개도 보호).
+- **`copy-learn-edit-title`**(`cae9954`): `updateContentTitle` + VideoCard 인라인 이름 편집("(제목 없음)" 행 수정 가능).
+- **`copy-learn-manage-videos`**(`81d7296`): 삭제(`deleteLearningVideo`)+업로드일(`updateContentUploadDate`). ★검증된 cascade를 `src/app/actions/contentLifecycle.ts`(비-'use server')로 **추출**해 deleteRun과 공유(복붙 금지·pts/insights CHECK 함정 단일출처). source='produced' 가드 유지.
+- **어투 직접수정**(`39029ad`): 썸네일이 '믿지 마라' 반말 드리프트 → **존댓말 명령 강제**('~마세요/~보세요')·반말 명령 금지. `THUMBNAIL_MAKER_SYSTEM`(생성) + `AB_STYLE_SYSTEM`·`TITLE_STYLE_SYSTEM`(재학습→banned 학습). 공통 적용.
+- **`fixture-record-after-validate`**(`e28d3e3`): ★재학습 결정적 실패 근본①. `callLLM.ts`가 스키마 검증 *전*에 `saveFixture` → claude-p 불량출력이 픽스처로 박제 → record가 그걸 리플레이해 영구 실패(claude-p 2회 재시도도 무력). → saveFixture를 `parseAndValidate` 성공 후로 이동(유효분만 캐시). 오염 픽스처는 수동 삭제로 임시해소했었음.
+- **`style-extract-fold-stray`**(`bcdfe8a`): ★재학습 결정적 실패 근본②. claude-p가 `banned/confidence/tentative_notes/skeletons`를 schema가 요구하는 `patterns` 안이 아니라 **최상위에 일관 출력**(additionalProperties 위반). → 스키마가 top-level도 허용 + `foldStrayPatternFields`로 patterns 안으로 접음(다운스트림 nested 불변). 제목 재학습이 라이브 2회 모두 이 구조로 실패한 사건.
+- **`thumbnail-correction-learning`**(4 step, `7778c04`+`d8fe754`): **교정 학습 모듈**. 김짠부가 '이상 카피' 입력→AI '생성 카피'와 **차이 분석**(`correction_diff` LLM·표시용)→**합성 A/B**(이상=winner/생성=loser·`learn_mode="correction"`·decisive 1.0·CTR무관, `buildAbStyleInput` single 경로 미러)로 기존 재학습에 **합류**→draft→활성화. 전용 테이블 `thumbnail_corrections`(FK 없음·`learned_at` 멱등, provenance/CHECK 미접촉). UI=/copy-learn 교정 섹션. **마이그레이션 `20260626120024` ✅사용자 적용 완료**(테이블 0건 확인). graceful degrade: 테이블 부재 시 빈목록(`d8fe754`).
+- **▶ 다음(라이브 검증)**: ①교정 학습 써보기(이상카피 입력→차이분석→재학습→어투/few-shot 반영 확인) ②방법 B(예시 30+개 copy-learn 입력→재학습→활성화) ③새 썸네일 런으로 존댓말·우승작 few-shot 효과 종합 확인. (학습/생성 claude-p $0.)
 
 ## ▶▶▶ 최우선 — 썸네일 메인문구 개선 (✅방법 A 코드완료·main push / B·라이브검증 남음)
 **목표: 썸네일 메인문구 후킹을 "조회수 잘나온 레퍼런스 + 김짠부 스타일 결합"으로 강화.** (사용자가 가장 중요시.)
