@@ -120,7 +120,12 @@ export async function getCorrections(): Promise<CorrectionRow[]> {
     .from("thumbnail_corrections")
     .select("id, component_type, topic, gen_payload, ideal_payload, diff, learned_at, created_at")
     .order("created_at", { ascending: false });
-  if (error) throw new Error(`thumbnail_corrections 조회 실패: ${error.message}`);
+  // 마이그레이션 20260626120024 미적용 시 테이블 부재 → 빈 목록으로 우아하게(/copy-learn 전체가 막히지 않게).
+  //   auditLog best-effort 패턴 미러. 적용 후엔 정상 조회.
+  if (error) {
+    console.warn(`[corrections] 조회 실패(빈 목록으로 처리 — 마이그레이션 미적용 가능): ${error.message}`);
+    return [];
+  }
 
   return (data ?? []).map((r) => ({
     id: r.id,
