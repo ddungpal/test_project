@@ -1,2 +1,0 @@
-- 제안: (기존 규칙 재강조) step 완료 시 phases/<phase>/index.json의 해당 step을 completed+summary로 갱신 — 이번 step0이 pending으로 남아 재발 (근거: rules.md 기존 규칙 반복 위반 방지)
-- 제안: (기존 규칙 재강조) 커밋/완료 전 git status로 범위 외 record fixture 제외 — topic_scout fixture가 titles/thumbnail step에 딸려옴 (근거: 무관 record fixture 혼입 방지)
