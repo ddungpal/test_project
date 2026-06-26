@@ -33,7 +33,11 @@
     {
       "step": 3,
       "name": "correction-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-26T17:26:34+0900",
+      "completed_at": "2026-06-26T17:35:30+0900",
+      "summary": "/copy-learn에 교정 학습 섹션 추가(순수 UI — 백엔드 미수정). ①copyLearnView.ts: getCorrections()+CorrectionRow/CorrectionComponentType export — thumbnail_corrections 전부 created_at 최신순 로드, 기존 payloadToText 재사용해 gen/ideal 평탄화(id·componentType·topic·genText·idealText·diff·learnedAt·createdAt). ②page.tsx: Promise.all에 getCorrections 합류→corrections prop 전달. ③CopyLearningForm.tsx: StylePanel 바로 아래 CorrectionPanel — 입력 카드(AddCorrectionCard, 컴포넌트 라디오 선택에 따라 썸네일=메인2/박스2·제목=텍스트1로 칸 전환, topic 선택)→'교정쌍 저장'(saveCorrection, 반환 id 보관·router.refresh)→'차이 분석'(analyzeCorrectionDiff(id), 결과 CorrectionDiffView 라벨+값 읽기전용)→교정 목록(CorrectionCard: 컴포넌트·주제·diff summary·learnedAt 배지 + DraftCard 패턴 상세보기 토글로 diff jsonb를 PatternNode 재귀 렌더). 저장·분석 각각 별도 useTransition·ok/error. 학습 버튼 미생성(재학습은 기존 StylePanel '재학습 실행' 단일 경로 + 안내문구만). 시그니처 export 1:1 정합·PatternNode/INPUT_CLS/fmtDate 재사용(드리프트 0). TRUS 3색·직각·INPUT_CLS만(rounded/shadow/gradient/하드코딩색/외부라이브러리 0, grep 교차검증), 모든 input label/aria-label. AC 3개 exit 0(typecheck·test 503 유지·build), stray fixtures 없음."
     }
   ],
   "created_at": "2026-06-26T16:50:29+0900"
