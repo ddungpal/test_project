@@ -147,7 +147,12 @@
     },
     {
       "dir": "thumbnail-topic-curiosity",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (topic-curiosity-system)",
+      "attempt": 1,
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-06-26T21:06:20+0900"
     }
   ]
 }
