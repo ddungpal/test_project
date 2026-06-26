@@ -1,0 +1,17 @@
+{
+  "project": "produce script",
+  "phase": "regen-confirmed-view-fix",
+  "goal": "버그픽스: 확정 후 '제목/썸네일 AI로 다시 생성'(post-confirm-regenerate phase)을 쓰면 확정 뷰가 사라지고 '이전 단계 완료 후 진행됩니다' 플레이스홀더가 뜬다. 근본원인: src/lib/dashboard/runDetail.ts가 stage의 selection을 '최신 proposal' id 기준으로만 읽는다(`selByProposal.get(prop.id)`). 확정 후 AI 재생성은 새 proposal을 INSERT하므로 확정 selection은 이전 proposal에 붙어 고아가 되고 sv.selection=null → page.tsx의 모든 분기에서 탈락해 placeholder. 또한 확정 뷰(편집 패널)가 언마운트돼 재생성 결과 draft 채움도 도달 불가. 수정: selection을 '최신 proposal'이 아니라 'stage의 최신 selection'(모든 proposal 횡단)으로 읽고, 그 selection의 effective payload를 자신의 proposal 후보로 해석(edited_payload ?? 자기 proposal candidate[chosen_idx] ?? null)해 노출. sv.proposal은 최신 proposal 유지(재생성 폴링·draft 채움이 필요). 단일 step(응집된 뷰 계층 픽스). post-confirm-regenerate 백엔드(새 proposal 생성)는 건드리지 않는다. AC 오프라인 $0.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "selection-per-stage",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "summary": "확정 후 AI 재생성 시 확정 뷰가 placeholder로 사라지던 버그 수정: runDetail이 selection을 stage 횡단 최신으로 읽고(selByStage), payload를 그 selection 자신의 proposal candidates로 해석(edited_payload ?? candidate[chosen_idx] ?? {}). sv.proposal은 최신 proposal 유지(재생성 폴링·draft 채움 불변). 순수 해석 헬퍼 src/lib/dashboard/selectionResolve.ts 신규 추출, page.tsx ProposalStageSection effective를 sv.selection.payload로 변경, 회귀 테스트 추가(P1확정+신규P2 시나리오). AC typecheck·test(546)·build 전부 exit 0.",
+      "started_at": "2026-06-26T23:37:15+0900",
+      "completed_at": "2026-06-26T23:46:05+0900"
+    }
+  ],
+  "created_at": "2026-06-26T23:37:15+0900"
+}
