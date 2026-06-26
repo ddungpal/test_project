@@ -139,6 +139,19 @@
       "dir": "correction-capture-in-run",
       "status": "completed",
       "completed_at": "2026-06-26T18:23:49+0900"
+    },
+    {
+      "dir": "post-confirm-edit",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (edit-actions)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-06-26T20:48:09+0900"
+    },
+    {
+      "dir": "thumbnail-topic-curiosity",
+      "status": "pending"
     }
   ]
 }

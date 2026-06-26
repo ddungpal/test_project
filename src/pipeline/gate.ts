@@ -5,6 +5,7 @@
 import { transitionRun, getRun, type Supa } from "./runState.js";
 import { STAGE_DESCRIPTORS, type StageDescriptor } from "./stages.js";
 import type { Json } from "../lib/supabase/database.types.js";
+import type { TitlePayload, ThumbnailPayload } from "../lib/dashboard/proposalTypes.js";
 
 export interface SelectInput {
   runId: string;
@@ -102,4 +103,100 @@ export async function confirmThumbnailSet(supa: Supa, runId: string): Promise<Co
 
   await transitionRun(supa, runId, desc.proposedState, desc.selectedState);
   return { selectionId: selection.id, state: desc.selectedState };
+}
+
+// ── 확정 후 손편집(상태 전이 없음) ─────────────────────────────────────────
+// 제목/썸네일을 '이미 확정한' run에서 payload만 고쳐 새 selection 행을 INSERT한다.
+//   ★ transitionRun을 절대 호출하지 않는다 — titles_selected/thumbnails_selected는 합법 전이표에
+//     자기 전이가 없어 DB 트리거가 거부한다. 확정 전(proposed)엔 selectProposal/confirmThumbnailSet를 쓴다.
+//   selectedState가 아니면 throw(아직 확정 안 됨 = 손편집 경로가 아님). 최신 proposal에 매단다.
+
+// 해당 stage의 최신 proposal을 찾는다(confirmThumbnailSet의 order/limit/maybeSingle 미러).
+async function latestProposal(supa: Supa, runId: string, stage: StageDescriptor["stage"]): Promise<{ id: string }> {
+  const { data, error } = await supa
+    .from("stage_proposals")
+    .select("id")
+    .eq("run_id", runId)
+    .eq("stage", stage)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`${stage} proposal 조회 실패: ${error.message}`);
+  if (!data) throw new Error(`run ${runId}에 손편집할 '${stage}' 제안이 없음.`);
+  return data as { id: string };
+}
+
+// 최신 title_thumb proposal에 수정본으로 새 selection 행 INSERT(상태 전이 없음).
+//   chosen_idx는 최신 selection의 값을 보존(없으면 0). edited_payload=수정본 단일 객체.
+export async function editSelectedTitle(
+  supa: Supa,
+  runId: string,
+  payload: TitlePayload,
+  editedBy: string,
+): Promise<{ selectionId: string }> {
+  const desc = STAGE_DESCRIPTORS.title_thumb;
+  const run = await getRun(supa, runId);
+  if (run.state !== desc.selectedState) {
+    throw new Error(`제목 손편집은 '${desc.selectedState}'(확정 후)에서만 가능(현재 '${run.state}').`);
+  }
+
+  const proposal = await latestProposal(supa, runId, desc.stage);
+
+  // 기존(최신) selection의 chosen_idx 보존(없으면 0). 손편집은 어떤 후보를 골랐었는지 유지한다.
+  const { data: prev, error: pre } = await supa
+    .from("stage_selections")
+    .select("chosen_idx")
+    .eq("proposal_id", proposal.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pre) throw new Error(`기존 selection 조회 실패: ${pre.message}`);
+  const chosenIdx = (prev?.chosen_idx as number | undefined) ?? 0;
+
+  const { data: selection, error: se } = await supa
+    .from("stage_selections")
+    .insert({
+      proposal_id: proposal.id,
+      chosen_idx: chosenIdx,
+      edited_payload: payload as unknown as Json,
+      selected_by: editedBy,
+    })
+    .select("id")
+    .single();
+  if (se) throw new Error(`stage_selections insert 실패: ${se.message}`);
+  return { selectionId: selection.id };
+}
+
+// 최신 thumbnail proposal에 수정본 배열(정확히 3개)로 새 selection 행 INSERT(상태 전이 없음).
+//   chosen_idx=0 센티넬(confirmThumbnailSet과 동일 — 단일 선택이 아니라 A/B/C 세트). edited_payload=배열.
+export async function editSelectedThumbnails(
+  supa: Supa,
+  runId: string,
+  payloads: ThumbnailPayload[],
+  editedBy: string,
+): Promise<{ selectionId: string }> {
+  const desc = STAGE_DESCRIPTORS.thumbnail;
+  if (payloads.length !== 3) {
+    throw new Error(`썸네일 손편집: 정확히 3개(A/B/C)가 필요(현재 ${payloads.length}).`);
+  }
+
+  const run = await getRun(supa, runId);
+  if (run.state !== desc.selectedState) {
+    throw new Error(`썸네일 손편집은 '${desc.selectedState}'(확정 후)에서만 가능(현재 '${run.state}').`);
+  }
+
+  const proposal = await latestProposal(supa, runId, desc.stage);
+
+  const { data: selection, error: se } = await supa
+    .from("stage_selections")
+    .insert({
+      proposal_id: proposal.id,
+      chosen_idx: 0,
+      edited_payload: payloads as unknown as Json,
+      selected_by: editedBy,
+    })
+    .select("id")
+    .single();
+  if (se) throw new Error(`stage_selections insert 실패: ${se.message}`);
+  return { selectionId: selection.id };
 }

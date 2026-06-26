@@ -1,0 +1,10 @@
+{
+  "project": "produce script",
+  "phase": "thumbnail-topic-curiosity",
+  "goal": "김짠부 핵심 피드백을 썸네일 학습포인트로 영구화한다(요구 3·최우선). 규칙 2개: ①메인문구 2개 중 최소 하나에 영상 '주제 핵심 키워드'를 그대로 명시(약자·우회 금지 — 예: 주제 '레버리지 ETF'면 썸네일에 '레버리지 ETF') ②주요 내용을 힌트처럼 넣어 호기심을 유발하고 영상 안에서 해결되도록(curiosity gap). 두 경로에 박는다: 생성 SYSTEM(즉효) + 재학습 프롬프트(지속 — SYSTEM만 고치면 재학습이 덮음). 키워드 강제는 하드 거부가 아니라 강한 SYSTEM 지시 + 소프트 경고 배지(김짠부 '선택만' 철학). step 0(생성 SYSTEM)→1(재학습 SYSTEM)→2(키워드 누락 휴리스틱+UI 경고 배지+계약 테스트). step0·1은 promptHash 변경→픽스처 record 재생성(eval은 출력형태만 봄, 오프라인 유지). AC 오프라인 $0.",
+  "steps": [
+    { "step": 0, "name": "topic-curiosity-system", "status": "pending" },
+    { "step": 1, "name": "topic-curiosity-relearn", "status": "pending" },
+    { "step": 2, "name": "topic-included-warn", "status": "pending" }
+  ]
+}

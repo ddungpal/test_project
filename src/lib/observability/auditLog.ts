@@ -8,6 +8,7 @@ import type { Json } from "../supabase/database.types.js";
 export type AuditAction =
   | "run_started"
   | "stage_selected"
+  | "stage_edited"
   | "research_approved"
   | "script_approved"
   | "script_rework"

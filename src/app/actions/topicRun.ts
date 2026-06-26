@@ -6,7 +6,8 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { inngest } from "../../inngest/client.js";
-import { selectProposal, confirmThumbnailSet, type SelectInput } from "../../pipeline/gate.js";
+import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, type SelectInput } from "../../pipeline/gate.js";
+import type { TitlePayload, ThumbnailPayload } from "../../lib/dashboard/proposalTypes.js";
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
@@ -156,6 +157,21 @@ export async function confirmThumbnails(runId: string): Promise<{ state: string 
   const res = await confirmThumbnailSet(supa, runId);
   await auditLog(supa, { actorId: ownerId, action: "stage_selected", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
   return { state: res.state };
+}
+
+// 확정 후 손편집(§8.1 사람 게이트의 연장) — 상태 전이 없이 제목/썸네일 payload만 새 selection으로 기록.
+//   selectTitles/confirmThumbnails 패턴 미러. editedBy=ownerId(감사필드 위조 차단). AI 0회(저장만).
+export async function editTitle(runId: string, payload: TitlePayload): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await editSelectedTitle(supa, runId, payload, ownerId);
+  await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "title_thumb" } });
+}
+export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await editSelectedThumbnails(supa, runId, payloads, ownerId);
+  await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
 }
 
 export async function requestStructure(runId: string): Promise<void> {
