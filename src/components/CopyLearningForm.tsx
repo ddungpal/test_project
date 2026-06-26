@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo } from "@/app/actions/copyLearn";
+import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle } from "@/app/actions/copyLearn";
 import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
 import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType } from "@/lib/dashboard/copyLearnView";
@@ -127,6 +127,28 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
+  // ── 영상 이름(contents.title) 편집 — 카피·CTR 저장(onSave)과 완전 분리된 별도 state/transition/메시지. ──
+  //   "제목 카피(A/B)" 섹션과 다르다: 여기는 표시용 영상 이름 1개만 고친다(updateContentTitle).
+  const [titleDraft, setTitleDraft] = useState(video.title ?? "");
+  const [titleError, setTitleError] = useState<string | null>(null);
+  const [titleOk, setTitleOk] = useState<string | null>(null);
+  const [titlePending, startTitleTransition] = useTransition();
+  const titleTrimmed = titleDraft.trim();
+
+  function onSaveName() {
+    setTitleError(null);
+    setTitleOk(null);
+    startTitleTransition(async () => {
+      try {
+        await updateContentTitle(video.id, titleDraft);
+        setTitleOk("영상 이름 저장 완료");
+        router.refresh();
+      } catch (e) {
+        setTitleError(e instanceof Error ? e.message : "이름 저장 실패");
+      }
+    });
+  }
+
   function patchThumb(variant: AbVariantKey, patch: Partial<ThumbDraft>) {
     setState((s) => ({ ...s, thumb: { ...s.thumb, [variant]: { ...s.thumb[variant], ...patch } } }));
   }
@@ -202,6 +224,32 @@ function VideoCard({ video }: { video: CopyLearnVideo }) {
 
       {open && (
         <div className="border-t border-trus-white/15 px-4 py-4">
+          {/* 영상 이름(contents.title) 편집 — 표시용 이름. "제목 카피(A/B)" 섹션과 다름. onSave와 분리된 별도 액션. */}
+          <div className="mb-6">
+            <label className="block">
+              <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">영상 이름</span>
+              <div className="mt-1 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <input
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  placeholder="예: 30살에 1억 모은 현실 루틴"
+                  aria-label="영상 이름"
+                  className={INPUT_CLS}
+                />
+                <button
+                  type="button"
+                  onClick={onSaveName}
+                  disabled={titlePending || titleTrimmed.length === 0}
+                  className="shrink-0 bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {titlePending ? "저장 중…" : "이름 저장"}
+                </button>
+              </div>
+            </label>
+            {titleOk && <span className="mt-2 inline-block text-xs text-trus-yellow">✓ {titleOk}</span>}
+            {titleError && <span className="mt-2 inline-block text-xs text-trus-yellow">⚠ {titleError}</span>}
+          </div>
+
           {/* 영상 CTR(24h) + 24h 조회수 */}
           <div className="flex flex-wrap gap-4">
             <label className="block">
