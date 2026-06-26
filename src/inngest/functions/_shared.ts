@@ -3,12 +3,12 @@
 import { runProposalStage, type ProposalStageSpec } from "../../pipeline/stageContract.js";
 import { withStageRuntime } from "../../pipeline/stageRuntime.js";
 
-export async function executeProposalStage<TOut>(spec: ProposalStageSpec<TOut>, opts: { softAck?: boolean | undefined; force?: boolean | undefined; reason?: string | undefined; forceLlm?: boolean | undefined } = {}) {
-  const { softAck, force, reason, forceLlm } = opts;
+export async function executeProposalStage<TOut>(spec: ProposalStageSpec<TOut>, opts: { softAck?: boolean | undefined; force?: boolean | undefined; reason?: string | undefined; forceLlm?: boolean | undefined; postConfirm?: boolean | undefined } = {}) {
+  const { softAck, force, reason, forceLlm, postConfirm } = opts;
   const guarded = await withStageRuntime(
     spec.runId,
-    // reason은 비/공백이면 미포함(exactOptionalPropertyTypes). force·forceLlm 패턴 그대로(기본 undefined라 동작 불변).
-    (deps) => runProposalStage(spec, deps, { ...(force !== undefined ? { force } : {}), ...(reason && reason.trim() ? { reason } : {}), ...(forceLlm !== undefined ? { forceLlm } : {}) }),
+    // reason은 비/공백이면 미포함(exactOptionalPropertyTypes). force·forceLlm·postConfirm 패턴 그대로(기본 undefined라 동작 불변).
+    (deps) => runProposalStage(spec, deps, { ...(force !== undefined ? { force } : {}), ...(reason && reason.trim() ? { reason } : {}), ...(forceLlm !== undefined ? { forceLlm } : {}), ...(postConfirm !== undefined ? { postConfirm } : {}) }),
     softAck !== undefined ? { softAck } : {},
   );
   if (guarded.status !== "ok") return { runId: spec.runId, status: guarded.status };

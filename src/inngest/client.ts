@@ -11,7 +11,8 @@ import { Inngest, EventSchemas } from "inngest";
 // force: '다시 생성' — 멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음).
 // reason: '다시 생성' 시 사용자가 적은 선택적 이유(transient·프롬프트용, DB 미저장). 없으면 기존과 동일.
 // forceLlm: 'LLM으로 새로 써줘' — 로컬($0) 생성을 건너뛰고 callLLM 강제(step2 계약, step3 UI에서 전달). 없으면 hybrid 기본.
-type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean; reason?: string; forceLlm?: boolean };
+// postConfirm: 확정 후 재생성 — 상태 전이 없이 새 proposal만 INSERT(selectedState에서도 진입, 낙관잠금 없음).
+type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean };
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };

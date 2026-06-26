@@ -174,6 +174,21 @@ export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]
   await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
 }
 
+// 확정 후 AI 재생성 — Inngest로 새 proposal 생성(상태 전이 없음). 동기 callLLM 금지(185s 타임아웃 회피).
+//   force는 보내지 않는다 — postConfirm은 force와 독립 경로(selectedState 진입·낙관잠금 없음).
+//   reason은 비/공백이면 미포함(exactOptionalPropertyTypes — undefined 명시대입 금지).
+export async function regenerateAfterConfirm(
+  runId: string,
+  component: "titles" | "thumbnail",
+  reason?: string,
+): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  const name = component === "titles" ? "run/titles.requested" : "run/thumbnails.requested";
+  await inngest.send({ name, data: { runId, postConfirm: true, ...(reason && reason.trim() ? { reason } : {}) } });
+  await auditLog(supa, { actorId: ownerId, action: "stage_regenerated", targetType: "run", targetId: runId, detail: { component, postConfirm: true } });
+}
+
 export async function requestStructure(runId: string): Promise<void> {
   await requireOwner();
   await inngest.send({ name: "run/structure.requested", data: { runId } });

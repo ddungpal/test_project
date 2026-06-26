@@ -9,6 +9,7 @@ export type AuditAction =
   | "run_started"
   | "stage_selected"
   | "stage_edited"
+  | "stage_regenerated"
   | "research_approved"
   | "script_approved"
   | "script_rework"

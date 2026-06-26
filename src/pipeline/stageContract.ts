@@ -76,11 +76,12 @@ export interface ProposalStageResult {
 export async function runProposalStage<TOut>(
   spec: ProposalStageSpec<TOut>,
   deps: ProposalStageDeps,
-  opts: { force?: boolean; reason?: string; forceLlm?: boolean } = {}, // reason: '다시 생성' 사용자 이유(transient·프롬프트용). 비/공백이면 무영향. forceLlm: 로컬 스킵하고 LLM 강제('새로 써줘', 동작은 step3).
+  opts: { force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean } = {}, // reason: '다시 생성' 사용자 이유(transient·프롬프트용). 비/공백이면 무영향. forceLlm: 로컬 스킵하고 LLM 강제('새로 써줘', 동작은 step3). postConfirm: 확정(selectedState) 후 재생성 — entry 가드 우회·상태 전이/낙관잠금 없이 새 proposal만 INSERT(비용 patch는 id로만).
 ): Promise<ProposalStageResult> {
   const { runId, descriptor } = spec;
   const { supa, config } = deps;
   const run = await getRun(supa, runId);
+  const postConfirm = !!opts.postConfirm;
 
   // 진입 판정(순수): force=false면 기존 멱등·정상·가드 분기와 정확히 동치.
   const entry = decideStageEntry({
@@ -91,7 +92,8 @@ export async function runProposalStage<TOut>(
   });
 
   // 0) 멱등: 이미 제안 완료 상태면 기존 proposal 반환(재과금 0). force면 우회(run-in-place).
-  if (entry === "memoized") {
+  //    ★ postConfirm은 memoized/reject 분기를 모두 우회하고 진입 허용 — 확정(selectedState)에서도 새 후보를 낸다.
+  if (entry === "memoized" && !postConfirm) {
     const { data: existing } = await supa
       .from("stage_proposals")
       .select("id, candidates")
@@ -112,19 +114,22 @@ export async function runProposalStage<TOut>(
   }
 
   // 1) 진입 가드: fromState에서만 시작. (run-in-place는 proposedState에서 진입하므로 통과)
-  if (entry === "reject") {
+  //    ★ postConfirm이면 reject(selectedState 등)도 진입 허용 — 확정 후 재생성 경로.
+  if (entry === "reject" && !postConfirm) {
     throw new Error(`${descriptor.stage} 단계는 '${descriptor.fromState}'에서만 시작(현재 '${run.state}').`);
   }
 
   // 2) 결정적 prep(AI 없음).
   const prep = await spec.prepare(supa);
 
-  // 2-1) 회차 nonce(offset)·이전 후보: run-in-place(force 재생성)면 이 (run, stage)의 기존 제안 개수=다음 회차 nonce,
-  //   최근 candidates=priorCandidates. forward는 offset=0·이전 후보 없음(기존 동작 동치).
+  // 2-1) 회차 nonce(offset)·이전 후보: run-in-place(force 재생성)·postConfirm(확정 후 재생성)이면
+  //   이 (run, stage)의 기존 제안 개수=다음 회차 nonce, 최근 candidates=priorCandidates.
+  //   forward/memoized는 offset=0·이전 후보 없음(기존 동작 동치 — prep 미변형 → promptHash 보존).
   //   offset은 로컬 생성 변주(스켈레톤 회전)와 LLM 변주(buildRegenerateAugmentedSystem) 둘 다의 nonce로 공유한다.
+  const regenerate = postConfirm || entry === "run-in-place";
   let offset = 0;
   let priorCandidates: Candidate[] = [];
-  if (entry === "run-in-place") {
+  if (regenerate) {
     const { data: priors } = await supa
       .from("stage_proposals")
       .select("candidates, created_at")
@@ -164,10 +169,11 @@ export async function runProposalStage<TOut>(
     latencyMs = 0;
     promptHash = "local";
   } else {
-    // LLM 경로(기존 동작 동치). run-in-place만 prep.system을 변주 — '다시 생성'이 이전과 바이트 동일한 후보를 내던 버그 수정.
-    //   ⚠ run-forward 등은 prep을 절대 건드리지 않는다 → forward promptHash 불변(기존 parity/eval 픽스처 보존).
+    // LLM 경로(기존 동작 동치). 재생성(run-in-place·postConfirm)만 prep.system을 변주 — '다시 생성'이 이전과
+    //   바이트 동일한 후보를 내던 버그 수정.
+    //   ⚠ run-forward/memoized 등은 prep을 절대 건드리지 않는다 → forward promptHash 불변(기존 parity/eval 픽스처 보존).
     //   ponytail: 재생성은 새 promptHash라 replay 전용($0 동결)에선 픽스처 미스 throw가 정상(설계).
-    if (entry === "run-in-place") {
+    if (regenerate) {
       prep.system = buildRegenerateAugmentedSystem(prep.system, priorCandidates, offset, opts.reason);
     }
     // 3) AI 정확히 1회 — 비용가드·fixtures·스키마강제는 callLLM이 담당.
@@ -221,13 +227,21 @@ export async function runProposalStage<TOut>(
   // 6) 마지막에 run 갱신. run-forward는 fromState→proposedState 전이(기존 동작 동치).
   //    run-in-place(force 재생성)는 전이 없이 같은 proposedState로 비용/모델/지연만 update —
   //    상태가 안 바뀌니 DB 전이 트리거 무관(migration 불필요). 새 proposal만 추가된다.
+  //    postConfirm(확정 후 재생성)은 run 상태가 selectedState라 proposedState 낙관잠금이 안 맞는다 →
+  //    상태 조건 없이 id로만 비용 patch(전이도 낙관잠금도 없음). 새 proposal만 추가된다.
   const patch = {
     cost_usd: run.cost_usd + costUsd,
     model: `${provider}`,
     prompt_version: promptHash,
     latency_ms: latencyMs,
   };
-  if (entry === "run-in-place") {
+  if (postConfirm) {
+    const { error: ue } = await supa
+      .from("production_runs")
+      .update(patch)
+      .eq("id", runId); // id로만 — 상태 조건 없음(selectedState 등 어떤 상태든 비용만 반영)
+    if (ue) throw new Error(`run 비용 갱신 실패(postConfirm): ${ue.message}`);
+  } else if (entry === "run-in-place") {
     const { data: upd, error: ue } = await supa
       .from("production_runs")
       .update(patch)
