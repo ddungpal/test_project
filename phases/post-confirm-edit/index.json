@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "post-confirm-edit-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-26T20:48:13+0900",
+      "summary": "확정 후 손편집 UI 추가. 신규 client 컴포넌트 2개: PostConfirmTitleEdit(확정 제목 수정 토글+인라인 input→editTitle, {...p,title}로 TitlePayload 필드 보존), PostConfirmThumbnailsEdit(확정 A/B/C 3카드 각 수정 버튼, main 2칸·boxes 2칸, 한 카드만 고쳐도 extractGenCopy로 나머지 2개 현재값 떠서 3개 배열→editThumbnails, layout 보존). page.tsx selected 분기 2곳 배선. step0 edit 액션만 호출(selectProposal/confirmThumbnails 전이 재호출 없음·un-confirm 없음·다운스트림 트리거 없음·새 액션/gate 없음). 교정 패널과 독립 transition/state. Esther 마감: focus-visible 노란 아웃라인+sr-only label로 ThumbnailStudio 접근성 일관, TRUS 3색·그림자/그라데이션 0. AC: typecheck/test(520)/build 전부 exit 0. Joy 검수 PASS(1라운드).",
+      "completed_at": "2026-06-26T21:00:01+0900"
     }
   ],
   "created_at": "2026-06-26T20:40:09+0900"
