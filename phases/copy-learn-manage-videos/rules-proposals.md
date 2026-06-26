@@ -1,0 +1,1 @@
+- 제안: 'use server'/일반 모듈 간 헬퍼를 이동(추출)할 때 원본 파일에 그 헬퍼만 쓰던 import(특히 `type X`)가 죽은 채 남지 않았는지 grep으로 확인한다 (근거: detachOrphanTrainingSources를 contentLifecycle.ts로 옮긴 뒤 topicRun.ts에 `type Supa` import가 죽은 채 남음 — tsconfig에 noUnusedLocals가 없어 typecheck가 안 잡는 사각지대).

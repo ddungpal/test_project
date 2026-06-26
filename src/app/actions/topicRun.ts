@@ -8,13 +8,13 @@ import { createAdminClient } from "../../lib/supabase/admin.js";
 import { inngest } from "../../inngest/client.js";
 import { selectProposal, confirmThumbnailSet, type SelectInput } from "../../pipeline/gate.js";
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
-import { transitionRun, type Supa } from "../../pipeline/runState.js";
+import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
 import { enterScriptReview, approveScript, requestScriptRework } from "../../pipeline/scriptGate.js";
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
-import { cleanupRetrospectives } from "../../agents/retrospectivist/runRetrospective.js";
+import { deleteProducedContent } from "./contentLifecycle.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 import type { SeedRunInput } from "../../lib/dashboard/seedTypes.js";
 
@@ -105,48 +105,10 @@ export async function startSeedRun(input: SeedRunInput): Promise<{ runId: string
 }
 
 /**
- * provenance(profile_training_sources) 선 정리 — contents 삭제 전에 호출.
- *   contents 삭제 → ab_variants·performance_metrics 가 캐스케이드 삭제 → pts 의 ab_variant_id/metric_id 가
- *   `ON DELETE SET NULL`(migration 06). 그 출처가 pts 행의 '유일' 출처였으면 num_nonnulls=0 →
- *   `pts_has_source`(출처≥1) CHECK 위반으로 contents 삭제 트랜잭션 전체가 롤백된다(/copy-learn 재학습이 ab_variant_id를 채운 뒤 발생).
- *   → 유일 출처가 되는 pts 행을 먼저 삭제한다(다중 출처 행은 DB SET NULL 에 맡김 — CHECK 안 깨짐).
- *   cleanupRetrospectives 의 'detach 먼저' 패턴과 동일 클래스. 멱등(대상 없으면 no-op).
- */
-async function detachOrphanTrainingSources(supa: Supa, contentId: string): Promise<void> {
-  const [{ data: vars }, { data: metrics }] = await Promise.all([
-    supa.from("ab_variants").select("id").eq("content_id", contentId),
-    supa.from("performance_metrics").select("id").eq("content_id", contentId),
-  ]);
-  const varIds = (vars ?? []).map((v) => v.id);
-  const metricIds = (metrics ?? []).map((m) => m.id);
-  if (varIds.length === 0 && metricIds.length === 0) return;
-
-  const filters: string[] = [];
-  if (varIds.length) filters.push(`ab_variant_id.in.(${varIds.join(",")})`);
-  if (metricIds.length) filters.push(`metric_id.in.(${metricIds.join(",")})`);
-  const { data: pts, error } = await supa
-    .from("profile_training_sources")
-    .select("id, edition_id, component_id, ab_variant_id, metric_id")
-    .or(filters.join(","));
-  if (error) throw new Error(`provenance 조회 실패: ${error.message}`);
-
-  // 이 콘텐츠의 출처가 사라지면 출처 0개가 되는(=유일 출처) 행만 삭제.
-  const orphanIds = (pts ?? [])
-    .filter((r) => [r.edition_id, r.component_id, r.ab_variant_id, r.metric_id].filter((x) => x !== null && x !== undefined).length === 1)
-    .map((r) => r.id);
-  if (orphanIds.length === 0) return;
-  const { error: de } = await supa.from("profile_training_sources").delete().in("id", orphanIds);
-  if (de) throw new Error(`provenance 정리 실패: ${de.message}`);
-}
-
-/**
  * 편 하드 삭제 — produced content 삭제 → DB 캐스케이드로 run + 모든 자식(제안·선택·리서치·대본·
  *   lineage·비용·content_links) 제거. ★ imported(참조용 기존편)는 source 가드로 절대 삭제 안 됨.
- *   ★ 삭제 전 두 CHECK 충돌을 선제 정리:
- *     ① detachOrphanTrainingSources — pts_has_source(provenance 고아 행).
- *     ② cleanupRetrospectives — retrospectives 캐스케이드 삭제 시 insights.source_retrospective_id SET NULL 이
- *        A3 CHECK(insights_retro_consistent: retro FK ⇔ source_type='retrospective')와 충돌하는 것 방지
- *        (draft 회고-insight 삭제·승격분은 human_authored 로 detach 보존 후 retrospectives 선삭제).
+ *   캐스케이드 시퀀스(detach+cleanup+delete, 두 CHECK 가드)는 contentLifecycle.deleteProducedContent 로
+ *   추출돼 deleteLearningVideo 와 공유한다(복붙 금지 — 드리프트 방지).
  */
 export async function deleteRun(runId: string): Promise<void> {
   const ownerId = await requireOwner();
@@ -154,16 +116,8 @@ export async function deleteRun(runId: string): Promise<void> {
   const { data: run, error } = await supa.from("production_runs").select("content_id").eq("id", runId).maybeSingle();
   if (error) throw new Error(`런 조회 실패: ${error.message}`);
   if (!run) return; // 이미 없음 = 멱등
-  await detachOrphanTrainingSources(supa, run.content_id); // pts_has_source CHECK 충돌 선제 방어.
-  await cleanupRetrospectives(supa, run.content_id); // insights_retro_consistent(A3) CHECK 충돌 선제 방어(승격분 보존).
-  const { data: del, error: de } = await supa
-    .from("contents")
-    .delete()
-    .eq("id", run.content_id)
-    .eq("source", "produced") // 안전장치: produced만 삭제(기존편/참조 보호)
-    .select("id");
-  if (de) throw new Error(`삭제 실패: ${de.message}`);
-  if (!del || del.length === 0) throw new Error("삭제 거부: produced 콘텐츠가 아닙니다(참조용 기존편은 삭제 불가).");
+  const { deleted } = await deleteProducedContent(supa, run.content_id);
+  if (deleted === 0) throw new Error("삭제 거부: produced 콘텐츠가 아닙니다(참조용 기존편은 삭제 불가).");
   await auditLog(supa, { actorId: ownerId, action: "run_deleted", targetType: "run", targetId: runId, detail: { contentId: run.content_id } });
 }
 

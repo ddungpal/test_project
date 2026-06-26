@@ -16,6 +16,8 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   insight_status: "인사이트 상태변경",
   insight_edited: "인사이트 수정",
   content_title_updated: "영상 이름 수정",
+  content_deleted: "영상 삭제",
+  content_upload_date_updated: "업로드일 수정",
 };
 
 export interface AuditView {

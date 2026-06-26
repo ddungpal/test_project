@@ -12,6 +12,7 @@ import { auditLog } from "../../lib/observability/auditLog.js";
 import { loadConfig } from "../../llm/config.js";
 import { pickContentVerdict, type AbThresholds } from "../../performance/abVerdict.js";
 import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, type CopyAbInput, type CopyComponent, type NewLearningVideoInput } from "./copyLearnMap.js";
+import { deleteProducedContent, isYmd } from "./contentLifecycle.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 
 /** youtubeVideoId/contentId → contents.id 해석(content_id 우선). 못 찾으면 null. */
@@ -143,6 +144,63 @@ export async function updateContentTitle(contentId: string, title: string): Prom
     targetType: "content",
     targetId: contentId,
     detail: { title: trimmed },
+  });
+
+  return { updated: true };
+}
+
+/**
+ * 학습 영상 삭제 — produced content 하드 삭제(+캐스케이드). requireOwner 후 service-role.
+ *   - 검증된 cascade 시퀀스(detach+cleanup+delete, source='produced' 가드)는 deleteProducedContent 로 공유.
+ *   - ★ imported(참조용 기존편)는 source 가드로 절대 삭제 안 됨. 삭제 0(미존재/produced 아님)이면 throw.
+ *   - production_run 있는 content 를 지우면 run·자식도 함께 삭제됨(deleteRun 과 동일 — 정상).
+ *   - auditLog 는 best-effort(던지지 않음).
+ */
+export async function deleteLearningVideo(contentId: string): Promise<{ deleted: number }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const { deleted } = await deleteProducedContent(supa, contentId);
+  if (deleted === 0) throw new Error("삭제 거부: produced 콘텐츠가 아니거나 없음");
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "content_deleted",
+    targetType: "content",
+    targetId: contentId,
+    detail: { deleted },
+  });
+
+  return { deleted };
+}
+
+/**
+ * 학습 영상 업로드일(contents.upload_date) 수정. requireOwner 후 service-role.
+ *   - uploadDate.trim() 이 YYYY-MM-DD 형식 아니면 throw(형식 검증은 isYmd 순수 함수).
+ *   - contents.id=contentId 의 upload_date 만 update. 반환 행 0 이면 존재하지 않는 id → throw.
+ *   - auditLog 는 best-effort(던지지 않음).
+ */
+export async function updateContentUploadDate(contentId: string, uploadDate: string): Promise<{ updated: boolean }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const trimmed = uploadDate.trim();
+  if (!isYmd(trimmed)) throw new Error("날짜 형식은 YYYY-MM-DD");
+
+  const { data, error } = await supa
+    .from("contents")
+    .update({ upload_date: trimmed })
+    .eq("id", contentId)
+    .select("id");
+  if (error) throw new Error(`업로드일 수정 실패: ${error.message}`);
+  if (!data?.length) throw new Error("영상을 찾지 못했습니다");
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "content_upload_date_updated",
+    targetType: "content",
+    targetId: contentId,
+    detail: { uploadDate: trimmed },
   });
 
   return { updated: true };

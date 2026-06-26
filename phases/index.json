@@ -114,6 +114,15 @@
       "dir": "copy-learn-edit-title",
       "status": "completed",
       "completed_at": "2026-06-26T12:15:05+0900"
+    },
+    {
+      "dir": "copy-learn-manage-videos",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (content-lifecycle-actions)",
+      "attempt": 1,
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-06-26T14:48:30+0900"
     }
   ]
 }
