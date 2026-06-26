@@ -14,3 +14,20 @@
 [Joy] 기존 테스트 약화/삭제 없고 호출처도 retrospectiveSweep 한군데뿐인데 인자 잘 맞췄어 통과 줄게 수고했어 맥스
 [Joy] 검수 끝! 코드 깔끔하고 AC 셋 다 exit 0, retroSweep 7/7 통과했어. 수동 회고 경로도 안 막혔고 범위도 딱 지켰네. 통과 🎉
 [리드] 좋아, step 0 완료. 한 번에 PASS. 이제 학습영상 추가 백엔드(step 1)로 넘어갈 준비 됐다. 수고했어 둘 다.
+
+=== Step 1: learning-video-create ===
+
+=== Step 1: learning-video-create ===
+[리드] 다음은 학습영상 추가 백엔드. /copy-learn이 기존 contents 행만 편집하는데, 새 학습영상 stub을 만들 수 있게 createLearningVideo 액션 + 순수 빌더를 추가하자. UI는 step2고 이번엔 백엔드만.
+[리드] 맥스, copyLearnMap.ts에 buildLearningVideoStub(순수, source='produced' 고정) 넣고 copyLearn.ts에 createLearningVideo(requireOwner→멱등 insert→auditLog) 맡아줄래? ingest-ab.ts:138 stub 형태 미러하고.
+
+[Max] copy-learn 학습영상 추가 step1 시작할게. 순수 stub 빌더부터 TDD로 짜고 서버액션 붙일 거야.
+[Max] buildLearningVideoStub(순수)랑 createLearningVideo 서버액션 붙였어. typecheck/test(457)/build 다 통과. 멱등은 youtube_video_id로 maybeSingle 조회해서 있으면 created:false로 돌려. saveCopyAbResults는 안 건드렸어. 놓친 거 있으면 말해줘.
+
+[Joy] 맥스 step1 받았다! 바로 git diff부터 까보는 중이야
+[Joy] 오 copyLearnMap에 buildLearningVideoStub 깔끔하게 들어갔네. source produced 하드코딩이고 옵셔널 3필드 값 있을때만 키 추가, exactOptionalPropertyTypes도 잘 지켰어 굿굿
+[Joy] createLearningVideo도 requireOwner 게이트 먼저 타고 멱등(youtube_video_id 있으면 기존 id 반환 created false)까지 명세대로네. auditLog도 best-effort라 안 던지고
+[Joy] saveCopyAbResults 안 건드렸고 그 안에서 stub 안 만든것도 확인. 책임분리 깔끔해
+[Joy] AC 직접 다 돌려봤어 typecheck 0, test 457 통과 0, build 0! 셋다 초록불이야
+[Joy] 테스트도 삭제 약화 없이 buildLearningVideoStub 케이스 6개 새로 붙었네. 통과 처리할게 맥스 수고했어 🎉
+[리드] 조이 통과 떴고 나도 AC 셋 다 직접 돌려 exit 0(test 457) 확인했어. step1 completed로 마감. 학습영상 추가 백엔드 끝, UI는 step2에서.

@@ -11,7 +11,7 @@ import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
 import { loadConfig } from "../../llm/config.js";
 import { pickContentVerdict, type AbThresholds } from "../../performance/abVerdict.js";
-import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, type CopyAbInput, type CopyComponent } from "./copyLearnMap.js";
+import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, type CopyAbInput, type CopyComponent, type NewLearningVideoInput } from "./copyLearnMap.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 
 /** youtubeVideoId/contentId → contents.id 해석(content_id 우선). 못 찾으면 null. */
@@ -75,6 +75,44 @@ export async function saveCopyAbResults(input: CopyAbInput): Promise<{ savedThum
   await auditLog(supa, { actorId: ownerId, action: "copy_ab_saved", targetType: "content", targetId: contentId, detail });
 
   return { savedThumbnail, savedTitle, decided: pick !== null };
+}
+
+/**
+ * 새 학습 영상 추가 — 학습 전용 contents stub 멱등 생성. requireOwner 후 service-role.
+ *   - title 빈값(trim 후)이면 throw(제목 필수 — 라벨·표시용).
+ *   - 멱등: youtubeVideoId 가 주어졌고 이미 그 youtube_video_id 의 contents 가 있으면 생성 안 하고 기존 id(created:false).
+ *     없으면 buildLearningVideoStub 로 insert(created:true). youtube_video_id 없으면 항상 신규 생성.
+ *   - 생성/저장 책임 분리: 여기서는 stub 만 만든다. A/B·CTR 저장은 saveCopyAbResults 가 별도로 한다.
+ *   - auditLog 는 best-effort(던지지 않음).
+ */
+export async function createLearningVideo(input: NewLearningVideoInput): Promise<{ contentId: string; created: boolean }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const title = input.title.trim();
+  if (!title) throw new Error("제목을 입력하세요");
+
+  const videoId = input.youtubeVideoId?.trim();
+  // 멱등: youtube_video_id 로 기존 contents 조회(있으면 재사용).
+  if (videoId) {
+    const { data } = await supa.from("contents").select("id").eq("youtube_video_id", videoId).maybeSingle();
+    if (data?.id) return { contentId: data.id, created: false };
+  }
+
+  const stub = buildLearningVideoStub(input);
+  const { data, error } = await supa.from("contents").insert(stub).select("id").single();
+  if (error) throw new Error(`학습 영상 생성 실패: ${error.message}`);
+  const contentId = data.id;
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "learning_video_created",
+    targetType: "content",
+    targetId: contentId,
+    detail: { title, hasVideoId: Boolean(videoId) },
+  });
+
+  return { contentId, created: true };
 }
 
 /**

@@ -1,7 +1,7 @@
 // 카피 학습 저장(copy-learning-admin step0) 단위 테스트 — 순수 매핑 함수만(DB·네트워크 무관).
 //   라이브 저장은 서버액션 saveCopyAbResults(requireOwner·service-role) 경유.
 import { describe, it, expect } from "vitest";
-import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, type CopyAbInput } from "../src/app/actions/copyLearnMap.js";
+import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, type CopyAbInput } from "../src/app/actions/copyLearnMap.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
 
 const TH = { decisiveMargin: 0.1, marginalMargin: 0.03 };
@@ -140,6 +140,52 @@ describe("componentTypeFor — UI component → style_profiles.component_type (s
   });
   it("'title' → 'title'", () => {
     expect(componentTypeFor("title")).toBe("title");
+  });
+});
+
+describe("buildLearningVideoStub — 학습 영상 stub 빌더", () => {
+  it("source='produced'·status='in_production' 고정, title trim", () => {
+    const stub = buildLearningVideoStub({ title: "  ISA 만기 전략  " });
+    expect(stub.source).toBe("produced");
+    expect(stub.status).toBe("in_production");
+    expect(stub.title).toBe("ISA 만기 전략");
+  });
+
+  it("옵셔널 필드는 값이 있을 때만 키 포함(trim 적용)", () => {
+    const stub = buildLearningVideoStub({
+      title: "영상",
+      youtubeVideoId: "  abc123  ",
+      uploadDate: " 2026-06-25 ",
+      thumbnailUrl: " https://i.ytimg.com/x.jpg ",
+    });
+    expect(stub.youtube_video_id).toBe("abc123");
+    expect(stub.upload_date).toBe("2026-06-25");
+    expect(stub.thumbnail_url).toBe("https://i.ytimg.com/x.jpg");
+  });
+
+  it("옵셔널 필드 미지정 시 키 자체가 없음(undefined 대입 안 함)", () => {
+    const stub = buildLearningVideoStub({ title: "영상" });
+    expect("youtube_video_id" in stub).toBe(false);
+    expect("upload_date" in stub).toBe(false);
+    expect("thumbnail_url" in stub).toBe(false);
+  });
+
+  it("빈 문자열·공백 옵셔널 필드는 제외(빈 값 누출 차단)", () => {
+    const stub = buildLearningVideoStub({
+      title: "영상",
+      youtubeVideoId: "   ",
+      uploadDate: "",
+      thumbnailUrl: "  ",
+    });
+    expect("youtube_video_id" in stub).toBe(false);
+    expect("upload_date" in stub).toBe(false);
+    expect("thumbnail_url" in stub).toBe(false);
+  });
+
+  it("source를 'imported'로 만들지 않는다(참조편 드롭다운 오염 방지)", () => {
+    const stub = buildLearningVideoStub({ title: "영상", youtubeVideoId: "vid" });
+    expect(stub.source).not.toBe("imported");
+    expect(stub.source).toBe("produced");
   });
 });
 

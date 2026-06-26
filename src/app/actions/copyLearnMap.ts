@@ -112,6 +112,35 @@ export function mapCopyAbToRows(input: CopyAbInput, contentId: string, threshold
   return { abRows, thumbnailVerdict };
 }
 
+/** 새 학습 영상 추가 입력(/copy-learn 학습영상 등록). title 필수, 나머지는 선택. */
+export interface NewLearningVideoInput {
+  title: string;            // 필수(라벨·표시용)
+  youtubeVideoId?: string;  // 선택(있으면 멱등 매칭 키)
+  uploadDate?: string;      // 선택(YYYY-MM-DD)
+  thumbnailUrl?: string;    // 선택(카드 미리보기)
+}
+
+/**
+ * 학습 전용 contents stub 행(순수 — DB·네트워크 무관). ingest-ab.ts resolveOrStubContentId 스텁 미러.
+ *   - source='produced' 고정(참조편 드롭다운 오염 방지 — 'imported' 금지), status='in_production', title=trim.
+ *   - youtube_video_id/upload_date/thumbnail_url 은 trim 후 값이 있을 때만 키 추가
+ *     (빈 문자열 누출 차단 · exactOptionalPropertyTypes 준수 — undefined 대입 안 함).
+ */
+export function buildLearningVideoStub(input: NewLearningVideoInput): TablesInsert<"contents"> {
+  const stub: TablesInsert<"contents"> = {
+    source: "produced",
+    status: "in_production",
+    title: input.title.trim(),
+  };
+  const vid = input.youtubeVideoId?.trim();
+  if (vid) stub.youtube_video_id = vid;
+  const uploadDate = input.uploadDate?.trim();
+  if (uploadDate) stub.upload_date = uploadDate;
+  const thumb = input.thumbnailUrl?.trim();
+  if (thumb) stub.thumbnail_url = thumb;
+  return stub;
+}
+
 /** UI의 component 선택("thumbnail"|"title") → style_profiles.component_type. 썸네일 카피는 thumbnail_copy. */
 export type CopyComponent = "thumbnail" | "title";
 export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "title" {
