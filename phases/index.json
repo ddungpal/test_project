@@ -134,6 +134,15 @@
       "dir": "thumbnail-correction-learning",
       "status": "completed",
       "completed_at": "2026-06-26T17:35:30+0900"
+    },
+    {
+      "dir": "correction-capture-in-run",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (run-thumbnail-correction)",
+      "attempt": 1,
+      "elapsed_seconds": 780,
+      "heartbeat_at": "2026-06-26T18:15:40+0900"
     }
   ]
 }

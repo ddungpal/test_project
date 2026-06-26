@@ -57,13 +57,14 @@ const REGEN_STAGE: Partial<Record<ProposalStage, "topic" | "titles" | "structure
 };
 
 // 단계 박스 — 선택됨(요약) | 활성(선택기) | 시작 버튼 | 대기.
-function StageSection({ runId, sv, runState }: { runId: string; sv: StageView; runState: RunState }) {
+//   topic 은 썸네일 교정 패널(ThumbnailStudio)이 교정쌍 컨텍스트로 쓴다 — 빈 문자열 폴백(라벨 아님).
+function StageSection({ runId, sv, runState, topic }: { runId: string; sv: StageView; runState: RunState; topic: string }) {
   const stage = sv.stage as ProposalStage;
   const desc = STAGE_DESCRIPTORS[stage];
 
   // 썸네일 단계는 전용 UI(ThumbnailStudio·confirmThumbnails) — 제네릭 ProposalSelector/RegenerateButton 경로를 안 탄다.
   if (stage === "thumbnail") {
-    return <ThumbnailStageSection runId={runId} sv={sv} runState={runState} desc={desc} />;
+    return <ThumbnailStageSection runId={runId} sv={sv} runState={runState} desc={desc} topic={topic} />;
   }
 
   let body: React.ReactNode;
@@ -133,11 +134,13 @@ function ThumbnailStageSection({
   sv,
   runState,
   desc,
+  topic,
 }: {
   runId: string;
   sv: StageView;
   runState: RunState;
   desc: StageDescriptor;
+  topic: string;
 }) {
   let body: React.ReactNode;
   if (sv.selection) {
@@ -168,7 +171,7 @@ function ThumbnailStageSection({
       </div>
     );
   } else if (runState === desc.proposedState && sv.proposal) {
-    body = <ThumbnailStudio runId={runId} proposalId={sv.proposal.proposalId} candidates={sv.proposal.candidates} />;
+    body = <ThumbnailStudio runId={runId} proposalId={sv.proposal.proposalId} candidates={sv.proposal.candidates} topic={topic} />;
   } else if (runState === desc.fromState) {
     body = (
       <div className="flex flex-col gap-2">
@@ -431,7 +434,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       {PROPOSAL_STAGES.map((stage) => (
-        <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} />
+        <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} />
       ))}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} />
