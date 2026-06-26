@@ -133,11 +133,11 @@
     {
       "dir": "thumbnail-correction-learning",
       "status": "running",
-      "progress": "0/4",
-      "running_step": "0 (corrections-store)",
+      "progress": "1/4",
+      "running_step": "1 (correction-diff)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-26T16:58:29+0900"
+      "elapsed_seconds": 600,
+      "heartbeat_at": "2026-06-26T17:09:10+0900"
     }
   ]
 }

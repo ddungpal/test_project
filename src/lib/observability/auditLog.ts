@@ -22,12 +22,13 @@ export type AuditAction =
   | "content_title_updated"
   | "content_deleted"
   | "content_upload_date_updated"
-  | "correction_saved";
+  | "correction_saved"
+  | "correction_analyzed";
 
 export interface AuditEntry {
   actorId: string;
   action: AuditAction;
-  targetType?: "run" | "insight" | "content";
+  targetType?: "run" | "insight" | "content" | "thumbnail_correction";
   targetId?: string;
   detail?: Json;
 }

@@ -10,6 +10,10 @@ import { styleRelearnSweep } from "../../performance/styleRelearn.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
 import { loadConfig } from "../../llm/config.js";
+import { callLLM } from "../../llm/callLLM.js";
+import { CostGuard, InMemoryCostLedger } from "../../llm/costGuard.js";
+import { CORRECTION_DIFF_SCHEMA, CORRECTION_DIFF_SYSTEM, type CorrectionDiff } from "../../agents/correction_diff/schema.js";
+import { correctionToPromptText } from "../../agents/correction_diff/prepare.js";
 import { pickContentVerdict, type AbThresholds } from "../../performance/abVerdict.js";
 import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, buildCorrectionRow, type CopyAbInput, type CopyComponent, type NewLearningVideoInput, type CorrectionInput } from "./copyLearnMap.js";
 import { deleteProducedContent, isYmd } from "./contentLifecycle.js";
@@ -113,6 +117,75 @@ export async function saveCorrection(input: CorrectionInput): Promise<{ id: stri
   });
 
   return { id };
+}
+
+// 교정쌍 차이 분석용 runId 상수(비용 귀속 라벨 — 단일 분석이라 run 별 누적 불필요).
+const CORRECTION_DIFF_RUN_ID = "correction-diff";
+
+/**
+ * 교정쌍 1건(생성↔이상 카피)을 LLM 이 비교해 구조화된 diff 생성 → thumbnail_corrections.diff 저장.
+ *   - "왜 달랐나"를 즉시 보여주기 위한 표시·기록용 분석. 학습(style_profiles.patterns/banned)과 독립.
+ *     ★ diff 를 patterns 에 절대 쓰지 않는다(학습 권위 = step2 재학습 루프).
+ *   - requireOwner → correction 1행 로드 → gen/ideal 텍스트화 → callLLM → diff update.
+ *   - added/removed/actionable_rules 는 빈배열 가능 필드 → `?? []` 기본값(모델 누락 방어).
+ *   - 비용가드/ledger 는 learn-ab-style.ts 동일 패턴(claude-p=$0). auditLog 'correction_analyzed' best-effort.
+ */
+export async function analyzeCorrectionDiff(correctionId: string): Promise<{ diff: CorrectionDiff }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const { data: row, error } = await supa
+    .from("thumbnail_corrections")
+    .select("component_type, gen_payload, ideal_payload")
+    .eq("id", correctionId)
+    .single();
+  if (error || !row) throw new Error(`교정쌍을 찾지 못했습니다: ${error?.message ?? correctionId}`);
+
+  const generated = correctionToPromptText(row.component_type, row.gen_payload);
+  const ideal = correctionToPromptText(row.component_type, row.ideal_payload);
+
+  const config = loadConfig();
+  const ledger = new InMemoryCostLedger();
+  const costGuard = new CostGuard({ softCapUsd: config.softCapUsd, hardCapUsd: config.hardCapUsd, sink: ledger });
+
+  const out = await callLLM<CorrectionDiff>(
+    {
+      roleId: "correction_diff",
+      system: CORRECTION_DIFF_SYSTEM,
+      input: { component_type: row.component_type, generated, ideal },
+      schema: CORRECTION_DIFF_SCHEMA,
+      runId: CORRECTION_DIFF_RUN_ID,
+      maxTokens: 2048,
+    },
+    { config, costGuard },
+  );
+
+  // 빈배열 가능 필드 기본값 — 모델이 통째 누락해도 안전(schema required 제외 규칙과 짝).
+  const diff: CorrectionDiff = {
+    summary: out.data.summary,
+    tone: out.data.tone,
+    hook_angle: out.data.hook_angle,
+    length_density: out.data.length_density,
+    added: out.data.added ?? [],
+    removed: out.data.removed ?? [],
+    actionable_rules: out.data.actionable_rules ?? [],
+  };
+
+  const { error: ue } = await supa
+    .from("thumbnail_corrections")
+    .update({ diff: diff as unknown as Json })
+    .eq("id", correctionId);
+  if (ue) throw new Error(`diff 저장 실패: ${ue.message}`);
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "correction_analyzed",
+    targetType: "thumbnail_correction",
+    targetId: correctionId,
+    detail: { componentType: row.component_type, rules: diff.actionable_rules.length },
+  });
+
+  return { diff };
 }
 
 /**

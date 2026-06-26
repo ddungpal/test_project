@@ -31,6 +31,9 @@ export const ROLES = {
   style_extractor: { roleId: "style_extractor", name: "스타일추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus. 파이프라인 단계 아님.
   // 학습 루프 회고(Phase 4) — 발행 후 성과+선택+반응을 인과로 복기→인사이트 draft. 편당 1회·저빈도·고가치 → opus.
   retrospectivist: { roleId: "retrospectivist", name: "회고", defaultModel: "opus", tools: [] },
+  // 교정쌍 차이 분석(파이프라인 단계 아닌 표시·기록용 분석) — 생성↔이상 카피 비교 diff.
+  //   전 역할 opus 통일이지만, 가벼운 1쌍 비교라 과하지 않게 기본 tier(sonnet). 학습 권위 아님(patterns 미사용).
+  correction_diff: { roleId: "correction_diff", name: "교정차이분석", defaultModel: "sonnet", tools: [] },
 } as const satisfies Record<string, AgentRole>;
 
 export type RoleId = keyof typeof ROLES;
