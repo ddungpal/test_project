@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "copy-learn-correction-readonly",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-26T18:16:36+0900",
+      "summary": "CopyLearningForm.tsx에서 교정 '입력 폼'(AddCorrectionCard — 컴포넌트 라디오·생성/이상 카피 입력·교정쌍 저장·차이 분석 버튼)과 dead component CorrectionDiffView를 제거하고, 읽기전용 교정 목록(CorrectionCard: 주제·생성/이상 요약·diff·learned 상태)만 유지. 안내 문구를 '교정은 런 화면 썸네일 단계에서 입력'으로 갱신(빈상태·diff-전 문구 포함). 미사용 import 정리(saveCorrection/analyzeCorrectionDiff/CorrectionInput/CorrectionDiff). 서버 액션·getCorrections·재학습 버튼·page 배선·백엔드 무변경(런 화면 step0이 액션 사용). AC: typecheck/test(509)/build 전부 exit 0.",
+      "completed_at": "2026-06-26T18:23:49+0900"
     }
   ],
   "created_at": "2026-06-26T18:02:40+0900"
