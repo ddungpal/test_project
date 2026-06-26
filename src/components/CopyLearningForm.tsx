@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
-import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
+import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo, saveCorrection, analyzeCorrectionDiff } from "@/app/actions/copyLearn";
+import type { CopyAbInput, NewLearningVideoInput, CorrectionInput } from "@/app/actions/copyLearnMap";
+import type { CorrectionDiff } from "@/agents/correction_diff/schema";
 import type { AbVariantKey } from "@/performance/types";
-import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType } from "@/lib/dashboard/copyLearnView";
+import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow } from "@/lib/dashboard/copyLearnView";
 import { numOrNull, parseViews24h } from "@/components/copyViewsParse";
 
 // 카피 학습 입력 화면(copy-learning-admin step2) — owner가 영상별 썸네일·제목 A/B + CTR(24h)를 입력→저장,
@@ -859,10 +860,422 @@ function AddVideoCard() {
   );
 }
 
-export function CopyLearningForm({ videos, drafts }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[] }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// 교정 학습(correction-learning) — AI 생성 카피 ↔ 김짠부 이상 카피를 짝지어 저장하고,
+//   LLM 이 "왜 달랐나"를 분석(diff)한다. 학습 자체는 위 StylePanel '재학습 실행' 단일 경로
+//   (여기엔 별도 학습 버튼 없음 — 안내 문구만). saveCorrection/analyzeCorrectionDiff 시그니처에 맞춘다.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type CorrectionComponent = "thumbnail" | "title";
+
+// 차이 분석(CorrectionDiff) 고정 필드 표시 — 라벨+값. 임의구조가 아니라 PatternNode 대신 명시 렌더(읽기 쉬움).
+function CorrectionDiffView({ diff }: { diff: CorrectionDiff }) {
+  const sections: { label: string; value: string }[] = [
+    { label: "총평", value: diff.summary },
+    { label: "어투", value: diff.tone },
+    { label: "후킹 각도", value: diff.hook_angle },
+    { label: "길이·압축", value: diff.length_density },
+  ];
+  const lists: { label: string; items: string[] }[] = [
+    { label: "이상이 더 넣은 것", items: diff.added },
+    { label: "이상이 뺀 것", items: diff.removed },
+    { label: "다음 생성에 적용할 규칙", items: diff.actionable_rules },
+  ];
+  return (
+    <div className="flex flex-col gap-3">
+      {sections.map((s) => (
+        <div key={s.label}>
+          <span className="text-xs font-bold tracking-wide text-trus-yellow/80">{s.label}</span>
+          <p className="mt-0.5 pl-2 text-sm leading-relaxed text-trus-white/80">{s.value || "—"}</p>
+        </div>
+      ))}
+      {lists.map((l) => (
+        <div key={l.label}>
+          <span className="text-xs font-bold tracking-wide text-trus-yellow/80">{l.label}</span>
+          {l.items.length === 0 ? (
+            <p className="mt-0.5 pl-2 text-sm text-trus-white/35">(없음)</p>
+          ) : (
+            <ul className="mt-0.5 ml-5 flex list-disc flex-col gap-1 text-sm leading-relaxed text-trus-white/80">
+              {l.items.map((it, i) => (
+                <li key={i}>{it}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// 교정쌍 입력 카드 — 접기/펼치기(AddVideoCard 미러). 컴포넌트 선택 → 생성/이상 카피 입력 → 저장 → 차이 분석.
+//   저장(save)·분석(analyze)은 각각 별도 useTransition·별도 ok/error(VideoCard 패턴 미러 — 로딩 표시 혼선 방지).
+function AddCorrectionCard() {
+  const [open, setOpen] = useState(false);
+  const [component, setComponent] = useState<CorrectionComponent>("thumbnail");
+  const [topic, setTopic] = useState("");
+  // 썸네일: 메인2·박스2. 제목: 단일 텍스트1. (생성/이상 각각)
+  const [genMain, setGenMain] = useState<[string, string]>(["", ""]);
+  const [genBoxes, setGenBoxes] = useState<[string, string]>(["", ""]);
+  const [idealMain, setIdealMain] = useState<[string, string]>(["", ""]);
+  const [idealBoxes, setIdealBoxes] = useState<[string, string]>(["", ""]);
+  const [genTitle, setGenTitle] = useState("");
+  const [idealTitle, setIdealTitle] = useState("");
+
+  const [savedId, setSavedId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveOk, setSaveOk] = useState<string | null>(null);
+  const [savePending, startSaveTransition] = useTransition();
+
+  const [diff, setDiff] = useState<CorrectionDiff | null>(null);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [analyzePending, startAnalyzeTransition] = useTransition();
+  const router = useRouter();
+
+  function resetInputs() {
+    setTopic("");
+    setGenMain(["", ""]);
+    setGenBoxes(["", ""]);
+    setIdealMain(["", ""]);
+    setIdealBoxes(["", ""]);
+    setGenTitle("");
+    setIdealTitle("");
+  }
+
+  function buildInput(): CorrectionInput {
+    const topicTrimmed = topic.trim();
+    const base: CorrectionInput = { componentType: component };
+    if (topicTrimmed) base.topic = topicTrimmed;
+    if (component === "thumbnail") {
+      base.genMain = genMain;
+      base.genBoxes = genBoxes;
+      base.idealMain = idealMain;
+      base.idealBoxes = idealBoxes;
+    } else {
+      base.genTitle = genTitle;
+      base.idealTitle = idealTitle;
+    }
+    return base;
+  }
+
+  function onSave() {
+    setSaveError(null);
+    setSaveOk(null);
+    startSaveTransition(async () => {
+      try {
+        const res = await saveCorrection(buildInput());
+        setSavedId(res.id);
+        setDiff(null); // 새 저장 → 이전 분석 결과 무효화
+        setSaveOk("교정쌍 저장 완료 — 아래 '차이 분석'을 누르거나, 위 '재학습 실행'으로 함께 학습돼");
+        router.refresh();
+      } catch (e) {
+        setSaveError(e instanceof Error ? e.message : "저장 실패");
+      }
+    });
+  }
+
+  function onAnalyze() {
+    if (!savedId) return;
+    setAnalyzeError(null);
+    startAnalyzeTransition(async () => {
+      try {
+        const res = await analyzeCorrectionDiff(savedId);
+        setDiff(res.diff);
+        router.refresh(); // 목록 카드의 diff 도 갱신
+      } catch (e) {
+        setAnalyzeError(e instanceof Error ? e.message : "분석 실패");
+      }
+    });
+  }
+
+  return (
+    <div className="border border-trus-white/20">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:border-trus-yellow/40"
+      >
+        <span className="text-sm font-black text-trus-yellow">＋ 교정쌍 추가</span>
+        <span className="ml-auto shrink-0 text-xs font-bold text-trus-white/50">{open ? "접기 −" : "열기 +"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-trus-white/15 px-4 py-4">
+          {/* 컴포넌트 선택(라디오 — accent-trus-yellow) */}
+          <fieldset className="mb-4">
+            <legend className="text-xs font-bold tracking-widest text-trus-yellow uppercase">컴포넌트</legend>
+            <div className="mt-2 flex flex-wrap gap-4">
+              {(["thumbnail", "title"] as CorrectionComponent[]).map((c) => (
+                <label key={c} className="flex cursor-pointer items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correction-component"
+                    value={c}
+                    checked={component === c}
+                    onChange={() => setComponent(c)}
+                    className="accent-trus-yellow"
+                  />
+                  <span className="text-sm text-trus-white">{c === "thumbnail" ? "썸네일 카피" : "제목"}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
+          <label className="mb-4 block">
+            <span className="text-xs text-trus-white/55">주제 (선택)</span>
+            <input
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="예: 30살에 1억 모은 현실 루틴"
+              aria-label="교정 주제"
+              className={`mt-1 ${INPUT_CLS}`}
+            />
+          </label>
+
+          {component === "thumbnail" ? (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {/* AI 생성 카피 — 메인2·박스2(VideoCard 썸네일 입력 미러) */}
+              <fieldset className="border border-trus-white/15 p-3">
+                <legend className="px-1 text-xs font-bold tracking-widest text-trus-yellow uppercase">AI 생성 카피</legend>
+                <div className="flex flex-col gap-2">
+                  {[0, 1].map((i) => (
+                    <input
+                      key={`gm-${i}`}
+                      value={genMain[i]}
+                      onChange={(e) => setGenMain((v) => (i === 0 ? [e.target.value, v[1]] : [v[0], e.target.value]))}
+                      placeholder={`메인문구 ${i + 1}`}
+                      aria-label={`AI 생성 메인문구 ${i + 1}`}
+                      className={INPUT_CLS}
+                    />
+                  ))}
+                  {[0, 1].map((i) => (
+                    <input
+                      key={`gb-${i}`}
+                      value={genBoxes[i]}
+                      onChange={(e) => setGenBoxes((v) => (i === 0 ? [e.target.value, v[1]] : [v[0], e.target.value]))}
+                      placeholder={`박스문구 ${i + 1}`}
+                      aria-label={`AI 생성 박스문구 ${i + 1}`}
+                      className={INPUT_CLS}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+              {/* 이상 카피 — 같은 모양 */}
+              <fieldset className="border border-trus-white/15 p-3">
+                <legend className="px-1 text-xs font-bold tracking-widest text-trus-yellow uppercase">이상 카피</legend>
+                <div className="flex flex-col gap-2">
+                  {[0, 1].map((i) => (
+                    <input
+                      key={`im-${i}`}
+                      value={idealMain[i]}
+                      onChange={(e) => setIdealMain((v) => (i === 0 ? [e.target.value, v[1]] : [v[0], e.target.value]))}
+                      placeholder={`메인문구 ${i + 1}`}
+                      aria-label={`이상 메인문구 ${i + 1}`}
+                      className={INPUT_CLS}
+                    />
+                  ))}
+                  {[0, 1].map((i) => (
+                    <input
+                      key={`ib-${i}`}
+                      value={idealBoxes[i]}
+                      onChange={(e) => setIdealBoxes((v) => (i === 0 ? [e.target.value, v[1]] : [v[0], e.target.value]))}
+                      placeholder={`박스문구 ${i + 1}`}
+                      aria-label={`이상 박스문구 ${i + 1}`}
+                      className={INPUT_CLS}
+                    />
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">AI 생성 제목</span>
+                <input
+                  value={genTitle}
+                  onChange={(e) => setGenTitle(e.target.value)}
+                  placeholder="AI 가 만든 제목"
+                  aria-label="AI 생성 제목"
+                  className={`mt-1 ${INPUT_CLS}`}
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">이상 제목</span>
+                <input
+                  value={idealTitle}
+                  onChange={(e) => setIdealTitle(e.target.value)}
+                  placeholder="김짠부가 원하는 제목"
+                  aria-label="이상 제목"
+                  className={`mt-1 ${INPUT_CLS}`}
+                />
+              </label>
+            </div>
+          )}
+
+          {/* 저장 + 차이 분석 — 각각 별도 액션/상태 */}
+          <div className="mt-5 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={savePending}
+              className="bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {savePending ? "저장 중…" : "교정쌍 저장"}
+            </button>
+            <button
+              type="button"
+              onClick={onAnalyze}
+              disabled={analyzePending || !savedId}
+              aria-busy={analyzePending}
+              title={!savedId ? "먼저 교정쌍을 저장하세요" : undefined}
+              className="border border-trus-yellow px-4 py-1.5 text-sm font-bold text-trus-yellow hover:bg-trus-yellow hover:text-trus-black focus:bg-trus-yellow focus:text-trus-black disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {analyzePending ? "분석 중…" : "차이 분석"}
+            </button>
+            {saveOk && <span className="text-xs text-trus-yellow">✓ {saveOk}</span>}
+            {saveError && <span className="text-xs text-trus-yellow">⚠ {saveError}</span>}
+            {analyzeError && <span className="text-xs text-trus-yellow">⚠ {analyzeError}</span>}
+          </div>
+
+          {/* 차이 분석 결과(읽기 전용) */}
+          {diff && (
+            <div className="mt-4 border border-trus-white/15 p-3">
+              <p className="mb-2 text-xs font-bold tracking-widest text-trus-yellow uppercase">차이 분석</p>
+              <CorrectionDiffView diff={diff} />
+            </div>
+          )}
+
+          {/* 또 입력하려면 초기화 */}
+          <div className="mt-4">
+            <button
+              type="button"
+              onClick={() => {
+                resetInputs();
+                setSavedId(null);
+                setDiff(null);
+                setSaveOk(null);
+                setSaveError(null);
+                setAnalyzeError(null);
+              }}
+              className="text-xs font-bold text-trus-white/50 hover:text-trus-yellow"
+            >
+              입력 초기화
+            </button>
+          </div>
+
+          <p className="mt-3 text-xs text-trus-white/50">
+            교정 저장 후 위 <b className="text-trus-white/80">‘재학습 실행’</b>을 누르면 함께 학습됩니다.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const CORRECTION_COMPONENT_LABEL: Record<CorrectionComponent, string> = {
+  thumbnail: "썸네일 카피",
+  title: "제목",
+};
+
+// diff(jsonb 원본)에서 summary 한 줄만 안전 추출(목록 요약용). 비객체·없음이면 null.
+function diffSummaryOf(diff: unknown): string | null {
+  if (diff === null || typeof diff !== "object" || Array.isArray(diff)) return null;
+  const s = (diff as Record<string, unknown>).summary;
+  return typeof s === "string" && s.trim() ? s.trim() : null;
+}
+
+// 저장된 교정쌍 1건 — 주제·diff 요약·learnedAt + '상세 보기' 토글로 diff 원본을 PatternNode 로 펼침(DraftCard 미러).
+function CorrectionCard({ c }: { c: CorrectionRow }) {
+  const [open, setOpen] = useState(false);
+  const summary = diffSummaryOf(c.diff);
+  const hasDiff = c.diff !== null && typeof c.diff === "object";
+  return (
+    <li className="border border-trus-white/15 px-3 py-2">
+      <div className="flex flex-wrap items-center gap-2 text-xs text-trus-white/55">
+        <span className="border border-trus-white/25 px-1.5 py-0.5 font-bold text-trus-white/70">
+          {CORRECTION_COMPONENT_LABEL[c.componentType]}
+        </span>
+        <span className="font-bold text-trus-white">{c.topic ?? "(주제 없음)"}</span>
+        {c.learnedAt ? (
+          <span className="border border-trus-yellow px-1.5 py-0.5 font-bold text-trus-yellow">학습 반영됨</span>
+        ) : (
+          <span className="text-trus-white/40">미학습</span>
+        )}
+        <span className="ml-auto">{fmtDate(c.createdAt)}</span>
+      </div>
+
+      <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <div>
+          <span className="text-[11px] font-bold tracking-wide text-trus-yellow/70">AI 생성</span>
+          <p className="mt-0.5 text-sm text-trus-white/70">{c.genText.length ? c.genText.join(" · ") : "—"}</p>
+        </div>
+        <div>
+          <span className="text-[11px] font-bold tracking-wide text-trus-yellow/70">이상</span>
+          <p className="mt-0.5 text-sm text-trus-white/70">{c.idealText.length ? c.idealText.join(" · ") : "—"}</p>
+        </div>
+      </div>
+
+      {summary && <p className="mt-1.5 text-sm leading-relaxed text-trus-white/80">“{summary}”</p>}
+
+      {hasDiff && (
+        <>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="mt-1.5 text-[11px] font-bold text-trus-yellow/80 hover:text-trus-yellow"
+          >
+            {open ? "차이 상세 접기 −" : "차이 상세 보기 +"}
+          </button>
+          {open && (
+            <div className="mt-2 border-t border-trus-white/10 pt-2">
+              <PatternNode value={c.diff} />
+            </div>
+          )}
+        </>
+      )}
+      {!hasDiff && <p className="mt-1.5 text-[11px] text-trus-white/35">차이 분석 전 — 위에서 ‘차이 분석’을 실행하세요</p>}
+    </li>
+  );
+}
+
+function CorrectionPanel({ corrections }: { corrections: CorrectionRow[] }) {
+  return (
+    <section className="border border-trus-white/20 p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-xs font-bold tracking-widest text-trus-yellow uppercase">교정 학습</h2>
+        <span className="text-xs text-trus-white/40">{corrections.length}건</span>
+      </div>
+      <p className="mt-2 text-xs text-trus-white/50">
+        AI 가 만든 카피와 <b className="text-trus-white/80">김짠부 이상</b> 카피를 짝지어 저장하면, ‘차이 분석’이 무엇을 왜 고쳤는지 분해한다.
+        교정 저장 후 위 <b className="text-trus-white/80">‘재학습 실행’</b>을 누르면 함께 학습된다(여기엔 별도 학습 버튼 없음).
+      </p>
+
+      <div className="mt-4">
+        <AddCorrectionCard />
+      </div>
+
+      {corrections.length === 0 ? (
+        <p className="mt-3 border border-dashed border-trus-white/20 px-4 py-8 text-center text-sm text-trus-white/40">
+          아직 교정쌍이 없습니다. 위 ‘교정쌍 추가’로 첫 교정을 입력하세요.
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-2">
+          {corrections.map((c) => (
+            <CorrectionCard key={c.id} c={c} />
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+export function CopyLearningForm({ videos, drafts, corrections }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[] }) {
   return (
     <div className="mt-8 flex flex-col gap-8">
       <StylePanel drafts={drafts} />
+
+      <CorrectionPanel corrections={corrections} />
 
       <section>
         <div className="flex items-baseline justify-between">

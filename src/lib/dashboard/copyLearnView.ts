@@ -97,6 +97,43 @@ export async function getCopyStyleDrafts(perComponent = 5): Promise<CopyStyleDra
   return out;
 }
 
+// ── 교정쌍(생성↔이상 카피) 조회(correction-learning UI) — thumbnail_corrections 전부 최신순. ──
+//   getCopyStyleDrafts 조회 패턴(admin client·error throw) 미러. payloadToText 재사용(드리프트 0).
+
+export type CorrectionComponentType = "thumbnail" | "title";
+
+export interface CorrectionRow {
+  id: string;
+  componentType: CorrectionComponentType;
+  topic: string | null;
+  genText: string[]; // gen_payload 평탄화(썸네일 copy_main+copy_boxes · 제목 title)
+  idealText: string[]; // ideal_payload 평탄화(동일 규칙)
+  diff: unknown; // diff(jsonb) 원본 — UI 가 안전 렌더(임의 구조). null 가능.
+  learnedAt: string | null; // 재학습에 반영된 시각(미반영이면 null)
+  createdAt: string;
+}
+
+/** thumbnail_corrections 전부 created_at 최신순 조회. 표시·검수용(읽기전용). */
+export async function getCorrections(): Promise<CorrectionRow[]> {
+  const supa = createAdminClient();
+  const { data, error } = await supa
+    .from("thumbnail_corrections")
+    .select("id, component_type, topic, gen_payload, ideal_payload, diff, learned_at, created_at")
+    .order("created_at", { ascending: false });
+  if (error) throw new Error(`thumbnail_corrections 조회 실패: ${error.message}`);
+
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    componentType: r.component_type as CorrectionComponentType,
+    topic: r.topic,
+    genText: payloadToText(r.gen_payload),
+    idealText: payloadToText(r.ideal_payload),
+    diff: r.diff,
+    learnedAt: r.learned_at,
+    createdAt: r.created_at,
+  }));
+}
+
 export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
   const supa = createAdminClient();
   const { data: contents, error } = await supa

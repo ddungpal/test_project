@@ -44,3 +44,19 @@
 [Joy] 체크리스트 다 봤는데 흠잡을 데가 없네. correction은 CTR 안 타고 decisive 1.0 고정, winner 없으면 warn+continue, 멱등은 learned_at으로만, provenance/pts CHECK는 손도 안 댔고. 교정 0건이면 sweep 완전 그대로라 회귀도 0. step0/1/3 영역도 사용만 하고 미수정, fixtures stray도 없어. 깔끔하다 맥스, 통과! 👍
 [Joy] 검수 끝! correction 경로 decisive 1.0 고정·CTR 안 탐, 합류·적격확장·learned_at 스탬프 다 맞고 provenance/pts CHECK는 손 안 댔어. 교정 0건이면 sweep 완전 그대로라 회귀 0. AC 셋 다 초록불, 503개 통과! 통과야 맥스 🎉
 [리드] 1라운드 PASS. step2 completed로 마감한다. 교정쌍이 이제 합성 A/B로 재학습 루프에 합류 — 루프 닫혔다. 다음은 step3(correction-ui)야.
+
+=== Step 3: correction-ui ===
+[리드] 마지막 step이야. /copy-learn에 "교정 학습" 섹션 추가 — 생성 카피 + 이상 카피 입력 → 저장(saveCorrection) → 차이 분석(analyzeCorrectionDiff) 표시 → 교정 목록. 학습은 기존 "재학습 실행" 버튼에 합류(step2)되니까 별도 학습 버튼 만들지 마. 순수 UI라 에스더가 맡아줘. 시그니처는 step0/1 export 그대로 맞추고(추측 금지), TRUS 3색·직각·INPUT_CLS 재사용, diff는 PatternNode 재귀 렌더러 재사용 가능. 에스더, 부탁해!
+
+[Esther] 음 나 왔어. 교정 학습 UI 맡을게. copyLearn.ts랑 CopyLearningForm 다 읽었는데 기존 패턴(VideoCard 입력칸, StylePanel, PatternNode 재귀 렌더러)이 깔끔해서 그대로 미러하면 될 것 같아. 백엔드는 안 건드리고 UI랑 read 함수만.
+
+[Esther] read 함수랑 page 배선 끝났고, 이제 폼에 교정 학습 섹션 붙인다. 입력 카드(컴포넌트 선택+생성/이상 카피)+저장 직후 차이 분석+교정 목록. 저장이랑 분석은 VideoCard처럼 각각 따로 useTransition으로 나눌게. 섞이면 로딩 표시가 헷갈리거든. 이건 내가 좀 자신 있어.
+
+[Esther] 다 됐어. 교정 학습 섹션 StylePanel 바로 아래에 넣었고, 입력 카드는 컴포넌트 선택(라디오)에 따라 썸네일이면 메인2박스2, 제목이면 텍스트1로 칸이 바뀌게 했어. 저장이랑 차이분석 버튼은 완전히 따로 돌고, 분석 결과는 라벨+값으로 읽기 쉽게. 저장된 교정 목록은 DraftCard처럼 상세보기 토글로 diff 원본을 PatternNode로 펼쳐. 학습 버튼은 안 만들었고 안내 문구만 — 재학습은 위 버튼 단일 경로 그대로야.
+[Esther] typecheck 0, build 0, 테스트 503개 다 통과. TRUS 3색·직각만 썼고 새 색이나 외부 라이브러리 안 건드렸어. 모든 input엔 label이나 aria-label 다 붙였고. 음 그리고 라디오 accent도 trus-yellow로 맞췄어… 아무도 안 봤겠지만 그런 디테일이 좋더라 🙈
+
+[Joy] 에스더 등판! 나 바로 git diff 봤는데 변경 파일 딱 셋(copyLearnView·page·CopyLearningForm)이고 백엔드는 안 건드렸네. 좋아, 이제 시그니처 진짜 맞는지 export 원본이랑 대조해볼게
+[Joy] 시그니처 다 맞췄네 굿굿 saveCorrection·analyzeCorrectionDiff·CorrectionInput 필드까지 export 원본이랑 1대1로 정확하고 payloadToText·PatternNode·fmtDate·INPUT_CLS 다 재사용했어. 이제 AC 셋 직접 돌린다 typecheck/test/build 가즈아
+[Joy] typecheck exit 0, 테스트 503개 그대로 다 통과! 하나도 안 줄었어 굿. 이제 build 돌린다
+[Joy] build도 exit 0! /copy-learn 라우트 잘 생겼고. 체크리스트 전부 통과야 — 학습 버튼 중복 없음(저장·분석 둘뿐, 재학습은 위 단일 경로 안내문구만), router.refresh 저장·분석 각각 호출, useTransition·ok/error 완전 분리, TRUS 3색·직각만 rounded/shadow/그라데이션/외부라이브러리 0, diff는 읽기전용, 모든 input에 label/aria-label, 백엔드 미수정, fixtures stray 0, 테스트 503 유지. 라디오 accent까지 trus-yellow로 맞춘 디테일 좋더라 에스더 ㅎㅎ 통과! 마지막 step 깔끔하게 닫았다 🎉
+[리드] 1라운드 PASS. step3 completed로 마감한다. 교정 학습 모듈 완성 — 입력→저장→차이분석→목록 UI까지, 학습은 기존 재학습 버튼에 합류. 4 step 전부 1라운드 통과로 클린하게 닫았다. 다들 수고했어 👏
