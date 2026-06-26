@@ -70,6 +70,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
     const p = (payload ?? {}) as Partial<ThumbnailPayload> & {
       ref_similarity?: number;
       style_conformance?: { banned_hits?: string[]; winning_score?: number };
+      topic_missing?: { missing?: boolean; keyword?: string | null };
     };
     const mainText = (Array.isArray(p.thumbnail_main) ? p.thumbnail_main : [])
       .map((s) => (typeof s === "string" ? s.trim() : ""))
@@ -83,6 +84,9 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
     const winningScore = p.style_conformance?.winning_score ?? 0;
     const bannedFlagged = bannedHits.length >= STYLE_CONFORMANCE_BANNED_FLAG;
     const winningPct = Math.round(winningScore * 100);
+    // 주제 키워드 누락 소프트 경고(휴리스틱·표시 전용). missing===true일 때만 ⚠ 칩. 후보 차단·자동 거부 없음.
+    const topicMissing = p.topic_missing?.missing === true;
+    const topicKeyword = p.topic_missing?.keyword ?? undefined;
 
     const labelCls = "shrink-0 text-trus-white/50";
     return (
@@ -103,7 +107,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
             <span className="text-trus-white">{box2}</span>
           </div>
         )}
-        {(refFlagged || bannedFlagged || winningScore > 0) && (
+        {(refFlagged || bannedFlagged || topicMissing || winningScore > 0) && (
           <div className="mt-1">
             {refFlagged && (
               <span className="mr-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow">
@@ -116,6 +120,14 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
                 className="mr-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow"
               >
                 ⚠ A/B 패배 패턴
+              </span>
+            )}
+            {topicMissing && (
+              <span
+                title={topicKeyword ? `주제 키워드 "${topicKeyword}"가 메인문구에 없음` : undefined}
+                className="mr-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow"
+              >
+                ⚠ 주제 키워드 없음
               </span>
             )}
             {winningScore > 0 && <span className="text-[10px] text-trus-white/45">A/B 부합 {winningPct}%</span>}

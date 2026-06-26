@@ -6,6 +6,7 @@ import type { Supa } from "../../pipeline/runState.js";
 import { prepareThumbnailMaker, type ThumbnailMakerInput } from "./prepare.js";
 import { maxReferenceSimilarity } from "../hook_maker/referenceGuard.js";
 import { evaluateStyleConformance } from "../hook_maker/styleConformance.js";
+import { detectTopicMissing } from "./topicMissing.js";
 import type { ThumbnailStylePatterns } from "../style_extractor/schema.js";
 import type { ThumbnailMakerOutput } from "./schema.js";
 import { loadActiveThumbnailStyle } from "../shared/styleProfile.js";
@@ -20,6 +21,9 @@ function thumbnailToCandidates(out: ThumbnailMakerOutput, input?: unknown): Cand
   const references = ((input as ThumbnailMakerInput | undefined)?.reference_thumbnail_copies ?? []).map((r) => r.text);
   // PhaseA active 스타일 패턴(있을 때만) — banned·emphasis_words로 사후 부합도 검사. LLM/로컬 생성 후 변환 → promptHash 무관.
   const stylePatterns = (input as ThumbnailMakerInput | undefined)?.style_profile?.patterns as ThumbnailStylePatterns | undefined;
+  // 주제 키워드 누락 소프트 경고용 — input의 topic·selected_title. input 없으면 ""(detectTopicMissing이 중립 반환).
+  const topic = (input as ThumbnailMakerInput | undefined)?.topic ?? "";
+  const selectedTitle = (input as ThumbnailMakerInput | undefined)?.selected_title ?? "";
   // 후보가 3개 미만이어도 map은 안전(크래시 없음).
   return out.candidates.map((c, idx) => {
     // ref_similarity: 썸네일 main을 join해 references와 비교(title 베낌 대신 카피 베낌 측정).
@@ -34,6 +38,9 @@ function thumbnailToCandidates(out: ThumbnailMakerOutput, input?: unknown): Cand
         thumbnail_copy: [...c.thumbnail_main, ...c.thumbnail_boxes].filter(Boolean).join("\n"),
         ref_similarity: maxReferenceSimilarity(mainJoined, references),
         style_conformance: evaluateStyleConformance([mainJoined, c.thumbnail_boxes.join(" ")].join(" "), stylePatterns),
+        // topic_missing(옵셔널 주석): 메인문구에 주제 핵심 키워드 누락 시 ⚠ 표면화. ref_similarity·style_conformance와
+        //   동일하게 생성 후 부착 → promptHash 무관. 스키마/계약 불변(표시 전용·강제 거부 아님).
+        topic_missing: detectTopicMissing(c.thumbnail_main, topic, selectedTitle),
       },
       reason: c.reason,
       evidence_ids: c.evidence_ids,

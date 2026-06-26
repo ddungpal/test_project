@@ -78,4 +78,33 @@ describe("thumbnailStageSpec.toCandidates — main/boxes 보존 + thumbnail_copy
     expect(cands.length).toBe(3);
     expect(cands.map((c) => c.idx)).toEqual([0, 1, 2]);
   });
+
+  it("topic_missing 주석 부착 — 메인문구에 주제 키워드 없으면 missing:true", () => {
+    const input = { topic: "레버리지 ETF", selected_title: "레버리지 ETF 사도 될까" };
+    const cands = thumbnailStageSpec("run-x").toCandidates(out as any, input);
+    const p = cands[0]!.payload as any;
+    // candidate()의 main은 ["메인1","메인2"]라 주제 키워드 없음 → missing:true.
+    expect(p.topic_missing.missing).toBe(true);
+    expect(typeof p.topic_missing.keyword).toBe("string");
+  });
+
+  it("topic_missing 주석 부착 — 메인문구에 주제 키워드 있으면 missing:false", () => {
+    const withKw = {
+      candidates: [
+        { ...candidate(2, 2), thumbnail_main: ["레버리지 ETF 위험할까", "초보는 주의"] },
+        candidate(2, 2),
+        candidate(2, 2),
+      ],
+    };
+    const input = { topic: "레버리지 ETF", selected_title: "레버리지 ETF 사도 될까" };
+    const cands = thumbnailStageSpec("run-x").toCandidates(withKw as any, input);
+    const p = cands[0]!.payload as any;
+    expect(p.topic_missing.missing).toBe(false);
+  });
+
+  it("input 없으면 topic_missing 중립(크래시 없음) — 표시 전용 안전", () => {
+    const cands = thumbnailStageSpec("run-x").toCandidates(out as any);
+    const p = cands[0]!.payload as any;
+    expect(p.topic_missing).toEqual({ missing: false, keyword: null });
+  });
 });

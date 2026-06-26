@@ -28,3 +28,21 @@
 [Joy] 테스트 파일 손 안 댔고 fixtures 부산물도 안 섞였어. correction은 AB_STYLE_SYSTEM 합류라 자동 커버되는 것도 맞고. 통과! 맥스 굿이야 👍
 [Joy] AC 셋 다 내 손으로 돌려봤고 exit 0 일치 테스트 520개 통과 TITLE 경로 불변에 스키마 required도 안 늘었어 깔끔하다 통과 🎉
 [리드] 굿 VERDICT PASS 확인했고 AC도 내가 직접 돌려 exit 0 일치. step1 completed로 마킹한다. 둘 다 수고했어
+
+=== Step 2: topic-included-warn ===
+[리드] 마지막 step이야. 주제 키워드 누락을 소프트 경고로 띄우는 거. 맥스, 순수 판정 헬퍼 + toCandidates 주석 + UI 배지 + 테스트 맡아줄래? 강제 거부 절대 금지, 표시 전용이야
+
+[Max] step2 시작할게. 주제 키워드 누락 소프트 경고. 순수 헬퍼 detectTopicMissing부터 짜고 toCandidates에 옵셔널 주석 붙이고 UI 칩까지. 강제 거부는 안 해. 표시 전용이야.
+[Max] styleConformance.ts 방어 패턴 그대로 미러할 생각이야. 형태소 분석기 같은 거 안 쓰고 정규식만. 오탐이 신뢰 깨니까 애매하면 경고 안 하는 쪽으로 보수적으로 갈게.
+
+[Max] 헬퍼랑 stage 주석, proposalTypes 옵셔널 필드, UI 칩까지 다 붙였어. 기존 A/B 패배 패턴 칩 바로 옆에 주제 키워드 없음 칩 넣었고 톤이랑 색 똑같아. 이제 테스트 짠다.
+
+[Max] 테스트도 다 짰어. 헬퍼 단위 10개랑 stage 배선 계약 3개. 포함/명백누락/추출불가/입력깨짐/빈배열 다 커버했고 오탐 회피 케이스도 넣었어.
+[Max] AC 셋 다 돌렸어. typecheck exit 0, test 533개 통과(기존 520에 13 추가), build도 exit 0. 스키마랑 promptHash는 안 건드렸고 주제 누락 후보 거부도 안 해. 표시 전용이야.
+[Max] git status 봤는데 범위 외 fixture 부산물 안 섞였어. index.json step2도 갱신해놨고. 조이가 검수할 때 오탐 케이스 한번 더 봐주면 좋겠어. 놓친 거 있으면 말해줘.
+
+[Joy] 오 맥스 마지막 step 빠르다! 나 바로 헬퍼랑 테스트 까보고 AC 셋 다 돌려볼게 ☕
+[Joy] 까봤는데 헬퍼 진짜 깔끔하다! 순수함수에 입력 깨져도 중립 반환, 조사 떼는것도 비상금이→비상금 잘 되고 명백 누락만 true 떠. 오탐 회피 굿굿
+[Joy] 칩도 기존 A/B 패배 패턴이랑 className 한글자도 안 틀리게 똑같아 border-trus-yellow 그대로. onClick 거부 필터 하나도 없고 표시 전용 맞아
+[Joy] schema.ts는 손도 안 댔으니 required 안 늘었고 주석은 생성 후 부착이라 promptHash 무관. AC 셋 다 내 손으로 돌렸어 typecheck/test 533/build 전부 exit 0. fixture 부산물도 안 섞였어. 통과! 맥스 마무리까지 깔끔하다 🎉
+[리드] VERDICT PASS 확인. AC도 내가 직접 돌려 typecheck/test(533)/build 전부 exit 0 일치. step2 completed로 마킹한다. 이걸로 thumbnail-topic-curiosity phase 다 끝났어 — 셋 다 수고 많았어 🎉

@@ -32,6 +32,7 @@ export interface ThumbnailPayload {
   thumbnail_main: string[]; // 메인문구
   thumbnail_boxes: string[]; // 작은 박스
   thumbnail_layout?: string; // 레이아웃 힌트
+  topic_missing?: { missing: boolean; keyword: string | null }; // 메인문구에 주제 키워드 누락 소프트 경고(휴리스틱·표시 전용) — 옵셔널 주석
 }
 export interface StructureSection {
   section: string;
