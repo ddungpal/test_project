@@ -42,7 +42,8 @@ export function hookStageSpec(runId: string): ProposalStageSpec<HookMakerOutput>
       // title 단계엔 아직 리서치 사실이 없음 — topic만으로 컨텍스트 구성.
       const genCtx = buildLocalGenContext(input.topic);
       const filled = fillTitleSkeletons(sk, genCtx, { count: 3, offset: ctx.offset, banned: patterns.banned });
-      if (!filled.length) return null;
+      // 정확히 3개(A/B/C)를 못 채우면 LLM 폴백 — schema가 3개를 요구하므로 부분 세트 누출 방지(썸네일 동일 규칙).
+      if (filled.length < 3) return null;
       const out: HookMakerOutput = {
         candidates: filled.map((f) => ({ title: f.title, reason: "로컬 스켈레톤 생성", evidence_ids: [style.id, "skeleton"] })),
       };

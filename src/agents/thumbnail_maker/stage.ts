@@ -57,7 +57,9 @@ export function thumbnailStageSpec(runId: string): ProposalStageSpec<ThumbnailMa
       const input = prep.input as ThumbnailMakerInput;
       const genCtx = buildLocalGenContext(input.topic);
       const filled = fillThumbnailSkeletons(sk, genCtx, { count: 3, offset: ctx.offset, banned: patterns.banned });
-      if (!filled.length) return null;
+      // 정확히 3개(A/B/C)를 못 채우면(스켈레톤 부족·banned 필터로 일부 탈락) LLM 폴백 — 부분 세트(2개 등) 누출 방지.
+      //   schema가 candidates 정확히 3개를 요구하므로, 로컬은 풀세트를 만들 때만 단락한다.
+      if (filled.length < 3) return null;
       // 스켈레톤엔 레이아웃이 없으므로 활성 스타일의 첫 레이아웃 아키타입, 없으면 결정적 기본값 사용.
       const layout = patterns?.visual?.layout_archetypes?.[0] ?? DEFAULT_THUMBNAIL_LAYOUT;
       const out: ThumbnailMakerOutput = {

@@ -19,11 +19,22 @@ const TITLE_STYLE_ROW = {
     visual: { face: "", layout_archetypes: [], color_usage: "", number_treatment: "", devices: [] },
     banned: ["사색적 톤"],
     skeletons: {
+      // 풀세트(3개) — 로컬은 정확히 3개를 채울 때만 단락한다(< 3이면 LLM 폴백).
       title: [
         { template: "{number} 묶이면 무조건 보세요", slots: ["number"] },
         { template: "{topic} 모르면 손해", slots: ["topic"] },
+        { template: "{topic} 지금 시작하세요", slots: ["topic"] },
       ],
     },
+  } as ThumbnailStylePatterns,
+};
+
+// 스켈레톤 2개뿐(< 3) — 로컬이 풀세트를 못 만들어 null(LLM 폴백) 되는지 검증용.
+const TITLE_STYLE_ROW_SHORT = {
+  ...TITLE_STYLE_ROW,
+  patterns: {
+    ...TITLE_STYLE_ROW.patterns,
+    skeletons: { title: (TITLE_STYLE_ROW.patterns as ThumbnailStylePatterns).skeletons!.title!.slice(0, 2) },
   } as ThumbnailStylePatterns,
 };
 
@@ -36,11 +47,22 @@ const THUMB_STYLE_ROW = {
     visual: { face: "", layout_archetypes: ["비포/애프터 2분할"], color_usage: "", number_treatment: "", devices: [] },
     banned: [],
     skeletons: {
+      // 풀세트(3개) — 로컬은 정확히 3개를 채울 때만 단락한다(< 3이면 LLM 폴백).
       thumbnail: [
         { main: ["{number} 묶이면", "절대 깨지 마"], boxes: ["{topic}", "지금 확인"], slots: ["number", "topic"] },
         { main: ["{topic} 모르면", "손해입니다"], boxes: ["꼭 보기", "필수"], slots: ["topic"] },
+        { main: ["{topic} 지금", "시작하세요"], boxes: ["꼭 보기", "추천"], slots: ["topic"] },
       ],
     },
+  } as ThumbnailStylePatterns,
+};
+
+// 스켈레톤 2개뿐(< 3) — 로컬이 풀세트를 못 만들어 null(LLM 폴백) 되는지 검증용.
+const THUMB_STYLE_ROW_SHORT = {
+  ...THUMB_STYLE_ROW,
+  patterns: {
+    ...THUMB_STYLE_ROW.patterns,
+    skeletons: { thumbnail: (THUMB_STYLE_ROW.patterns as ThumbnailStylePatterns).skeletons!.thumbnail!.slice(0, 2) },
   } as ThumbnailStylePatterns,
 };
 
@@ -79,7 +101,7 @@ describe("hook localCandidates — 제목 로컬 생성(동형)", () => {
     const cands = await spec.localCandidates!(supa, { input }, { offset: 0 });
 
     expect(cands).not.toBeNull();
-    expect(cands!.length).toBeGreaterThan(0);
+    expect(cands!.length).toBe(3); // 풀세트(A/B/C)만 단락
     const c0 = cands![0]!;
     // toCandidates 재사용 → 동형 payload(idx·title·ref_similarity).
     expect(c0.idx).toBe(0);
@@ -95,6 +117,12 @@ describe("hook localCandidates — 제목 로컬 생성(동형)", () => {
 
   it("활성 title 스타일이 없으면 null(→ LLM 폴백)", async () => {
     const supa = makeFakeSupa({ title: null });
+    const spec = hookStageSpec("run-x");
+    expect(await spec.localCandidates!(supa, { input }, { offset: 0 })).toBeNull();
+  });
+
+  it("로컬이 3개 미만(스켈레톤 2개)이면 null(→ LLM이 정확히 3개 생성)", async () => {
+    const supa = makeFakeSupa({ title: TITLE_STYLE_ROW_SHORT });
     const spec = hookStageSpec("run-x");
     expect(await spec.localCandidates!(supa, { input }, { offset: 0 })).toBeNull();
   });
@@ -114,7 +142,7 @@ describe("thumbnail localCandidates — 썸네일 로컬 생성(동형)", () => 
     const cands = await spec.localCandidates!(supa, { input }, { offset: 0 });
 
     expect(cands).not.toBeNull();
-    expect(cands!.length).toBeGreaterThan(0);
+    expect(cands!.length).toBe(3); // 풀세트(A/B/C)만 단락
     const c0 = cands![0]!;
     const payload = c0.payload as Record<string, unknown>;
     expect(payload.thumbnail_main).toEqual(["3년 묶이면", "절대 깨지 마"]);
@@ -142,6 +170,12 @@ describe("thumbnail localCandidates — 썸네일 로컬 생성(동형)", () => 
 
   it("활성 thumbnail 스타일이 없으면 null(→ LLM 폴백)", async () => {
     const supa = makeFakeSupa({ thumbnail_copy: null });
+    const spec = thumbnailStageSpec("run-y");
+    expect(await spec.localCandidates!(supa, { input }, { offset: 0 })).toBeNull();
+  });
+
+  it("로컬이 3개 미만(스켈레톤 2개)이면 null(→ LLM이 정확히 3개 생성)", async () => {
+    const supa = makeFakeSupa({ thumbnail_copy: THUMB_STYLE_ROW_SHORT });
     const spec = thumbnailStageSpec("run-y");
     expect(await spec.localCandidates!(supa, { input }, { offset: 0 })).toBeNull();
   });
