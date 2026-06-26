@@ -1,7 +1,7 @@
 // 카피 학습 저장(copy-learning-admin step0) 단위 테스트 — 순수 매핑 함수만(DB·네트워크 무관).
 //   라이브 저장은 서버액션 saveCopyAbResults(requireOwner·service-role) 경유.
 import { describe, it, expect } from "vitest";
-import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, type CopyAbInput } from "../src/app/actions/copyLearnMap.js";
+import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, buildCorrectionRow, type CopyAbInput } from "../src/app/actions/copyLearnMap.js";
 import { judgeComponent, type AbScoreInput } from "../src/performance/abVerdict.js";
 
 const TH = { decisiveMargin: 0.1, marginalMargin: 0.03 };
@@ -186,6 +186,76 @@ describe("buildLearningVideoStub — 학습 영상 stub 빌더", () => {
     const stub = buildLearningVideoStub({ title: "영상", youtubeVideoId: "vid" });
     expect(stub.source).not.toBe("imported");
     expect(stub.source).toBe("produced");
+  });
+});
+
+describe("buildCorrectionRow — 교정쌍 행 빌더(교정 학습 step0)", () => {
+  it("썸네일: gen/ideal payload는 {copy_main, copy_boxes} 모양(ab_variants 일치)", () => {
+    const row = buildCorrectionRow({
+      componentType: "thumbnail",
+      genMain: ["AI 메인"], genBoxes: ["AI 박스"],
+      idealMain: ["이상 메인"], idealBoxes: ["이상 박스"],
+    });
+    expect(row.component_type).toBe("thumbnail");
+    const gen = row.gen_payload as Record<string, unknown>;
+    const ideal = row.ideal_payload as Record<string, unknown>;
+    expect(gen.copy_main).toEqual(["AI 메인"]);
+    expect(gen.copy_boxes).toEqual(["AI 박스"]);
+    expect(ideal.copy_main).toEqual(["이상 메인"]);
+    expect(ideal.copy_boxes).toEqual(["이상 박스"]);
+  });
+
+  it("썸네일: 빈 문자열·공백은 제거(cleanStrings 재사용)", () => {
+    const row = buildCorrectionRow({
+      componentType: "thumbnail",
+      genMain: ["  유효  ", "", "   "], genBoxes: [""],
+      idealMain: ["이상"], idealBoxes: ["  박스  ", ""],
+    });
+    const gen = row.gen_payload as Record<string, unknown>;
+    const ideal = row.ideal_payload as Record<string, unknown>;
+    expect(gen.copy_main).toEqual(["유효"]);
+    expect(gen.copy_boxes).toEqual([]);
+    expect(ideal.copy_main).toEqual(["이상"]);
+    expect(ideal.copy_boxes).toEqual(["박스"]);
+  });
+
+  it("제목: gen/ideal payload는 {title} 모양(trim 적용)", () => {
+    const row = buildCorrectionRow({
+      componentType: "title",
+      genTitle: "  AI 제목  ",
+      idealTitle: " 이상 제목 ",
+    });
+    expect(row.component_type).toBe("title");
+    expect((row.gen_payload as Record<string, unknown>).title).toBe("AI 제목");
+    expect((row.ideal_payload as Record<string, unknown>).title).toBe("이상 제목");
+  });
+
+  it("제목 미지정 입력은 빈 문자열 title(검증은 액션 계층)", () => {
+    const row = buildCorrectionRow({ componentType: "title" });
+    expect((row.gen_payload as Record<string, unknown>).title).toBe("");
+    expect((row.ideal_payload as Record<string, unknown>).title).toBe("");
+  });
+
+  it("topic: trim 후 값 있을 때만 키 추가(undefined 대입 안 함)", () => {
+    const withTopic = buildCorrectionRow({ componentType: "title", topic: "  ISA 만기  ", idealTitle: "x" });
+    expect(withTopic.topic).toBe("ISA 만기");
+    const noTopic = buildCorrectionRow({ componentType: "title", idealTitle: "x" });
+    expect("topic" in noTopic).toBe(false);
+    const blankTopic = buildCorrectionRow({ componentType: "title", topic: "   ", idealTitle: "x" });
+    expect("topic" in blankTopic).toBe(false);
+  });
+
+  it("learned_at·diff는 넣지 않는다(step1/step2 책임)", () => {
+    const row = buildCorrectionRow({ componentType: "title", idealTitle: "x" });
+    expect("learned_at" in row).toBe(false);
+    expect("diff" in row).toBe(false);
+  });
+
+  it("썸네일 미지정 배열은 빈 배열로 처리(undefined 누출 없음)", () => {
+    const row = buildCorrectionRow({ componentType: "thumbnail" });
+    const gen = row.gen_payload as Record<string, unknown>;
+    expect(gen.copy_main).toEqual([]);
+    expect(gen.copy_boxes).toEqual([]);
   });
 });
 

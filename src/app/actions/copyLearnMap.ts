@@ -141,6 +141,41 @@ export function buildLearningVideoStub(input: NewLearningVideoInput): TablesInse
   return stub;
 }
 
+/** 교정쌍(생성↔이상 카피) 입력 — /copy-learn 교정 UI(step3). 썸네일이면 main/boxes, 제목이면 title. */
+export interface CorrectionInput {
+  componentType: "thumbnail" | "title";
+  topic?: string;
+  genMain?: string[]; genBoxes?: string[];   // 썸네일 — AI 생성
+  idealMain?: string[]; idealBoxes?: string[]; // 썸네일 — 김짠부 이상
+  genTitle?: string; idealTitle?: string;      // 제목 — 생성/이상
+}
+
+/** 교정쌍 payload(gen|ideal) 빌드 — ab_variants 모양과 동일(드리프트 0). 썸네일 {copy_main,copy_boxes} | 제목 {title}. */
+function buildCorrectionPayload(componentType: "thumbnail" | "title", main: string[] | undefined, boxes: string[] | undefined, title: string | undefined): Json {
+  if (componentType === "thumbnail") {
+    return { copy_main: cleanStrings(main ?? []), copy_boxes: cleanStrings(boxes ?? []) };
+  }
+  return { title: title?.trim() ?? "" };
+}
+
+/**
+ * CorrectionInput → thumbnail_corrections 행(순수 변환 — DB·네트워크 무관).
+ *   - gen_payload/ideal_payload 모양은 ab_variants(mapCopyAbToRows)와 일치: 썸네일 {copy_main,copy_boxes} | 제목 {title}.
+ *   - cleanStrings 재사용(trim·빈문자 제거). 빈 값 누출 차단.
+ *   - learned_at(step2)·diff(step1)는 넣지 않는다 — 후속 step 책임.
+ *   - topic 은 trim 후 값 있을 때만 키 추가(exactOptionalPropertyTypes — undefined 대입 안 함, buildLearningVideoStub 패턴).
+ */
+export function buildCorrectionRow(input: CorrectionInput): TablesInsert<"thumbnail_corrections"> {
+  const row: TablesInsert<"thumbnail_corrections"> = {
+    component_type: input.componentType,
+    gen_payload: buildCorrectionPayload(input.componentType, input.genMain, input.genBoxes, input.genTitle),
+    ideal_payload: buildCorrectionPayload(input.componentType, input.idealMain, input.idealBoxes, input.idealTitle),
+  };
+  const topic = input.topic?.trim();
+  if (topic) row.topic = topic;
+  return row;
+}
+
 /** UI의 component 선택("thumbnail"|"title") → style_profiles.component_type. 썸네일 카피는 thumbnail_copy. */
 export type CopyComponent = "thumbnail" | "title";
 export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "title" {

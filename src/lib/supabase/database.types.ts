@@ -79,6 +79,7 @@ type RunStateTransitions = { from_state: string; to_state: string };
 type ContentRelation = "reference" | "series_followup";
 type ContentLinks = { id: string; from_content_id: string; to_content_id: string; relation: ContentRelation; intent: string | null; created_at: string }; // migration 14
 type AuditLog = { id: string; actor_id: string | null; action: string; target_type: string | null; target_id: string | null; detail: Json | null; created_at: string }; // migration 20
+type ThumbnailCorrections = { id: string; component_type: "thumbnail" | "title"; topic: string | null; gen_payload: Json; ideal_payload: Json; diff: Json | null; learned_at: string | null; created_at: string }; // migration 24
 
 type T<Row, R extends keyof Row = never> = { Row: Row; Insert: Insertable<Row, R>; Update: Partial<Row>; Relationships: [] };
 
@@ -116,6 +117,7 @@ export interface Database {
       run_state_transitions: T<RunStateTransitions, "from_state" | "to_state">;
       content_links: T<ContentLinks, "from_content_id" | "to_content_id" | "relation">;
       audit_log: T<AuditLog, "action">;
+      thumbnail_corrections: T<ThumbnailCorrections, "component_type" | "gen_payload" | "ideal_payload">;
     };
     Views: Record<string, never>;
     Functions: Record<string, never>;

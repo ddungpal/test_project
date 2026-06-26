@@ -129,6 +129,15 @@
       "dir": "style-extract-fold-stray",
       "status": "completed",
       "completed_at": "2026-06-26T16:05:37+0900"
+    },
+    {
+      "dir": "thumbnail-correction-learning",
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (corrections-store)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-06-26T16:58:29+0900"
     }
   ]
 }

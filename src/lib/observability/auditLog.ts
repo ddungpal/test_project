@@ -21,7 +21,8 @@ export type AuditAction =
   | "learning_video_created"
   | "content_title_updated"
   | "content_deleted"
-  | "content_upload_date_updated";
+  | "content_upload_date_updated"
+  | "correction_saved";
 
 export interface AuditEntry {
   actorId: string;

@@ -11,7 +11,7 @@ import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
 import { loadConfig } from "../../llm/config.js";
 import { pickContentVerdict, type AbThresholds } from "../../performance/abVerdict.js";
-import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, type CopyAbInput, type CopyComponent, type NewLearningVideoInput } from "./copyLearnMap.js";
+import { mapCopyAbToRows, mapCtr24hToMetricRow, componentTypeFor, buildLearningVideoStub, buildCorrectionRow, type CopyAbInput, type CopyComponent, type NewLearningVideoInput, type CorrectionInput } from "./copyLearnMap.js";
 import { deleteProducedContent, isYmd } from "./contentLifecycle.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 
@@ -76,6 +76,43 @@ export async function saveCopyAbResults(input: CopyAbInput): Promise<{ savedThum
   await auditLog(supa, { actorId: ownerId, action: "copy_ab_saved", targetType: "content", targetId: contentId, detail });
 
   return { savedThumbnail, savedTitle, decided: pick !== null };
+}
+
+/** 교정쌍 payload(썸네일 {copy_main,copy_boxes} | 제목 {title})에 실제 카피가 하나라도 있는지. */
+function correctionPayloadHasCopy(payload: Json): boolean {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return false;
+  const obj = payload as { copy_main?: Json; copy_boxes?: Json; title?: Json };
+  const arrLen = (v: Json | undefined): number => (Array.isArray(v) ? v.length : 0);
+  if (typeof obj.title === "string") return obj.title.trim().length > 0;
+  return arrLen(obj.copy_main) + arrLen(obj.copy_boxes) > 0;
+}
+
+/**
+ * 교정쌍(생성↔이상 카피) 저장. requireOwner 후 service-role. 교정 학습 모듈 step0.
+ *   - buildCorrectionRow 로 순수 변환(payload 모양은 ab_variants 일치). diff·learned_at 는 null(후속 step).
+ *   - gen·ideal 각각 실제 카피가 비어있으면 throw(둘 다 있어야 교정쌍 — 차이 분석 불가 방지).
+ *   - auditLog('correction_saved') best-effort.
+ */
+export async function saveCorrection(input: CorrectionInput): Promise<{ id: string }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const row = buildCorrectionRow(input);
+  if (!correctionPayloadHasCopy(row.gen_payload) || !correctionPayloadHasCopy(row.ideal_payload)) {
+    throw new Error("생성·이상 카피를 모두 입력하세요");
+  }
+
+  const { data, error } = await supa.from("thumbnail_corrections").insert(row).select("id").single();
+  if (error) throw new Error(`교정쌍 저장 실패: ${error.message}`);
+  const id = data.id;
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "correction_saved",
+    detail: { componentType: input.componentType, hasTopic: Boolean(row.topic) },
+  });
+
+  return { id };
 }
 
 /**
