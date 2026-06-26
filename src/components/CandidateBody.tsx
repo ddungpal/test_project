@@ -36,9 +36,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
     // A/B 학습 스타일 부합도. payload는 unknown 기반 → ?.·??로 방어(훅이가 ref_similarity만 내면 자연히 없음).
     //   표시 전용 — banned여도 후보는 그대로 보이고 선택 가능(김짠부 '선택만' 철학).
     const bannedHits = p.style_conformance?.banned_hits ?? [];
-    const winningScore = p.style_conformance?.winning_score ?? 0;
     const bannedFlagged = bannedHits.length >= STYLE_CONFORMANCE_BANNED_FLAG;
-    const winningPct = Math.round(winningScore * 100);
 
     const title = (p.title ?? "").trim();
     const labelCls = "shrink-0 text-trus-white/50";
@@ -60,7 +58,6 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
               ⚠ A/B 패배 패턴
             </span>
           )}
-          {winningScore > 0 && <div className="mt-1 text-[10px] text-trus-white/45">A/B 부합 {winningPct}%</div>}
         </div>
       </div>
     );
@@ -81,9 +78,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
 
     const refFlagged = p.ref_similarity != null && p.ref_similarity >= REFERENCE_SIMILARITY_FLAG;
     const bannedHits = p.style_conformance?.banned_hits ?? [];
-    const winningScore = p.style_conformance?.winning_score ?? 0;
     const bannedFlagged = bannedHits.length >= STYLE_CONFORMANCE_BANNED_FLAG;
-    const winningPct = Math.round(winningScore * 100);
     // 주제 키워드 누락 소프트 경고(휴리스틱·표시 전용). missing===true일 때만 ⚠ 칩. 후보 차단·자동 거부 없음.
     const topicMissing = p.topic_missing?.missing === true;
     const topicKeyword = p.topic_missing?.keyword ?? undefined;
@@ -107,7 +102,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
             <span className="text-trus-white">{box2}</span>
           </div>
         )}
-        {(refFlagged || bannedFlagged || topicMissing || winningScore > 0) && (
+        {(refFlagged || bannedFlagged || topicMissing) && (
           <div className="mt-1">
             {refFlagged && (
               <span className="mr-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow">
@@ -130,7 +125,6 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
                 ⚠ 주제 키워드 없음
               </span>
             )}
-            {winningScore > 0 && <span className="text-[10px] text-trus-white/45">A/B 부합 {winningPct}%</span>}
           </div>
         )}
       </div>
