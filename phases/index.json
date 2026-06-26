@@ -137,12 +137,8 @@
     },
     {
       "dir": "correction-capture-in-run",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (copy-learn-correction-readonly)",
-      "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-06-26T18:23:36+0900"
+      "status": "completed",
+      "completed_at": "2026-06-26T18:23:49+0900"
     }
   ]
 }
