@@ -2,7 +2,10 @@ import "server-only";
 import { createAdminClient } from "../supabase/admin.js";
 import type { RunState, Stage } from "../../domain/enums.js";
 import { PROPOSAL_STAGES, type CandidateView, type ProposalStage, type ProposalSource } from "./proposalTypes.js";
+import { resolveSelectionsByStage, type ProposalRef, type StageSelectionView } from "./selectionResolve.js";
 import type { ContentRelation } from "./seedTypes.js";
+
+export type { StageSelectionView };
 
 // 런 상세 읽기(Phase 3.2) — 서버 컴포넌트 전용. admin 클라이언트(개발 바이패스와 짝, 읽기전용).
 
@@ -10,11 +13,6 @@ export interface StageProposalView {
   proposalId: string;
   candidates: CandidateView[];
   sources: ProposalSource[]; // 검색 출처(웹·YouTube) — migration 16, 없으면 []
-}
-export interface StageSelectionView {
-  chosenIdx: number | null;
-  editedPayload: unknown | null;
-  reason: string | null;
 }
 export interface StageView {
   stage: ProposalStage;
@@ -141,28 +139,29 @@ export async function getRunDetail(runId: string): Promise<RunDetail | null> {
     }
   }
 
-  // 선택(stage_selections) — 이 run의 proposal들에 한정.
-  const selByProposal = new Map<string, StageSelectionView>();
+  // 선택(stage_selections) — 이 run의 proposal들에 한정. stage별 '모든 proposal 횡단 최신 selection'을 채택하고,
+  //   각 selection의 payload는 '그 selection이 속한 proposal'의 candidates로 해석한다(최신 proposal 아님).
+  //   ★ 확정 후 재생성(새 proposal INSERT)으로 더 새 proposal이 생겨도 확정 뷰가 사라지지 않는다(selection은 옛 proposal 소속).
+  let selByStage = new Map<ProposalStage, StageSelectionView>();
   if (proposalIds.length > 0) {
     const { data: sels, error: se } = selsRes ?? { data: null, error: null };
     if (se) throw new Error(`선택 조회 실패: ${se.message}`);
-    for (const s of sels ?? []) {
-      if (selByProposal.has(s.proposal_id)) continue;
-      selByProposal.set(s.proposal_id, {
-        chosenIdx: s.chosen_idx,
-        editedPayload: s.edited_payload,
-        reason: s.selection_reason,
-      });
-    }
+    // 해석에 필요한 proposal_id → { stage, candidates }(모든 proposal 횡단). selsRes는 created_at desc 정렬.
+    const proposalRefs: ProposalRef[] = (proposals ?? []).map((p) => ({
+      id: p.id,
+      stage: p.stage as Stage,
+      candidates: (p.candidates as unknown as CandidateView[]) ?? [],
+    }));
+    selByStage = resolveSelectionsByStage(sels ?? [], proposalRefs);
   }
 
   const stages = {} as Record<ProposalStage, StageView>;
   for (const stage of PROPOSAL_STAGES) {
-    const prop = latestByStage.get(stage) ?? null;
+    const prop = latestByStage.get(stage) ?? null; // sv.proposal은 최신 proposal 그대로(폴링·draft 기준).
     stages[stage] = {
       stage,
       proposal: prop ? { proposalId: prop.id, candidates: prop.candidates, sources: prop.sources } : null,
-      selection: prop ? (selByProposal.get(prop.id) ?? null) : null,
+      selection: selByStage.get(stage) ?? null,
     };
   }
 

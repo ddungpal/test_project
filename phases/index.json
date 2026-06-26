@@ -154,6 +154,15 @@
       "dir": "post-confirm-regenerate",
       "status": "completed",
       "completed_at": "2026-06-26T23:02:00+0900"
+    },
+    {
+      "dir": "regen-confirmed-view-fix",
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (selection-per-stage)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-06-26T23:45:16+0900"
     }
   ]
 }

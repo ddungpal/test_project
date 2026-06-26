@@ -71,9 +71,10 @@ function StageSection({ runId, sv, runState, topic }: { runId: string; sv: Stage
 
   let body: React.ReactNode;
   if (sv.selection) {
-    // 선택됨 — 확정안(수정본 우선) 요약.
+    // 선택됨 — 확정안 요약. payload는 runDetail이 selection 자신의 proposal로 해석한 확정값(재생성 후에도 안정).
+    //   chosenSources는 출처 배지용 — 최신 proposal에서 chosen 후보를 찾으면 그 evidence로 필터(못 찾으면 [] 방어).
     const chosen = sv.proposal?.candidates.find((c) => c.idx === sv.selection?.chosenIdx);
-    const effective = sv.selection.editedPayload ?? chosen?.payload ?? {};
+    const effective = sv.selection.payload;
     const chosenSources = chosen && sv.proposal ? sv.proposal.sources.filter((s) => chosen.evidence_ids.includes(s.id)) : [];
     body = (
       <div className="border border-trus-white/15 p-4">
