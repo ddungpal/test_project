@@ -15,6 +15,7 @@ export const AUDIT_ACTION_LABEL: Record<string, string> = {
   run_deleted: "런 삭제",
   insight_status: "인사이트 상태변경",
   insight_edited: "인사이트 수정",
+  content_title_updated: "영상 이름 수정",
 };
 
 export interface AuditView {

@@ -18,7 +18,8 @@ export type AuditAction =
   | "copy_ab_saved"
   | "copy_relearn_requested"
   | "copy_style_activated"
-  | "learning_video_created";
+  | "learning_video_created"
+  | "content_title_updated";
 
 export interface AuditEntry {
   actorId: string;

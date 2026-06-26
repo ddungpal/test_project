@@ -116,6 +116,39 @@ export async function createLearningVideo(input: NewLearningVideoInput): Promise
 }
 
 /**
+ * 학습 영상 이름(contents.title) 수정 — 라벨/표시용. requireOwner 후 service-role.
+ *   - title 빈값(trim 후)이면 throw(비빈 값만 허용 — null 로 비우는 기능은 범위 외).
+ *   - contents.id=contentId 의 title 만 update. update 후 반환 행 0 이면 존재하지 않는 id → throw.
+ *   - ab_variants/performance_metrics 등 다른 테이블은 건드리지 않는다(이름만 변경).
+ *   - auditLog 는 best-effort(던지지 않음).
+ */
+export async function updateContentTitle(contentId: string, title: string): Promise<{ updated: boolean }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const trimmed = title.trim();
+  if (!trimmed) throw new Error("제목을 입력하세요");
+
+  const { data, error } = await supa
+    .from("contents")
+    .update({ title: trimmed })
+    .eq("id", contentId)
+    .select("id");
+  if (error) throw new Error(`영상 이름 수정 실패: ${error.message}`);
+  if (!data?.length) throw new Error("영상을 찾지 못했습니다");
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "content_title_updated",
+    targetType: "content",
+    targetId: contentId,
+    detail: { title: trimmed },
+  });
+
+  return { updated: true };
+}
+
+/**
  * A/B 스타일 재학습(사람 게이트). requireOwner 후 styleRelearnSweep 를 **동기로 await** 한다.
  *   ★ 이벤트 발행(fire-and-forget)이 아니라 직접 실행 — 그래야 프런트의 pending 이 학습 끝까지 유지돼
  *     '진행중' 표시가 정확하고, 반환값으로 component별 draft 생성/스킵을 알려 자동 새로고침·메시지가 정확해진다.
