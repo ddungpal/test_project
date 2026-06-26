@@ -1,0 +1,32 @@
+{
+  "project": "produce script",
+  "phase": "thumbnail-correction-learning",
+  "goal": "교정 학습 모듈 — 김짠부가 '원하는(이상) 카피'를 입력하면, AI '생성 카피'와의 차이를 분석(표시)하고 학습한다. 개발 단계 학습 완성도↑용(운영 가면 입력 감소). ★합류 설계: 교정쌍 = 합성 A/B(ideal=winner, gen=loser, learn_mode='correction', 사람판정 decisive·CTR무관). 기존 재학습 루프(learnAbStylePatterns→style_profiles draft→활성화)에 그대로 합류 → '차이 분석+학습'을 재사용(방금 고친 fold·존댓말 어투까지 탐). 카피 텍스트(메인2/박스2·제목)만, 시각은 후순위. step 0(thumbnail_corrections 테이블+저장)→1(차이 분석 LLM=구조화 diff 표시)→2(loadCorrectionResults 합성 + buildAbStyleInput correction 경로 + 재학습 적격/스탬프)→3(/copy-learn 교정 UI). AC 오프라인 $0(claude-p record).",
+  "steps": [
+    {
+      "step": 0,
+      "name": "corrections-store",
+      "status": "completed",
+      "started_at": "2026-06-26T16:50:29+0900",
+      "team_round": "1/3 PASS",
+      "summary": "thumbnail_corrections 테이블(migration 20260626120024, FK 없음·독립·RLS owner-read·service-role write) + buildCorrectionRow 순수 매핑(ab_variants payload 모양 일치) + saveCorrection 액션(requireOwner→insert→correction_saved 감사) + database.types Row/Tables 등재. diff/learned_at은 null insert(step1/2 책임). AC 3개(typecheck·test·build) 모두 exit 0, 테스트 474개 통과. ⚠️ 마이그레이션 SQL은 사용자가 Supabase에 직접 적용 필요(코드·타입은 수동 타입 기준이라 적용 전에도 통과).",
+      "completed_at": "2026-06-26T16:59:10+0900"
+    },
+    {
+      "step": 1,
+      "name": "correction-diff",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "correction-relearn-merge",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "correction-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-26T16:50:29+0900"
+}
