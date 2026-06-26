@@ -146,7 +146,7 @@ function normCtr(videoCtr24h: number, cap: number): number {
 
 // ponytail: reference=코퍼스 max(단순·아웃라이어에 log로 둔감). 표본 커져 단일 바이럴이 압도하면 p90 등 percentile로 교체(env 노브 신설).
 /** 조회수 신뢰도 [floor,1]. views/reference 없거나 음수·NaN·reference<=0 → 1.0(무가중·하위호환·방어). */
-function viewsConfidence(views: number | null | undefined, reference: number | null | undefined, floor: number): number {
+export function viewsConfidence(views: number | null | undefined, reference: number | null | undefined, floor: number): number {
   if (views === null || views === undefined || !Number.isFinite(views) || views < 0) return 1.0; // 미지정·NaN·음수 → 무가중 방어.
   if (reference === null || reference === undefined || !Number.isFinite(reference) || reference <= 0) return 1.0; // 기준 없음 → 무가중.
   const v = Math.min(views, reference); // [0, reference] 클램프(상한). views>=0 보장됨.

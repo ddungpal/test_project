@@ -99,6 +99,15 @@
       "dir": "copy-local-gen",
       "status": "completed",
       "completed_at": "2026-06-26T01:21:50+0900"
+    },
+    {
+      "dir": "thumbnail-winning-refs",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (winning-refs-core)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-06-26T10:45:51+0900"
     }
   ]
 }
