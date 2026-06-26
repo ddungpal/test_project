@@ -533,7 +533,8 @@ export const AB_STYLE_SYSTEM = [
   "- 추측 금지. 입력에 실재하는 표현만 적고, 예시는 입력에서 그대로 인용한다(날조 시 무효).",
   "- copy(메인카피↔작은박스 구성·후킹·강조어)와 visual(인물·레이아웃·색·숫자·장치)을 구분해 채운다.",
   "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
-  "- 이긴 패턴을 재사용 가능한 스켈레톤으로도 출력하라(patterns.skeletons) — 슬롯은 {number}/{target}/{keyword}/{topic}만 사용(이 외 슬롯 토큰 금지), 주제 무관한 고정 표현 + 슬롯 조합. title 여러 개·thumbnail 여러 개(메인2·박스2 템플릿). banned 표현은 넣지 말 것. slots 배열엔 그 template에 실제 쓴 슬롯 키만 적어라.",
+  "- 어투 규칙: 김짠부는 강하되 정중한 존댓말을 쓴다('~하세요/~마세요/~보세요/~됩니다'). 반말 명령('~하라/~마라/~봐라/~해라/~사라')은 김짠부 톤에 어긋나므로 banned 에 포함하고, structure/main_copy_notes/length_notes 의 어투 기술도 존댓말 기준으로 적는다.",
+  "- 이긴 패턴을 재사용 가능한 스켈레톤으로도 출력하라(patterns.skeletons) — 슬롯은 {number}/{target}/{keyword}/{topic}만 사용(이 외 슬롯 토큰 금지), 주제 무관한 고정 표현 + 슬롯 조합. title 여러 개·thumbnail 여러 개(메인2·박스2 템플릿). banned 표현은 넣지 말 것. slots 배열엔 그 template에 실제 쓴 슬롯 키만 적어라. 스켈레톤·예시 어투도 존댓말로(반말 명령 금지).",
   "- 출력 최상위는 patterns 와 evidence_summary 둘뿐이다. banned·confidence·tentative_notes·skeletons 는 반드시 patterns 객체 *안*에 넣어라(최상위에 두지 말 것).",
   "- 한국어로 작성한다.",
 ].join("\n");
@@ -549,6 +550,7 @@ export const TITLE_STYLE_SYSTEM = [
   "- 진 것 대비 무엇이 달랐는지를 banned(약점·피해야 할 표현)에 적는다 — 진 표현은 banned 의 근거다.",
   "- weight 가 높은(고CTR) 제목의 표현을 더 강한 신호로 본다. 가중치를 학습에 반영한다.",
   "- visual(인물·레이아웃·색·숫자·장치)은 제목에 해당 없음 — face/color_usage/number_treatment 는 '해당 없음(제목)'으로 채우고 배열은 비운다.",
+  "- 어투 규칙: 김짠부는 강하되 정중한 존댓말을 쓴다('~하세요/~마세요/~보세요/~됩니다'). 반말 명령('~하라/~마라/~봐라/~해라/~사라')은 김짠부 톤에 어긋나므로 banned 에 포함하고, structure/main_copy_notes/length_notes 의 어투 기술도 존댓말 기준으로 적는다. 스켈레톤·예시도 존댓말로.",
   "- 여러 영상에서 반복되는 승리 패턴은 high-confidence 로, 1~2 사례뿐이면 tentative 로 분류해 tentative_notes 에 '저표본 경고'를 적는다. 전반적으로 표본이 적으면 confidence 를 'tentative' 로 둔다.",
   "- equivalent_signals 는 차이가 미미했던 차원 — 과하게 학습하지 말라는 신호다. banned·강신호로 단정하지 않는다.",
   "- 추측 금지. 입력에 실재하는 표현만 적고, 예시는 입력에서 그대로 인용한다(날조 시 무효).",
