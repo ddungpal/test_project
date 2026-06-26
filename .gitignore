@@ -78,3 +78,6 @@ corpus/golden-ab/
 
 # python bytecode (harness scripts)
 scripts/__pycache__/
+
+# 런타임 스케줄러 lock(세션용·추적 제외)
+.claude/scheduled_tasks.lock
