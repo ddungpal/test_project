@@ -124,6 +124,15 @@
       "dir": "fixture-record-after-validate",
       "status": "completed",
       "completed_at": "2026-06-26T15:40:55+0900"
+    },
+    {
+      "dir": "style-extract-fold-stray",
+      "status": "running",
+      "progress": "0/1",
+      "running_step": "0 (fold-stray-fields)",
+      "attempt": 1,
+      "elapsed_seconds": 600,
+      "heartbeat_at": "2026-06-26T16:05:30+0900"
     }
   ]
 }

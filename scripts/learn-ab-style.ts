@@ -242,6 +242,28 @@ export function buildAbStyleInput(
   return out;
 }
 
+/**
+ * LLM(claude-p)이 banned/confidence/tentative_notes/skeletons 를 patterns 밖 top-level 에 둔 경우 patterns 안으로 접어넣는다(순수).
+ *   patterns 내부 값이 있으면 그쪽 우선(이중 출력 방어). 둘 다 없으면 미설정. DB·IO 없음.
+ *   ★ exactOptionalPropertyTypes 준수 — fallback(`patterns.x ?? data.x`)이 둘 다 undefined 면 키는 undefined 그대로(병합 시 spread 로 키 자체가 안 생김).
+ *   반환된 patterns 를 normalizePatterns 가 받으면 기존대로(nested) 동작한다 — 다운스트림 불변.
+ */
+export function foldStrayPatternFields(data: StyleExtractionOutput): StyleExtractionOutput["patterns"] {
+  const p = data.patterns;
+  // patterns 내부 우선, 없을 때만 top-level. 값이 있을 때만 키를 얹는다(undefined 명시 할당 금지).
+  const banned = p.banned ?? data.banned;
+  const confidence = p.confidence ?? data.confidence;
+  const tentative_notes = p.tentative_notes ?? data.tentative_notes;
+  const skeletons = p.skeletons ?? data.skeletons;
+  return {
+    ...p,
+    ...(banned !== undefined ? { banned } : {}),
+    ...(confidence !== undefined ? { confidence } : {}),
+    ...(tentative_notes !== undefined ? { tentative_notes } : {}),
+    ...(skeletons !== undefined ? { skeletons } : {}),
+  };
+}
+
 /** rawP(LLM 산출 patterns)를 ThumbnailStylePatterns 로 안전 정규화(빈 가능 배열 ?? [] + 옵셔널 신뢰도). */
 export function normalizePatterns(rawP: StyleExtractionOutput["patterns"]): ThumbnailStylePatterns {
   return {
@@ -378,7 +400,8 @@ export async function learnAbStylePatterns(
   );
 
   return {
-    patterns: normalizePatterns(out.data.patterns),
+    // ★ claude-p 가 banned/confidence/tentative_notes/skeletons 를 top-level 로 내도 foldStrayPatternFields 가 patterns 안으로 접는다.
+    patterns: normalizePatterns(foldStrayPatternFields(out.data)),
     evidence_summary: out.data.evidence_summary,
     inputVideos,
     signalCount,
@@ -511,6 +534,7 @@ export const AB_STYLE_SYSTEM = [
   "- copy(메인카피↔작은박스 구성·후킹·강조어)와 visual(인물·레이아웃·색·숫자·장치)을 구분해 채운다.",
   "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
   "- 이긴 패턴을 재사용 가능한 스켈레톤으로도 출력하라(patterns.skeletons) — 슬롯은 {number}/{target}/{keyword}/{topic}만 사용(이 외 슬롯 토큰 금지), 주제 무관한 고정 표현 + 슬롯 조합. title 여러 개·thumbnail 여러 개(메인2·박스2 템플릿). banned 표현은 넣지 말 것. slots 배열엔 그 template에 실제 쓴 슬롯 키만 적어라.",
+  "- 출력 최상위는 patterns 와 evidence_summary 둘뿐이다. banned·confidence·tentative_notes·skeletons 는 반드시 patterns 객체 *안*에 넣어라(최상위에 두지 말 것).",
   "- 한국어로 작성한다.",
 ].join("\n");
 
@@ -531,6 +555,7 @@ export const TITLE_STYLE_SYSTEM = [
   "- 데이터가 적으면(영상 N<10) 단정하지 말고 '경향'으로 적는다(과적합 경계).",
   "- 낚시(과장·허위 클릭베이트)를 권장하지 않는다. CTR 이 높았던 '정직한' 표현 방식만 사양으로 삼는다.",
   "- 이긴 패턴을 재사용 가능한 스켈레톤으로도 출력하라(patterns.skeletons) — 슬롯은 {number}/{target}/{keyword}/{topic}만 사용(이 외 슬롯 토큰 금지), 주제 무관한 고정 표현 + 슬롯 조합. title 여러 개·thumbnail 여러 개(메인2·박스2 템플릿). banned 표현은 넣지 말 것. slots 배열엔 그 template에 실제 쓴 슬롯 키만 적어라.",
+  "- 출력 최상위는 patterns 와 evidence_summary 둘뿐이다. banned·confidence·tentative_notes·skeletons 는 반드시 patterns 객체 *안*에 넣어라(최상위에 두지 말 것).",
   "- 한국어로 작성한다.",
 ].join("\n");
 

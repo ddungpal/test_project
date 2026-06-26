@@ -12,6 +12,7 @@ import {
   loadReviewedArtifact,
   normalizeSkeletons,
   normalizePatterns,
+  foldStrayPatternFields,
   verdictWeight,
   LIFT_CAP,
   type AbResultVideo,
@@ -563,5 +564,104 @@ describe("loadReviewedArtifact — skeletons 보존(--from 검수본 경로)", (
     };
     const art = loadReviewedArtifact(writeTmpJson(reviewed));
     expect("skeletons" in art.patterns).toBe(false);
+  });
+});
+
+describe("foldStrayPatternFields (top-level 잔류분 patterns 로 fold — claude-p 구조 방어)", () => {
+  /** copy/visual 만 가진 최소 patterns(4 stray 필드 없음). */
+  function basePatterns(): StyleExtractionOutput["patterns"] {
+    return {
+      copy: { structure: { description: "d", main_copy_notes: "m", small_box_notes: "s" }, length_notes: "l" },
+      visual: { face: "f", color_usage: "c", number_treatment: "n" },
+    } as unknown as StyleExtractionOutput["patterns"];
+  }
+
+  it("top-level 에만 4필드 → patterns 안으로 fold 된다(현 라이브 실패 케이스 재현·핵심 가드)", () => {
+    const data = {
+      patterns: basePatterns(),
+      evidence_summary: "e",
+      banned: ["교육·설명조"],
+      confidence: "tentative" as const,
+      tentative_notes: ["저표본"],
+      skeletons: { title: [{ template: "{keyword} 총정리", slots: ["keyword"] }] },
+    } as StyleExtractionOutput;
+
+    const folded = foldStrayPatternFields(data);
+    expect(folded.banned).toEqual(["교육·설명조"]);
+    expect(folded.confidence).toBe("tentative");
+    expect(folded.tentative_notes).toEqual(["저표본"]);
+    expect(folded.skeletons).toEqual({ title: [{ template: "{keyword} 총정리", slots: ["keyword"] }] });
+  });
+
+  it("patterns 내부에만 4필드 → 그대로 보존(하위호환)", () => {
+    const data = {
+      patterns: {
+        ...basePatterns(),
+        banned: ["나쁜표현"],
+        confidence: "high" as const,
+        tentative_notes: ["주의"],
+        skeletons: { title: [{ template: "{number} 보세요", slots: ["number"] }] },
+      },
+      evidence_summary: "e",
+    } as StyleExtractionOutput;
+
+    const folded = foldStrayPatternFields(data);
+    expect(folded.banned).toEqual(["나쁜표현"]);
+    expect(folded.confidence).toBe("high");
+    expect(folded.tentative_notes).toEqual(["주의"]);
+    expect(folded.skeletons).toEqual({ title: [{ template: "{number} 보세요", slots: ["number"] }] });
+  });
+
+  it("양쪽 다 있으면 patterns 내부 값 우선(이중 출력 방어)", () => {
+    const data = {
+      patterns: {
+        ...basePatterns(),
+        banned: ["내부우선"],
+        confidence: "high" as const,
+        tentative_notes: ["내부노트"],
+        skeletons: { title: [{ template: "{topic} 정리", slots: ["topic"] }] },
+      },
+      evidence_summary: "e",
+      banned: ["top레벨"],
+      confidence: "tentative" as const,
+      tentative_notes: ["top노트"],
+      skeletons: { title: [{ template: "{keyword} 끝", slots: ["keyword"] }] },
+    } as StyleExtractionOutput;
+
+    const folded = foldStrayPatternFields(data);
+    expect(folded.banned).toEqual(["내부우선"]);
+    expect(folded.confidence).toBe("high");
+    expect(folded.tentative_notes).toEqual(["내부노트"]);
+    expect(folded.skeletons).toEqual({ title: [{ template: "{topic} 정리", slots: ["topic"] }] });
+  });
+
+  it("둘 다 없으면 해당 키 미설정(exactOptionalPropertyTypes — 키 자체 없음)", () => {
+    const data = { patterns: basePatterns(), evidence_summary: "e" } as StyleExtractionOutput;
+    const folded = foldStrayPatternFields(data);
+    expect("banned" in folded).toBe(false);
+    expect("confidence" in folded).toBe(false);
+    expect("tentative_notes" in folded).toBe(false);
+    expect("skeletons" in folded).toBe(false);
+  });
+
+  it("통합: top-level 4필드 → fold 후 normalizePatterns 가 banned/confidence/skeletons 정상 산출", () => {
+    const data = {
+      patterns: basePatterns(),
+      evidence_summary: "e",
+      banned: ["교육조"],
+      confidence: "tentative" as const,
+      tentative_notes: ["저표본 경고"],
+      skeletons: {
+        title: [{ template: "{keyword} 총정리", slots: ["keyword"] }],
+        thumbnail: [{ main: ["{number} 보유"], boxes: ["필수"], slots: ["number"] }],
+      },
+    } as StyleExtractionOutput;
+
+    const p = normalizePatterns(foldStrayPatternFields(data));
+    expect(p.banned).toEqual(["교육조"]);
+    expect(p.confidence).toBe("tentative");
+    expect(p.tentative_notes).toEqual(["저표본 경고"]);
+    expect(p.skeletons?.title).toEqual([{ template: "{keyword} 총정리", slots: ["keyword"] }]);
+    expect(p.skeletons?.thumbnail).toEqual([{ main: ["{number} 보유"], boxes: ["필수"], slots: ["number"] }]);
   });
 });

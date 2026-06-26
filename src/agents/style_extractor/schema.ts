@@ -45,9 +45,57 @@ export interface StyleExtractionOutput {
   patterns: ThumbnailStylePatterns;
   /** 추출 근거 요약(검수용, DB 미저장 — source_ref와 함께 사람이 읽고 판단). */
   evidence_summary: string;
+  /**
+   * ★ claude-p 가 banned/confidence/tentative_notes/skeletons 를 patterns 밖 top-level 로 자주 출력한다.
+   *   그 형태도 스키마 검증을 통과시키기 위한 top-level 옵셔널 거울 필드(아래 STYLE_EXTRACTION_SCHEMA 참조).
+   *   소비 측은 foldStrayPatternFields 가 patterns 안으로 접어넣어 nested 구조로 정규화한다(다운스트림 불변).
+   */
+  banned?: ThumbnailStylePatterns["banned"];
+  confidence?: ThumbnailStylePatterns["confidence"];
+  tentative_notes?: ThumbnailStylePatterns["tentative_notes"];
+  skeletons?: ThumbnailStylePatterns["skeletons"];
 }
 
 const strArray = { type: "array", items: { type: "string" } } as const;
+
+// banned/confidence/tentative_notes/skeletons 4필드 스키마 — patterns 내부와 top-level 양쪽에서 재사용한다.
+//   (claude-p 가 이 4개를 top-level 로 토해내는 사례 방어 — 같은 스키마를 두 번 적지 않도록 const 로 추출.)
+const bannedSchema = strArray; // 옵셔널 — required 제외.
+const confidenceSchema = { type: "string", enum: ["high", "tentative"] } as const; // 옵셔널.
+const tentativeNotesSchema = strArray; // 옵셔널 빈 가능 배열 — required 제외.
+// 재사용 스켈레톤(step1) — 옵셔널. 느슨한 형태만 강제(title/thumbnail 배열·string 필드).
+//   슬롯 화이트리스트 검증은 코드(normalizeSkeletons). additionalProperties:false 라 properties 엔 반드시 등재.
+const skeletonsSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    title: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["template", "slots"],
+        properties: {
+          template: { type: "string" },
+          slots: strArray,
+        },
+      },
+    },
+    thumbnail: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["main", "boxes", "slots"],
+        properties: {
+          main: strArray,
+          boxes: strArray,
+          slots: strArray,
+        },
+      },
+    },
+  },
+} as const;
 
 export const STYLE_EXTRACTION_SCHEMA: JsonSchema = {
   type: "object",
@@ -93,45 +141,20 @@ export const STYLE_EXTRACTION_SCHEMA: JsonSchema = {
             devices: strArray,
           },
         },
-        banned: strArray,
-        confidence: { type: "string", enum: ["high", "tentative"] }, // 옵셔널 — required 제외.
-        tentative_notes: strArray, // 옵셔널 빈 가능 배열 — required 제외.
-        // 재사용 스켈레톤(step1) — 옵셔널(required 제외). additionalProperties:false 라 properties 엔 반드시 등재.
-        //   느슨한 형태만 강제(title/thumbnail 배열·string 필드). 슬롯 화이트리스트 검증은 코드(normalizeSkeletons).
-        skeletons: {
-          type: "object",
-          additionalProperties: false,
-          properties: {
-            title: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["template", "slots"],
-                properties: {
-                  template: { type: "string" },
-                  slots: strArray,
-                },
-              },
-            },
-            thumbnail: {
-              type: "array",
-              items: {
-                type: "object",
-                additionalProperties: false,
-                required: ["main", "boxes", "slots"],
-                properties: {
-                  main: strArray,
-                  boxes: strArray,
-                  slots: strArray,
-                },
-              },
-            },
-          },
-        },
+        // 아래 4개는 const 로 추출한 스키마를 참조(top-level 거울 필드와 동일 정의 — 드리프트 방지).
+        banned: bannedSchema,
+        confidence: confidenceSchema,
+        tentative_notes: tentativeNotesSchema,
+        skeletons: skeletonsSchema,
       },
     },
     evidence_summary: { type: "string" },
+    // ★ top-level 거울 — claude-p 가 이 4개를 patterns 밖으로 출력하는 사례 허용(옵셔널, required 불변).
+    //   additionalProperties:false 라 명시 등재해야 통과한다. 소비 측 foldStrayPatternFields 가 patterns 안으로 접는다.
+    banned: bannedSchema,
+    confidence: confidenceSchema,
+    tentative_notes: tentativeNotesSchema,
+    skeletons: skeletonsSchema,
   },
 };
 
