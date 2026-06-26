@@ -31,3 +31,22 @@
 [Joy] AC 직접 다 돌려봤어 typecheck 0, test 457 통과 0, build 0! 셋다 초록불이야
 [Joy] 테스트도 삭제 약화 없이 buildLearningVideoStub 케이스 6개 새로 붙었네. 통과 처리할게 맥스 수고했어 🎉
 [리드] 조이 통과 떴고 나도 AC 셋 다 직접 돌려 exit 0(test 457) 확인했어. step1 completed로 마감. 학습영상 추가 백엔드 끝, UI는 step2에서.
+
+=== Step 2: add-video-ui ===
+[리드] 마지막 step, 이번엔 UI야. /copy-learn에 "학습 영상 추가" 카드를 붙여서 step1의 createLearningVideo로 새 영상 행을 만들고, router.refresh로 목록에 나타나게 하는 거. 카피 입력은 기존 VideoCard에서 하니까 추가 카드는 "행 만들기"만.
+[리드] 에스더, 이거 맡아줄래? CopyLearningForm "영상별 입력" 섹션 위에 토글 카드 하나. 제목 필수 + 선택(yt id, 업로드일 date input, 썸네일 URL). TRUS 3색·직각·INPUT_CLS 재사용하고 빈값은 액션에 안 보내기(undefined). createLearningVideo 시그니처는 copyLearnMap.ts NewLearningVideoInput 그대로.
+
+=== Step 2: add-video-ui ===
+[Esther] 음 나 이번 학습영상 추가 카드 맡았어. step1에서 맥스가 만든 createLearningVideo 그대로 쓰면 되니까 나는 UI만 깔끔하게 붙일게. CopyLearningForm이랑 createLearningVideo 시그니처 다 읽었어.
+[Esther] AddVideoCard 만들어서 영상별 입력 헤더 바로 밑에 토글 카드로 붙였어. 제목 필수고 빈값이면 버튼 막아놨어. 유튜브 id랑 업로드일(네이티브 date input), 썸네일 URL은 선택이고 빈 건 아예 안 보내. INPUT_CLS 재사용해서 TRUS 3색만 썼고 새 색이나 그림자 같은 건 안 건드렸어.
+[Esther] 성공/에러 표기는 VideoCard.onSave 패턴 그대로 미러했어. 생성됨이랑 이미 존재 구분해서 보여줘. 이제 typecheck/test/build 돌려볼게.
+[Esther] 됐다 셋 다 통과야. typecheck 0, test 457개 다 통과, build도 0. 범위는 UI만 손댔고 백엔드는 전혀 안 건드렸어. 조이 검수 부탁해!
+
+[Joy] 오 에스더 빠르다~ 나 git diff 보고 시그니처부터 맞춰봤어. createLearningVideo가 created:boolean 돌려주는거 res.created로 잘 읽고있네 굿굿
+[Joy] INPUT_CLS 재사용했고 date는 네이티브 input type=date 썼네. 새 색이나 그림자도 안보이고. 지금 typecheck/test/build 순서로 돌려볼게!
+
+[Joy] typecheck 0, test 457개 전부 통과 0, build 0! 셋 다 깔끔하게 떨어졌어 🎉
+[Joy] 테스트 파일은 손도 안댔고 actions 백엔드도 안건드렸네. 빈 선택값은 trim해서 값있을때만 키 추가 — 빈문자열 누출 차단 완벽. 제목 빈값이면 버튼 disabled도 굿. TRUS 색도 토큰만 썼고 그림자/라운드 하나도 없어
+[Joy] 에스더 이번거 진짜 깔끔하다~ 통과! 고생했어 👍
+[Joy] 검수 끝! 에스더 깔끔하다~ typecheck/test(457)/build 셋 다 exit 0이고, createLearningVideo 시그니처 정합·빈값 생략·제목 필수 가드·router.refresh·TRUS 3색 다 지켰어. 백엔드도 안 건드렸고 범위 딱 맞아. 통과 🎉
+[리드] 조이 PASS 떴고 나도 AC 셋 다 직접 돌려 exit 0(test 457) 확인했어. step2 completed로 마감. 학습 영상 추가 UI 끝 — copy-learn-add-videos 페이즈 3 step 전부 완료다. 수고했어 다들.

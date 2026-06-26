@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle } from "@/app/actions/copyLearn";
-import type { CopyAbInput } from "@/app/actions/copyLearnMap";
+import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo } from "@/app/actions/copyLearn";
+import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
 import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType } from "@/lib/dashboard/copyLearnView";
 import { numOrNull, parseViews24h } from "@/components/copyViewsParse";
@@ -599,6 +599,133 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
   );
 }
 
+// ── 학습 영상 추가 카드 ──
+//   "행 만들기"만 한다 — 제목(필수) + 선택(youtube id·업로드일·썸네일 URL)로 createLearningVideo 호출.
+//   썸네일/제목 카피·CTR 입력은 여기서 안 함(생성 후 나타난 VideoCard 책임). VideoCard.onSave 의 error/ok 패턴 미러.
+//   빈 선택값은 빈 문자열 대신 생략(undefined)해서 보낸다 — buildLearningVideoStub 가 값 있을 때만 키 추가하므로 폼도 동일.
+function AddVideoCard() {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [youtubeVideoId, setYoutubeVideoId] = useState("");
+  const [uploadDate, setUploadDate] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  const titleTrimmed = title.trim();
+
+  function reset() {
+    setTitle("");
+    setYoutubeVideoId("");
+    setUploadDate("");
+    setThumbnailUrl("");
+  }
+
+  function onCreate() {
+    setError(null);
+    setOk(null);
+    // 선택 입력은 trim 후 값이 있을 때만 키 추가(빈 문자열 누출 차단 · undefined 대입 안 함).
+    const input: NewLearningVideoInput = { title: titleTrimmed };
+    const vid = youtubeVideoId.trim();
+    if (vid) input.youtubeVideoId = vid;
+    const date = uploadDate.trim();
+    if (date) input.uploadDate = date;
+    const thumb = thumbnailUrl.trim();
+    if (thumb) input.thumbnailUrl = thumb;
+
+    startTransition(async () => {
+      try {
+        const res = await createLearningVideo(input);
+        setOk(res.created ? "학습 영상이 생성됐어 — 아래 목록에 나타나" : "이미 존재하는 영상이야(기존 행 재사용)");
+        reset();
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "생성 실패");
+      }
+    });
+  }
+
+  return (
+    <div className="mt-3 border border-trus-white/20">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 px-4 py-3 text-left hover:border-trus-yellow/40"
+      >
+        <span className="text-sm font-black text-trus-yellow">＋ 학습 영상 추가</span>
+        <span className="ml-auto shrink-0 text-xs font-bold text-trus-white/50">{open ? "접기 −" : "열기 +"}</span>
+      </button>
+
+      {open && (
+        <div className="border-t border-trus-white/15 px-4 py-4">
+          <div className="flex flex-col gap-3">
+            <label className="block">
+              <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">제목 (필수)</span>
+              <input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="예: 30살에 1억 모은 현실 루틴"
+                aria-label="학습 영상 제목"
+                className={`mt-1 ${INPUT_CLS}`}
+              />
+            </label>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="text-xs text-trus-white/55">유튜브 video id (선택)</span>
+                <input
+                  value={youtubeVideoId}
+                  onChange={(e) => setYoutubeVideoId(e.target.value)}
+                  placeholder="예: dQw4w9WgXcQ"
+                  aria-label="유튜브 video id"
+                  className={`mt-1 ${INPUT_CLS}`}
+                />
+              </label>
+              <label className="block">
+                <span className="text-xs text-trus-white/55">업로드일 (선택)</span>
+                <input
+                  type="date"
+                  value={uploadDate}
+                  onChange={(e) => setUploadDate(e.target.value)}
+                  aria-label="업로드일"
+                  className={`mt-1 ${INPUT_CLS}`}
+                />
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="text-xs text-trus-white/55">썸네일 URL (선택)</span>
+              <input
+                value={thumbnailUrl}
+                onChange={(e) => setThumbnailUrl(e.target.value)}
+                placeholder="https://…"
+                aria-label="썸네일 URL"
+                className={`mt-1 ${INPUT_CLS}`}
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onCreate}
+              disabled={pending || titleTrimmed.length === 0}
+              className="bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {pending ? "생성 중…" : "학습 영상 만들기"}
+            </button>
+            {ok && <span className="text-xs text-trus-yellow">✓ {ok}</span>}
+            {error && <span className="text-xs text-trus-yellow">⚠ {error}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function CopyLearningForm({ videos, drafts }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[] }) {
   return (
     <div className="mt-8 flex flex-col gap-8">
@@ -609,6 +736,10 @@ export function CopyLearningForm({ videos, drafts }: { videos: CopyLearnVideo[];
           <h2 className="text-xs font-bold tracking-widest text-trus-yellow uppercase">영상별 입력</h2>
           <span className="text-xs text-trus-white/40">{videos.length}편</span>
         </div>
+
+        {/* 학습 영상 추가 — 새 행 생성. 생성 후 아래 목록에 VideoCard 로 나타난다. */}
+        <AddVideoCard />
+
         {videos.length === 0 ? (
           <p className="mt-3 border border-dashed border-trus-white/20 px-4 py-8 text-center text-sm text-trus-white/40">
             입력할 영상이 없습니다. 콘텐츠가 적재되면 여기에 영상별 카피·CTR 입력 칸이 나타납니다.

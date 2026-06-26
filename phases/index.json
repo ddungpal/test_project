@@ -108,11 +108,11 @@
     {
       "dir": "copy-learn-add-videos",
       "status": "running",
-      "progress": "1/3",
-      "running_step": "1 (learning-video-create)",
+      "progress": "2/3",
+      "running_step": "2 (add-video-ui)",
       "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-06-26T11:37:53+0900"
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-06-26T11:44:31+0900"
     }
   ]
 }
