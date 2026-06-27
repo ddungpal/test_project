@@ -15,7 +15,11 @@
     {
       "step": 1,
       "name": "structure-view-ui",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-06-27T17:55:59+0900",
+      "team_round": "1/3 PASS",
+      "summary": "/copy-learn에 읽기 전용 '구성 학습 (구다리)' StructurePanel 추가 — getStructureProfiles(active+최신 draft)를 page.tsx Promise.all에 추가해 prop 전달. patterns는 기존 PatternNode 재귀 렌더러 재사용(중복 구현 없음), reference_outlines만 분리해 normalizeOutlines로 '[주제] → 1. 섹션 — note' 가독 목록 렌더(주제없음·빈목차·note없음 방어). PATTERN_KEY_LABEL에 structure 7키 한글 라벨 추가. 빈 상태 안내·헤더 버전/상태 뱃지(STATUS_LABEL 재사용). Esther: active 라벨 중복(활성×2) 제거→'현재 적용', 빈 상태 문구 사람말로 교체. 기존 패널 무변경. AC typecheck/test(586)/build 전부 exit 0.",
+      "completed_at": "2026-06-27T18:08:00+0900"
     }
   ],
   "created_at": "2026-06-27T17:50:31+0900"
