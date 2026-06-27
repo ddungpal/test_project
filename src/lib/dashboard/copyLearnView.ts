@@ -139,6 +139,53 @@ export async function getCorrections(): Promise<CorrectionRow[]> {
   }));
 }
 
+// ── 구성(structure) 스타일 프로필 조회(structure-style 뷰) — component_type='structure'만 분리 로드. ──
+//   썸네일/제목(getCopyStyleDrafts)과 다른 독립 타입. CopyStyleComponentType union 에 'structure'를 넣지 않는다
+//   (그러면 CopyLearningForm 의 Record<CopyStyleComponentType,...>={thumbnail_copy:[],title:[]} typecheck 가 깨짐).
+//   active 1개 + (있으면) 최신 draft 1개만 싣는다. patterns 는 jsonb 원본(UI 재귀 렌더). 조회 실패해도
+//   /copy-learn 전체가 막히지 않게 best-effort(getCorrections 의 try/warn→빈/null 폴백 패턴 미러).
+
+/** 구성 스타일 프로필 1건(version·status·patterns 원본). patterns 는 jsonb 그대로 — UI 가 안전 재귀 렌더. */
+export interface StructureProfile {
+  version: number | null;
+  status: CopyStyleStatus;
+  patterns: unknown; // patterns(jsonb) 원본 — 임의 구조라 렌더러가 안전 처리.
+}
+
+/** 구성(structure) active 프로필 + 최신 draft. 각각 없으면 null. */
+export interface StructureProfiles {
+  active: StructureProfile | null;
+  latestDraft: StructureProfile | null;
+}
+
+/**
+ * style_profiles 에서 component_type='structure' 만 조회해 active 1개 + 최신 draft 1개를 싣는다.
+ *   version desc 정렬로 각 status 첫 건을 채택. 조회 실패/테이블 이슈 시 빈(null) 폴백(/copy-learn 보호).
+ */
+export async function getStructureProfiles(): Promise<StructureProfiles> {
+  const supa = createAdminClient();
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("version, status, patterns")
+    .eq("component_type", "structure")
+    .order("version", { ascending: false, nullsFirst: false });
+  if (error) {
+    // 마이그레이션 미적용·테이블 이슈에도 페이지가 막히지 않게 빈값 폴백(getCorrections 패턴 미러).
+    console.warn(`[structure] style_profiles 조회 실패(빈값으로 처리): ${error.message}`);
+    return { active: null, latestDraft: null };
+  }
+
+  let active: StructureProfile | null = null;
+  let latestDraft: StructureProfile | null = null;
+  for (const r of data ?? []) {
+    const prof: StructureProfile = { version: r.version, status: r.status as CopyStyleStatus, patterns: r.patterns };
+    if (!active && prof.status === "active") active = prof;
+    if (!latestDraft && prof.status === "draft") latestDraft = prof;
+    if (active && latestDraft) break;
+  }
+  return { active, latestDraft };
+}
+
 export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
   const supa = createAdminClient();
   const { data: contents, error } = await supa

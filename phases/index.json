@@ -182,7 +182,12 @@
     },
     {
       "dir": "copy-learn-structure-view",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (structure-view-data)",
+      "attempt": 1,
+      "elapsed_seconds": 300,
+      "heartbeat_at": "2026-06-27T17:55:31+0900"
     }
   ]
 }
