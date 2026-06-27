@@ -167,12 +167,8 @@
     },
     {
       "dir": "structure-style-learning",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (structurer-style-injection)",
-      "attempt": 1,
-      "elapsed_seconds": 600,
-      "heartbeat_at": "2026-06-27T15:56:27+0900"
+      "status": "completed",
+      "completed_at": "2026-06-27T15:56:36+0900"
     }
   ]
 }
