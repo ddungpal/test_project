@@ -1,0 +1,17 @@
+{
+  "project": "produce script",
+  "phase": "stage-gen-autorefresh",
+  "goal": "버그픽스: 제안 단계(주제/제목/썸네일/구성) 생성을 실행하면 결과가 자동으로 안 뜨고 '이전 단계 완료 후 진행됩니다' 같은 stale 섹션이 남는다(사용자가 수동 새로고침해야 보임). 근본원인: src/lib/dashboard/stageProgress.ts의 isWorking이 researching/scripting 상태에서만 true다. 제안 단계는 생성 중에도 run.state가 이전 *_selected 그대로 머물다 끝나야 *_proposed로 전이하므로 생성 중 isWorking=false → StageStepper의 페이지 레벨 LiveRefresh가 안 돈다. 자동 갱신이 오직 RequestStageButton/RegenerateButton의 클라이언트 submitted 세션에만 의존 → 새로고침/다른 화면/세션 종료 시 결과 미표시. (서버 렌더는 정상.) 수정: 제안 단계 생성 중에도 '작업 중' 신호를 남겨 isWorking=true가 되게 한다 — 워커(runProposalStage)가 생성 시작 시 progress 마커를 쓰고 완료/에러 시 지운다(setProgress 재사용·try/finally), isWorking을 (phase==='working' OR 마커 존재)로 확장(제안 상태에 한정해 stale 마커 폭주 방지). 단일 step. AC 오프라인 $0.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "proposal-gen-working-marker",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-27T17:41:40+0900",
+      "summary": "제안 단계(topic/title/thumbnail/structure) 생성 중 자동표시 안 되던 버그 수정. runProposalStage가 생성 시작 시 progress 마커(\"제안 생성 중\")를 set하고 try/finally로 성공·에러 양쪽에서 clear. getProgress(state, progressNote?)로 시그니처 확장, PROPOSAL_GEN_STATES(created+*_selected 4+*_proposed 4) 한정해 마커 존재 시 isWorking=true(종료·검수·research/script 상태는 제외해 stale 폴링 방지). StageStepper가 progressNote 전달. tests/stageProgress.test.ts 9케이스 신규. AC typecheck/test(586)/build 전부 exit 0.",
+      "completed_at": "2026-06-27T17:50:21+0900"
+    }
+  ],
+  "created_at": "2026-06-27T17:41:40+0900"
+}
