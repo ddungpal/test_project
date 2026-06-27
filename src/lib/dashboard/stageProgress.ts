@@ -72,11 +72,30 @@ export function parseSubProgress(note: string | null | undefined): SubProgress |
   return { index: Number(m[1]), total: Number(m[2]), label: m[3]! };
 }
 
-export function getProgress(state: RunState): Progress {
+// 제안 생성 마커(progress_note)가 합법적으로 set되는 상태 — 생성 중이면 isWorking=true 대상.
+//   forward 생성=fromState, run-in-place 재생성=proposedState, postConfirm 재생성=selectedState.
+//   ★ researching/scripting/research_*/script_*/approved/published/aborted/paused_soft_cap은 제외 —
+//     stale 마커가 종료·검수 상태에서 폴링을 유발하지 못하게.
+const PROPOSAL_GEN_STATES: ReadonlySet<RunState> = new Set<RunState>([
+  "created",
+  "topic_selected",
+  "titles_selected",
+  "thumbnails_selected",
+  "structure_selected",
+  "topic_proposed",
+  "titles_proposed",
+  "thumbnails_proposed",
+  "structure_proposed",
+]);
+
+export function getProgress(state: RunState, progressNote?: string | null): Progress {
   const { step, phase } = STATE_MAP[state];
   const terminal: Progress["terminal"] =
     state === "aborted" ? "aborted" : state === "published" ? "published" : state === "paused_soft_cap" ? "paused" : null;
-  const isWorking = phase === "working" && state !== "paused_soft_cap";
+  // working phase(researching/scripting) 또는 제안 생성 마커가 합법 상태에 set됐을 때 작업 중.
+  const isWorking =
+    (phase === "working" && state !== "paused_soft_cap") ||
+    (progressNote != null && PROPOSAL_GEN_STATES.has(state));
   const crew = PIPELINE_STEPS[step]?.crew ?? "";
 
   const statusLabel =

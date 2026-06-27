@@ -1,0 +1,9 @@
+{
+  "project": "produce script",
+  "phase": "copy-learn-structure-view",
+  "goal": "/copy-learn에서 구다리 구조 학습(style_profiles component_type='structure')을 사람이 확인할 수 있게 표시한다. 현재 /copy-learn은 썸네일·제목 스타일만 노출하고 structure는 안 보임. 추가: copyLearnView가 active(및 최신 draft) structure 프로필을 실어 보내고, 페이지에 '구성 학습' 섹션을 추가해 patterns를 한글 라벨로 렌더 — section_archetypes·flow_principles·hook_placement·anxiety_relief·misconception_handling·banned·confidence·reference_outlines(실제 목차 예시). 기존 스타일 draft '상세 보기' 재귀 patterns 렌더러를 재사용한다(중복 구현 금지). 읽기 전용(편집·재학습 트리거 없음). step 0(view 데이터: copyLearnView에 structure 프로필 로드)→1(UI: copy-learn 페이지에 구성 학습 섹션·reference_outlines 가독 렌더). 백엔드·structure_extractor 무변경. AC 오프라인 $0.",
+  "steps": [
+    { "step": 0, "name": "structure-view-data", "status": "pending" },
+    { "step": 1, "name": "structure-view-ui", "status": "pending" }
+  ]
+}

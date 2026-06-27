@@ -5,7 +5,7 @@ import { LiveRefresh } from "./LiveRefresh";
 // 파이프라인 5단계 진행 스테퍼 — 전체 단계 + 현재 위치 + AI 작업 중 여부 + 단계 내부 서브진행.
 //   순수 서버 컴포넌트(상태는 props). 작업 중일 때만 LiveRefresh(Realtime+폴백) 동반.
 export function StageStepper({ state, progressNote }: { state: RunState; progressNote?: string | null }) {
-  const prog = getProgress(state);
+  const prog = getProgress(state, progressNote);
   const sub = prog.isWorking ? parseSubProgress(progressNote) : null;
 
   return (
