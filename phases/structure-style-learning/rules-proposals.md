@@ -1,0 +1,1 @@
+- 제안: enum/CHECK 제약을 넓히는 마이그레이션을 추가하면 같은 커밋에서 src/lib/supabase/database.types.ts의 해당 Row 유니온 타입도 같이 넓힌다 (근거: step0이 마이그레이션 25에 component_type='structure'를 추가했지만 database.types.ts StyleProfiles 타입을 안 넓혀, 소비 step1의 .eq("component_type","structure")가 타입 좁힘으로 typecheck 실패. 스키마-타입 드리프트는 다음 소비 step에서 터진다).

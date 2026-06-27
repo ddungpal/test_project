@@ -4,12 +4,14 @@ import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
 import { STRUCTURER_SCHEMA, STRUCTURER_SYSTEM } from "./schema.js";
 import { loadApprovedInsights } from "../shared/approvedInsights.js";
+import { loadActiveStructureStyle, appendStructureStyle } from "../shared/styleProfile.js";
 
 export interface StructurerInput {
   topic: string;
   title: string | null;
   structure_insights: { id: string; title: string | null; body: string | null }[];
   tone_easy_explain: unknown | null; // tone_profile.components.easy_explain(쉬운설명 톤)만 발췌
+  structure_style_profile?: { id: string; version: number; patterns: unknown }; // PhaseA: active 구성 스타일 사양 — 있을 때만(없으면 input/system 불변)
 }
 
 export async function prepareStructurer(supa: Supa, runId: string): Promise<{ system: string; input: StructurerInput; schema: JsonSchema }> {
@@ -31,5 +33,12 @@ export async function prepareStructurer(supa: Supa, runId: string): Promise<{ sy
     structure_insights,
     tone_easy_explain: comps?.easy_explain ?? null,
   };
-  return { system: STRUCTURER_SYSTEM, input, schema: STRUCTURER_SCHEMA };
+
+  // structure-style-learning Step1 — active 구성 스타일 사양 주입. 있을 때만(없으면 input/system 불변 → 픽스처 해시 보존).
+  const structureStyle = await loadActiveStructureStyle(supa);
+  if (structureStyle) input.structure_style_profile = structureStyle;
+
+  // system 합성: structure 프로필만 SYSTEM 뒤에 붙인다. 없으면 STRUCTURER_SYSTEM 그대로(바이트 불변).
+  const system = appendStructureStyle(STRUCTURER_SYSTEM, structureStyle);
+  return { system, input, schema: STRUCTURER_SCHEMA };
 }

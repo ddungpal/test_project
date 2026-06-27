@@ -1,7 +1,7 @@
 // 썸네일 스타일 환류(PhaseA Step1) 순수 함수 테스트 — DB·LLM 무관.
 //   핵심: appendThumbnailStyle이 프로필 없을 때 시스템 프롬프트를 바이트 단위로 보존한다(픽스처 해시 보존).
 import { describe, it, expect } from "vitest";
-import { appendThumbnailStyle, appendTitleStyle, type ActiveThumbnailStyle } from "../src/agents/shared/styleProfile.js";
+import { appendThumbnailStyle, appendTitleStyle, appendStructureStyle, type ActiveThumbnailStyle } from "../src/agents/shared/styleProfile.js";
 
 const BASE = "너는 훅이다.\n제목·썸네일을 제안한다.";
 
@@ -62,5 +62,47 @@ describe("appendTitleStyle (순수) — 썸네일 미러", () => {
     expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: {} })).toBe(BASE);
     expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: null })).toBe(BASE);
     expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: ["a"] })).toBe(BASE);
+  });
+});
+
+const STRUCTURE_PROFILE: ActiveThumbnailStyle = {
+  id: "style:struct-77",
+  version: 3,
+  patterns: {
+    section_archetypes: ["공감형 오프닝", "사례 먼저", "실행 체크리스트"],
+    flow_principles: ["쉬운 것 먼저", "공감→정보→실행"],
+    hook_placement: "첫 10초 안에 공감 훅",
+    anxiety_relief: "어려운 용어 직전에 안심 한 마디",
+    misconception_handling: "흔한 오해를 사례로 먼저 깬다",
+    ordering_notes: "공감→정보→실행 순",
+    banned: ["사색적 여백형 전개"],
+  },
+};
+
+describe("appendStructureStyle (순수) — 썸네일/제목 미러", () => {
+  it("프로필이 있으면 구성 사양 섹션과 id·patterns를 시스템에 덧붙인다", () => {
+    const out = appendStructureStyle(BASE, STRUCTURE_PROFILE);
+    expect(out).not.toBe(BASE);
+    expect(out.startsWith(BASE)).toBe(true); // 베이스는 앞에 그대로 보존
+    expect(out).toContain("김짠부 구성 사양");
+    expect(out).not.toContain("김짠부 썸네일 스타일 사양"); // 구성 섹션이지 썸네일이 아니다
+    expect(out).toContain("style:struct-77"); // evidence 링크용 id 노출
+    expect(out).toContain("공감형 오프닝"); // patterns 내용 포함
+    expect(out).toContain("사색적 여백형 전개"); // banned 포함
+  });
+
+  it("같은 입력이면 결정적이다(바이트 동일)", () => {
+    expect(appendStructureStyle(BASE, STRUCTURE_PROFILE)).toBe(appendStructureStyle(BASE, STRUCTURE_PROFILE));
+  });
+
+  it("프로필이 null이면 시스템을 바이트 단위로 보존한다(해시 불변·조건부 주입)", () => {
+    expect(appendStructureStyle(BASE, null)).toBe(BASE);
+  });
+
+  it("patterns가 빈/깨진 값이면 보존한다(가드)", () => {
+    expect(appendStructureStyle(BASE, { id: "style:x", version: 1, patterns: {} })).toBe(BASE);
+    expect(appendStructureStyle(BASE, { id: "style:x", version: 1, patterns: null })).toBe(BASE);
+    expect(appendStructureStyle(BASE, { id: "style:x", version: 1, patterns: "깨짐" })).toBe(BASE);
+    expect(appendStructureStyle(BASE, { id: "style:x", version: 1, patterns: ["a", "b"] })).toBe(BASE);
   });
 });

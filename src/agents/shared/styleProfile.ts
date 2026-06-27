@@ -90,6 +90,42 @@ export function appendTitleStyle(system: string, profile: ActiveTitleStyle | nul
   ].join("\n");
 }
 
+// ── 구성 스타일 환류(structure-style-learning step1) — 썸네일/제목 미러. 구다리(structurer)에 active 'structure' 스타일을 주입. ──
+//   ★ thumbnail/title 과 동일 규칙: 프로필 없거나 patterns 비면 system 불변(해시·픽스처 보존). 조건부 주입.
+
+/** active 구성 스타일 프로필(component_type='structure')의 형태. ActiveThumbnailStyle 미러. */
+export type ActiveStructureStyle = ActiveThumbnailStyle;
+
+/** active 구성 스타일 프로필을 로드(최신 version 1행). 없으면 null. */
+export async function loadActiveStructureStyle(supa: Supa): Promise<ActiveStructureStyle | null> {
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("id, version, patterns")
+    .eq("component_type", "structure")
+    .eq("status", "active")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`active 구성 스타일 조회 실패: ${error.message}`);
+  if (!data) return null;
+  return { id: `style:${data.id}`, version: data.version ?? 0, patterns: data.patterns };
+}
+
+/** 시스템 프롬프트에 구성 스타일 지시 섹션을 덧붙인다(순수). 프로필 null/빈 patterns면 원본 그대로(해시 불변). */
+export function appendStructureStyle(system: string, profile: ActiveStructureStyle | null): string {
+  if (!profile || !hasUsablePatterns(profile.patterns)) return system;
+  const patternsJson = JSON.stringify(profile.patterns, null, 2);
+  return [
+    system,
+    "",
+    "── 김짠부 구성 사양 ──",
+    "아래는 김짠부 과거 영상에서 학습한 구성 패턴이다 — 이 흐름을 따라 목차를 설계하라(베끼지 말고 이 주제에 맞게 재구성).",
+    "section_archetypes·flow_principles·hook_placement·anxiety_relief·misconception_handling 을 이 주제에 맞춰 적용하고, banned 항목은 피하라.",
+    `이 사양을 따른 후보는 evidence_ids에 그 id(${profile.id})를 포함하라.`,
+    patternsJson,
+  ].join("\n");
+}
+
 // ── 우승 썸네일 few-shot(thumbnail-winning-refs step1) — 썸네일메이커 prepare 에 주입하는 순수 합성. ──
 //   ★ appendThumbnailStyle 미러: refs 없거나 빈 배열이면 원본 system 그대로 반환(바이트 불변 → promptHash 보존).
 //   ★ 있을 때만 '실제 고성과 우승작' few-shot 섹션을 SYSTEM 뒤에 덧붙인다. 기존 SYSTEM 규칙은 덮어쓰지 않는다.
