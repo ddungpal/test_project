@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
 import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
-import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow } from "@/lib/dashboard/copyLearnView";
+import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow, StructureProfile, StructureProfiles } from "@/lib/dashboard/copyLearnView";
 import { numOrNull, parseViews24h } from "@/components/copyViewsParse";
 
 // 카피 학습 입력 화면(copy-learning-admin step2) — owner가 영상별 썸네일·제목 A/B + CTR(24h)를 입력→저장,
@@ -535,6 +535,14 @@ const PATTERN_KEY_LABEL: Record<string, string> = {
   color_usage: "색 사용",
   number_treatment: "숫자 처리",
   layout_archetypes: "레이아웃 원형",
+  // 구성(structure) 프로필 patterns 키 — 한글 라벨(StructureStylePatterns 필드).
+  section_archetypes: "섹션 유형(section_archetypes)",
+  flow_principles: "전개 순서 원칙(flow_principles)",
+  hook_placement: "훅 배치(hook_placement)",
+  anxiety_relief: "불안 완화(anxiety_relief)",
+  misconception_handling: "오개념 처리(misconception_handling)",
+  ordering_notes: "전개 순서 메모(ordering_notes)",
+  reference_outlines: "참조 목차(reference_outlines)",
 };
 
 // patterns(jsonb, 임의 구조)를 안전하게 재귀 렌더 — 문자열·숫자·배열·객체 처리. 깊이 무관.
@@ -860,6 +868,128 @@ function AddVideoCard() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 구성 학습(구다리) — style_profiles(component_type='structure') 읽기전용 표시.
+//   patterns 렌더는 기존 PatternNode 재귀 렌더러 재사용(새 렌더러 금지). reference_outlines 만 빼서
+//   '[주제] → 1. 섹션 — note' 가독 목록으로 따로 렌더(structure few-shot 렌더와 일관). 편집/재학습/활성화 버튼 없음.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** reference_outlines(jsonb 원본)를 가독 목록 모델로 안전 정규화. 깨진/누락 값 전부 방어. */
+function normalizeOutlines(
+  value: unknown,
+): { topic: string; outline: { section: string; note?: string }[] }[] {
+  if (!Array.isArray(value)) return [];
+  const out: { topic: string; outline: { section: string; note?: string }[] }[] = [];
+  for (const item of value) {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) continue;
+    const o = item as Record<string, unknown>;
+    const topic = typeof o.topic === "string" && o.topic.trim() ? o.topic.trim() : "(주제 없음)";
+    const sections: { section: string; note?: string }[] = [];
+    if (Array.isArray(o.outline)) {
+      for (const s of o.outline) {
+        if (s === null || typeof s !== "object" || Array.isArray(s)) continue;
+        const sr = s as Record<string, unknown>;
+        const section = typeof sr.section === "string" && sr.section.trim() ? sr.section.trim() : "(섹션 없음)";
+        const note = typeof sr.note === "string" && sr.note.trim() ? sr.note.trim() : undefined;
+        sections.push(note ? { section, note } : { section });
+      }
+    }
+    out.push({ topic, outline: sections });
+  }
+  return out;
+}
+
+/** patterns(jsonb)에서 reference_outlines 만 분리한 나머지 객체. 비객체면 null. */
+function patternsWithoutOutlines(patterns: unknown): { rest: unknown; outlines: unknown } {
+  if (patterns === null || typeof patterns !== "object" || Array.isArray(patterns)) {
+    return { rest: patterns, outlines: undefined };
+  }
+  const { reference_outlines, ...rest } = patterns as Record<string, unknown>;
+  return { rest, outlines: reference_outlines };
+}
+
+// 참조 목차 가독 렌더 — '[주제] → 1. 섹션 — note'. 빈 outline·note 없음 모두 안전 처리.
+function ReferenceOutlines({ value }: { value: unknown }) {
+  const outlines = normalizeOutlines(value);
+  if (outlines.length === 0) return null;
+  return (
+    <div className="mt-3">
+      <span className="text-xs font-bold tracking-wide text-trus-yellow/80">{PATTERN_KEY_LABEL.reference_outlines}</span>
+      <ul className="mt-1.5 flex flex-col gap-3">
+        {outlines.map((o, i) => (
+          <li key={i} className="border border-trus-white/10 px-3 py-2">
+            <p className="text-sm font-bold text-trus-white">[{o.topic}]</p>
+            {o.outline.length === 0 ? (
+              <p className="mt-1 text-xs text-trus-white/35">(목차 없음)</p>
+            ) : (
+              <ol className="mt-1 flex flex-col gap-0.5 text-sm text-trus-white/80">
+                {o.outline.map((s, j) => (
+                  <li key={j}>
+                    {j + 1}. {s.section}
+                    {s.note && <span className="text-trus-white/55"> — {s.note}</span>}
+                  </li>
+                ))}
+              </ol>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// 구성 프로필 1건 — 버전·상태 헤더(DraftCard 뱃지 미러) + patterns(PatternNode, reference_outlines 제외) + 참조 목차 가독 렌더.
+function StructureProfileCard({ label, profile }: { label: string; profile: StructureProfile }) {
+  const { rest, outlines } = patternsWithoutOutlines(profile.patterns);
+  return (
+    <li className="border border-trus-white/15 px-3 py-3">
+      <div className="flex items-center gap-2 text-xs text-trus-white/55">
+        <span className="font-bold text-trus-white/70">{label}</span>
+        <span className="font-bold text-trus-white">v{profile.version ?? "—"}</span>
+        <span
+          className={
+            profile.status === "active"
+              ? "border border-trus-yellow px-1.5 py-0.5 font-bold text-trus-yellow"
+              : "border border-trus-white/25 px-1.5 py-0.5 text-trus-white/55"
+          }
+        >
+          {STATUS_LABEL[profile.status]}
+        </span>
+      </div>
+      <div className="mt-2 border-t border-trus-white/10 pt-2 text-sm leading-relaxed">
+        <PatternNode value={rest} />
+        <ReferenceOutlines value={outlines} />
+      </div>
+    </li>
+  );
+}
+
+function StructurePanel({ structure }: { structure: StructureProfiles }) {
+  const { active, latestDraft } = structure;
+  const isEmpty = !active && !latestDraft;
+  return (
+    <section className="border border-trus-white/20 p-4">
+      <h2 className="text-xs font-bold tracking-widest text-trus-yellow uppercase">구성 학습 (구다리)</h2>
+      <p className="mt-2 text-xs text-trus-white/50">
+        김짠부 완성 스크립트에서 추출한 <b className="text-trus-white/80">구성/전개 사양</b>(읽기 전용)이다.
+        섹션 유형·전개 순서·훅 배치·불안 완화·오개념 처리와 대표 편의 실제 목차를 보여준다.
+      </p>
+
+      {isEmpty ? (
+        <p className="mt-3 border border-dashed border-trus-white/20 px-4 py-8 text-center text-sm text-trus-white/40">
+          아직 학습된 구성 프로필이 없습니다. 완성 스크립트에서 구성 사양이 추출·활성화되면 여기에 나타납니다.
+        </p>
+      ) : (
+        <ul className="mt-3 flex flex-col gap-3">
+          {/* label은 카드 슬롯(현재 적용/최신 초안), 오른쪽 노랑 뱃지는 DB status — 의미가 달라 중복 아님("활성 v3 활성" 겹침 방지). */}
+          {active && <StructureProfileCard label="현재 적용" profile={active} />}
+          {latestDraft && <StructureProfileCard label="최신 초안" profile={latestDraft} />}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 교정 학습(correction-learning) 검토 — 저장된 교정쌍의 읽기전용 목록. 입력·차이 분석은
 //   런 화면(썸네일 단계)에서 캡처된다. 여기선 저장된 교정과 diff 를 검토하고, 위 StylePanel
 //   '재학습 실행' 으로 학습에 반영한다(여기엔 별도 입력/학습 버튼 없음).
@@ -961,10 +1091,12 @@ function CorrectionPanel({ corrections }: { corrections: CorrectionRow[] }) {
   );
 }
 
-export function CopyLearningForm({ videos, drafts, corrections }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[] }) {
+export function CopyLearningForm({ videos, drafts, corrections, structure }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[]; structure: StructureProfiles }) {
   return (
     <div className="mt-8 flex flex-col gap-8">
       <StylePanel drafts={drafts} />
+
+      <StructurePanel structure={structure} />
 
       <CorrectionPanel corrections={corrections} />
 
