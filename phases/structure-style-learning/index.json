@@ -1,0 +1,22 @@
+{
+  "project": "produce script",
+  "phase": "structure-style-learning",
+  "goal": "구다리(structurer)가 김짠부 실제 스크립트를 학습해 '김짠부식 구성/목차'를 짜게 한다(1단계: 집계 구조 프로필). 검증된 tone 추출 파이프라인(extract-tone.ts→tone_profile→activate)과 썸네일 스타일 파이프라인(extract-style.ts→style_profiles→appendThumbnailStyle)을 복제한다. 저장은 (a)안: style_profiles에 component_type='structure' 추가(CHECK 마이그레이션 1줄). 흐름: corpus_components(type='script', is_final) 본문 → 신규 structure_extractor 에이전트가 구성/전개 패턴 추출 → style_profiles(component_type='structure', draft) → (사람)activate → structurer/prepare가 appendStructureStyle로 SYSTEM 주입. 구조는 A/B 성과 신호가 없어 코퍼스 추출만(가중치 불필요·tone과 동형). step 0(producer: 마이그레이션+structure_extractor 에이전트+extract/activate 스크립트)→1(consumer: styleProfile 로더/주입+structurer prepare 배선). 라이브 활성화(사람·머지 후): 마이그레이션 적용→extract 스크립트(claude-p $0)→draft 검수→activate→새 구성 런 확인. 2단계(과거 실제 목차 few-shot)는 후속 phase. AC 오프라인 $0(활성 structure 프로필 없으면 promptHash 불변=기존 픽스처 보존).",
+  "steps": [
+    {
+      "step": 0,
+      "name": "structure-extractor",
+      "status": "completed",
+      "started_at": "2026-06-27T15:34:54+0900",
+      "team_round": "1/3 PASS",
+      "summary": "structure_extractor producer 구현. 신규: 마이그레이션 20260627120025_style_profiles_structure.sql(멱등 DROP/ADD로 component_type·profile_type·pts_profile_match 3제약에 'structure' 추가, 기존 값 보존·사람 적용), src/agents/structure_extractor/schema.ts(StructureStylePatterns + top-level 거울 banned/confidence/tentative_notes + STRUCTURE_STYLE_SCHEMA(배열·옵셔널 required 제외) + STRUCTURE_EXTRACTION_SYSTEM), scripts/extract-structure-style.ts(untyped client, type='script' is_final 우선 읽기, callLLM 1회, foldStructureStrayFields·normalizeStructurePatterns export, dry-run corpus/structure/ + --commit style_profiles(structure,draft,version max+1)+provenance), scripts/activate-structure-style.ts(untyped, component_type='structure' 스코프 draft→active), roles.ts structure_extractor 등록, tests/structureExtractor.test.ts(스키마 형태·required 비배열·top-level 거울·fold 흡수 3케이스). structurer/prepare 미접촉(step1). AC: typecheck=0, test=0(556 passed), build=0.",
+      "completed_at": "2026-06-27T15:46:27+0900"
+    },
+    {
+      "step": 1,
+      "name": "structurer-style-injection",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-27T15:34:54+0900"
+}
