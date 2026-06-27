@@ -4,7 +4,13 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-26(밤 — 확정후 손편집·AI재생성 + 썸네일 주제키워드/호기심갭 학습 3 phase, 전부 main push `fffb5c9`·test 537·typecheck 0) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음 = 라이브 검증(localhost:3000): ①확정 후 제목·썸네일 손편집·"AI로 다시 생성" ②새 썸네일 런에서 주제키워드 필수·호기심갭·v4 효과. ((이전 tip 9cf4ae1·교정학습 검증 완료 이력은 아래.))**_
+_Last updated: 2026-06-27(새벽 — "확정 후 수정" 4 phase 완결: 손편집·AI재생성 + 그 과정서 드러난 뷰·가드 버그 2개, 전부 main push `d5c93fd`·test 549·typecheck 0) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음 = 라이브 검증(localhost:3000): ①다운스트림 상태에서 제목·썸네일 손편집 저장·"AI로 다시 생성" ②새 썸네일 런 주제키워드 필수·호기심갭·v4 효과. ((이전 tip 9cf4ae1·교정학습 검증 완료 이력은 아래.))**_
+
+> ## 📜 세션 로그 (2026-06-27 새벽 밤4) — "확정 후 수정" 버그 2개 픽스 (하네스 2 phase, main push `d5c93fd`, test 537→549)
+> **밤3의 확정후-수정 기능을 라이브 검증하며 발견한 버그 2건을 하네스로 픽스. 각 1 step·1/3 PASS·AC exit 0. 라이브 확인 후 ff-merge·push.**
+> - **`regen-confirmed-view-fix`**(1 step): 확정 후 "AI로 다시 생성"하면 제목 섹션이 "이전 단계 완료 후 진행됩니다" placeholder로 사라지던 버그. 근본원인=`runDetail.ts`가 stage selection을 **최신 proposal id 기준으로만** 읽음(`selByProposal.get(prop.id)`) → 재생성이 만든 새 proposal엔 selection 없음 → sv.selection=null → 확정 분기 탈락. 픽스=순수 헬퍼 `selectionResolve.ts` 추출, selection을 **stage 횡단 최신**으로 잡고 payload는 **자신의 proposal** 후보로 해석(edited_payload ?? candidate[chosen_idx] ?? {}). `sv.proposal`은 최신 proposal 유지(재생성 폴링·draft 채움 기준). 보너스로 재생성 draft 채움 UX도 정상화(확정 뷰 유지→완료 감지 도달).
+> - **`edit-guard-downstream`**(1 step): 손편집 "저장"이 `⚠ 제목 손편집은 titles_selected에서만 가능(현재 thumbnails_selected)`로 막히던 버그. 근본원인=`gate.ts` editSelectedTitle/editSelectedThumbnails가 `run.state===selectedState`(확정 *직후*)만 허용 → 다음 단계 진행 시 영구 차단. 픽스=가드를 `stageIsConfirmed`(그 stage proposal들 중 selection 존재, **stage 횡단**)로 교체 → 다운스트림 상태에서도 편집 허용, 확정 전이면 throw 유지. 상태전이/마이그레이션 없음.
+> - **▶ 다음 = 라이브 검증 계속**: 다운스트림 상태 손편집 저장·AI재생성 동작·새 썸네일 런(주제키워드/호기심갭). (rules.md 신선도: rules-proposals 정리됨·없음.)
 
 > ## 📜 세션 로그 (2026-06-26 밤3) — 확정후 수정 UX 2 + 썸네일 학습포인트 1 (하네스 3 phase, 전부 main push `fffb5c9`, test 511→537)
 > **사용자 요구 3건을 하네스로 처리. 전 step Max·Joy(·Esther) 1~2라운드 PASS, AC(typecheck/test/build) exit 0. A→B 스택 ff-merge·push.**
