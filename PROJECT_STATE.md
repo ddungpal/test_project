@@ -4,7 +4,14 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-27(새벽 — "확정 후 수정" 4 phase 완결: 손편집·AI재생성 + 그 과정서 드러난 뷰·가드 버그 2개, 전부 main push `d5c93fd`·test 549·typecheck 0) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음 = 라이브 검증(localhost:3000): ①다운스트림 상태에서 제목·썸네일 손편집 저장·"AI로 다시 생성" ②새 썸네일 런 주제키워드 필수·호기심갭·v4 효과. ((이전 tip 9cf4ae1·교정학습 검증 완료 이력은 아래.))**_
+_Last updated: 2026-06-27(낮 — 구다리 스크립트 학습 2 phase + 라이브 활성화 완료. tip=`c7edca3`·test 577·typecheck 0) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음 = 라이브 검증: ①구다리 새 구성 런 — 김짠부식 구성(고정인사→비유 개념정의→오개념박살→케이스분기→커피쿠폰)·실제 목차 흐름 반영 확인 ②확정후 손편집·AI재생성(다운스트림) ③새 썸네일 런 주제키워드·호기심갭. ((이전 tip d5c93fd 이하 이력은 아래.))**_
+
+> ## 📜 세션 로그 (2026-06-27 낮 밤5) — 구다리(구성) 스크립트 학습 2 phase + 라이브 활성화 (하네스 2 phase, main push `c7edca3`, test 549→577)
+> **구다리가 5크루 중 학습 레버가 가장 약했음(고정 SYSTEM + 입력 참고만) → 김짠부 실제 스크립트를 학습해 목차 짜게 함. 검증된 tone 추출 파이프라인 복제. 각 step 1라운드 PASS·AC exit 0. ff-merge·push.**
+> - **`structure-style-learning`**(2 step, 1단계=집계 패턴): (a)안 — `style_profiles`에 `component_type='structure'` 추가(마이그레이션 `20260627120025` ✅사용자 적용). 신규 `structure_extractor` 에이전트(tone_extractor 미러·top-level fold로 style-extract-fold-stray 재발 방지) + `extract-structure-style.ts`(corpus type='script' 본문→구성 패턴 추출→draft) + `activate-structure-style.ts`. 구다리 주입: `loadActiveStructureStyle`+`appendStructureStyle`(썸네일 미러)→`structurer/prepare.ts`. 활성 없으면 promptHash 불변(픽스처 보존).
+> - **`structure-outline-fewshot`**(2 step, 2단계=실제 목차 few-shot): 마이그레이션 0 — 같은 structure 프로필 patterns에 `reference_outlines`(각 편 실제 목차·최대 6편·날조 금지) 임베드 → `appendStructureStyle`이 "── 김짠부 실제 목차 예시 ──" 가독 블록으로 렌더(JSON 덤프엔 replacer로 중복 제외). 편별 성과(CTR) 없어 랭킹 없이 대표 N편.
+> - **✅ 라이브 활성화 완료**(claude-p $0): `extract-structure-style.ts` dry-run→검수→`--commit`→`activate`. **`style_profiles(structure) v1 active`**(provenance 8편). 추출 품질 **confidence=high** — 김짠부 패턴 정확 포착(고정 인사·비유 개념정의[도시락/졸업장/차용증/주차]·'놉놉 아닙니다' 오개념박살·케이스 분기·'5명 추첨 커피쿠폰 그럼 안녕~' 마무리·banned[타이밍매매/종목추천 구성 없음]) + 실제 목차 6편. ⚠️운영 메모: extract/activate 스크립트는 dotenv 미사용 → `set -a; . ./.env; set +a` 로 SUPABASE 키 주입 후 실행.
+> - **▶ 다음 = 라이브 검증**: 새 구성 런으로 구다리가 김짠부식 구성·실제 목차 흐름 반영하는지(활성화 전과 비교). + 3단계 후보(성과 기반 목차 랭킹, perf 데이터 생기면).
 
 > ## 📜 세션 로그 (2026-06-27 새벽 밤4) — "확정 후 수정" 버그 2개 픽스 (하네스 2 phase, main push `d5c93fd`, test 537→549)
 > **밤3의 확정후-수정 기능을 라이브 검증하며 발견한 버그 2건을 하네스로 픽스. 각 1 step·1/3 PASS·AC exit 0. 라이브 확인 후 ff-merge·push.**
