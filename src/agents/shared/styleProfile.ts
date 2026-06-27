@@ -111,10 +111,52 @@ export async function loadActiveStructureStyle(supa: Supa): Promise<ActiveStruct
   return { id: `style:${data.id}`, version: data.version ?? 0, patterns: data.patterns };
 }
 
+/** 한 편의 reference_outline(topic + outline 섹션 배열)을 사람이 읽는 블록으로 렌더. 유효 항목만, 없으면 null.
+ *   방어: patterns는 unknown 기반 → topic이 비-문자열/공백이거나 outline이 배열 아니면 폐기.
+ *   섹션은 {section} 필수(비-문자열/공백 폐기), note는 옵셔널(있으면 " — note"로 덧붙임). 유효 섹션 0개면 폐기. */
+function renderReferenceOutline(entry: unknown): string | null {
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
+  const e = entry as Record<string, unknown>;
+  const topic = typeof e.topic === "string" ? e.topic.trim() : "";
+  if (topic.length === 0) return null;
+  if (!Array.isArray(e.outline)) return null;
+  const lines: string[] = [];
+  for (const raw of e.outline) {
+    if (typeof raw !== "object" || raw === null || Array.isArray(raw)) continue;
+    const s = raw as Record<string, unknown>;
+    const section = typeof s.section === "string" ? s.section.trim() : "";
+    if (section.length === 0) continue;
+    const note = typeof s.note === "string" ? s.note.trim() : "";
+    const n = lines.length + 1;
+    lines.push(note.length > 0 ? ` ${n}. ${section} — ${note}` : ` ${n}. ${section}`);
+  }
+  if (lines.length === 0) return null;
+  return [`[${topic}]`, ...lines].join("\n");
+}
+
+/** reference_outlines(unknown)를 유효 항목만 입력 순서대로 가독 few-shot 블록으로. 유효 0개면 null(블록 생략). */
+function renderReferenceOutlines(refs: unknown): string | null {
+  if (!Array.isArray(refs) || refs.length === 0) return null;
+  const blocks = refs.map(renderReferenceOutline).filter((b): b is string => b !== null);
+  if (blocks.length === 0) return null;
+  return [
+    "── 김짠부 실제 목차 예시 ──",
+    "아래는 김짠부 과거 영상의 실제 목차다. 이 전개 흐름을 참고해 이 주제에 맞는 목차를 재창작하라(섹션을 그대로 베끼지 마라).",
+    ...blocks,
+  ].join("\n");
+}
+
 /** 시스템 프롬프트에 구성 스타일 지시 섹션을 덧붙인다(순수). 프로필 null/빈 patterns면 원본 그대로(해시 불변). */
 export function appendStructureStyle(system: string, profile: ActiveStructureStyle | null): string {
   if (!profile || !hasUsablePatterns(profile.patterns)) return system;
-  const patternsJson = JSON.stringify(profile.patterns, null, 2);
+  // ★ 중복 노출 방지: reference_outlines 는 아래 가독 블록으로만 렌더하고 JSON 덤프에선 제외한다.
+  //   replacer 로 그 키만 건너뛰므로 reference_outlines 가 없던 기존 프로필은 덤프 결과가 바이트 동일하다.
+  const patternsJson = JSON.stringify(
+    profile.patterns,
+    (key, value) => (key === "reference_outlines" ? undefined : value),
+    2,
+  );
+  const refsBlock = renderReferenceOutlines((profile.patterns as Record<string, unknown>).reference_outlines);
   return [
     system,
     "",
@@ -123,6 +165,8 @@ export function appendStructureStyle(system: string, profile: ActiveStructureSty
     "section_archetypes·flow_principles·hook_placement·anxiety_relief·misconception_handling 을 이 주제에 맞춰 적용하고, banned 항목은 피하라.",
     `이 사양을 따른 후보는 evidence_ids에 그 id(${profile.id})를 포함하라.`,
     patternsJson,
+    // reference_outlines 가 유효하면 가독 few-shot 블록을 system 뒤에 덧붙인다. 없으면 생략(바이트 불변).
+    ...(refsBlock ? ["", refsBlock] : []),
   ].join("\n");
 }
 

@@ -106,3 +106,120 @@ describe("appendStructureStyle (순수) — 썸네일/제목 미러", () => {
     expect(appendStructureStyle(BASE, { id: "style:x", version: 1, patterns: ["a", "b"] })).toBe(BASE);
   });
 });
+
+// reference_outlines few-shot 렌더(outline-fewshot-render step1).
+const STRUCTURE_PROFILE_WITH_OUTLINES: ActiveThumbnailStyle = {
+  id: "style:struct-99",
+  version: 4,
+  patterns: {
+    section_archetypes: ["공감형 오프닝"],
+    flow_principles: ["쉬운 것 먼저"],
+    hook_placement: "첫 10초 안에 공감 훅",
+    anxiety_relief: "안심 한 마디",
+    misconception_handling: "오해를 먼저 깬다",
+    ordering_notes: "공감→정보→실행",
+    banned: ["사색적 톤"],
+    reference_outlines: [
+      {
+        topic: "월급 200으로 1억 모으기",
+        outline: [
+          { section: "왜 지금 시작해야 하나" },
+          { section: "통장 쪼개기", note: "3단계로" },
+        ],
+      },
+      {
+        topic: "신용카드 끊는 법",
+        outline: [{ section: "체크카드 전환" }],
+      },
+    ],
+  },
+};
+
+describe("appendStructureStyle — reference_outlines few-shot 렌더", () => {
+  it("reference_outlines가 있으면 가독 few-shot 블록을 덧붙인다(주제·섹션·note 포함)", () => {
+    const out = appendStructureStyle(BASE, STRUCTURE_PROFILE_WITH_OUTLINES);
+    expect(out).toContain("김짠부 실제 목차 예시");
+    expect(out).toContain("[월급 200으로 1억 모으기]");
+    expect(out).toContain(" 1. 왜 지금 시작해야 하나");
+    expect(out).toContain(" 2. 통장 쪼개기 — 3단계로"); // note는 " — note"로 덧붙음
+    expect(out).toContain("[신용카드 끊는 법]");
+    expect(out).toContain(" 1. 체크카드 전환");
+    // 집계 패턴은 여전히 JSON 덤프로 들어간다.
+    expect(out).toContain("공감형 오프닝");
+    // ★ 중복 노출 방지: reference_outlines는 JSON 덤프(키 노출)로는 들어가지 않는다.
+    expect(out).not.toContain('"reference_outlines"');
+  });
+
+  it("결정적이다(두 번 호출 바이트 동일)", () => {
+    expect(appendStructureStyle(BASE, STRUCTURE_PROFILE_WITH_OUTLINES)).toBe(
+      appendStructureStyle(BASE, STRUCTURE_PROFILE_WITH_OUTLINES),
+    );
+  });
+
+  it("reference_outlines 키가 없는 프로필은 step0 이전과 출력이 동일하다(few-shot 블록 없음)", () => {
+    // STRUCTURE_PROFILE은 reference_outlines 키 자체가 없다 → JSON 덤프가 replacer 영향을 받지 않아 바이트 동일.
+    const out = appendStructureStyle(BASE, STRUCTURE_PROFILE);
+    expect(out).not.toContain("김짠부 실제 목차 예시");
+    expect(out).toContain("김짠부 구성 사양"); // 집계 패턴 블록은 그대로
+  });
+
+  it("reference_outlines가 빈 배열이면 few-shot 블록을 추가하지 않는다", () => {
+    const profile: ActiveThumbnailStyle = {
+      id: "style:struct-empty",
+      version: 1,
+      patterns: { ...(STRUCTURE_PROFILE.patterns as Record<string, unknown>), reference_outlines: [] },
+    };
+    const out = appendStructureStyle(BASE, profile);
+    expect(out).not.toContain("김짠부 실제 목차 예시");
+    expect(out).toContain("김짠부 구성 사양");
+  });
+
+  it("깨진 reference_outlines(배열 아님)는 크래시 없이 블록 생략", () => {
+    const profile: ActiveThumbnailStyle = {
+      id: "style:struct-bad",
+      version: 1,
+      patterns: { ...(STRUCTURE_PROFILE.patterns as Record<string, unknown>), reference_outlines: "깨짐" },
+    };
+    const out = appendStructureStyle(BASE, profile);
+    expect(out).not.toContain("김짠부 실제 목차 예시");
+    expect(out).toContain("김짠부 구성 사양");
+  });
+
+  it("깨진 항목(topic 없음/outline 배열 아님/section 없음)은 폐기하고 유효 항목만 렌더", () => {
+    const profile: ActiveThumbnailStyle = {
+      id: "style:struct-mixed",
+      version: 1,
+      patterns: {
+        ...(STRUCTURE_PROFILE.patterns as Record<string, unknown>),
+        reference_outlines: [
+          { outline: [{ section: "토픽 없음" }] }, // topic 없음 → 폐기
+          { topic: "outline이 배열 아님", outline: "x" }, // 폐기
+          { topic: "유효섹션 없음", outline: [{ note: "section 없음" }] }, // 유효 섹션 0개 → 폐기
+          { topic: "정상 편", outline: [{ section: "정상 섹션" }] }, // 유효
+          "문자열항목", // 폐기
+        ],
+      },
+    };
+    const out = appendStructureStyle(BASE, profile);
+    expect(out).toContain("김짠부 실제 목차 예시");
+    expect(out).toContain("[정상 편]");
+    expect(out).toContain(" 1. 정상 섹션");
+    expect(out).not.toContain("[토픽 없음]");
+    expect(out).not.toContain("[outline이 배열 아님]");
+    expect(out).not.toContain("[유효섹션 없음]");
+  });
+
+  it("유효 항목이 0개면 few-shot 블록을 생략한다(크래시 없음)", () => {
+    const profile: ActiveThumbnailStyle = {
+      id: "style:struct-allbad",
+      version: 1,
+      patterns: {
+        ...(STRUCTURE_PROFILE.patterns as Record<string, unknown>),
+        reference_outlines: [{ topic: "" }, { topic: "x", outline: [] }, 123],
+      },
+    };
+    const out = appendStructureStyle(BASE, profile);
+    expect(out).not.toContain("김짠부 실제 목차 예시");
+    expect(out).toContain("김짠부 구성 사양");
+  });
+});

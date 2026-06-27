@@ -13,3 +13,18 @@
 [Joy] styleProfile.ts 안 건드렸고 마이그레이션 새 테이블도 없음 step1 몫 잘 남겨놨어
 [Joy] typecheck exit 0 test 570개 전부 통과 build도 exit 0 떴어 테스트도 약화된거 없이 오히려 6개 추가됐네 통과 진짜 깔끔하다 수고했어 맥스
 [리드] 좋아 step0 완료. index.json 갱신하고 마무리한다. 다음은 step1 렌더링이야.
+
+=== Step 1: outline-fewshot-render ===
+
+## Step 1: outline-fewshot-render
+[리드] 자, step1이다. step0이 reference_outlines를 patterns에 담아놨으니, 이제 appendStructureStyle이 그걸 사람이 읽기 좋은 few-shot 목차 블록으로 렌더하면 끝. 맥스, 맡아줄래?
+[Max] step0에서 만든 schema랑 styleProfile.ts, 테스트 다 읽었어. appendStructureStyle에 reference_outlines 가독 few-shot 블록 붙일게. JSON 덤프에선 그 키 빼서 중복 노출 막고, 없던 프로필은 바이트 동일하게 갈게.
+[Max] 다 했어. appendStructureStyle에 reference_outlines 가독 few-shot 블록 붙였고, JSON 덤프는 replacer로 그 키만 빼서 중복 노출 막았어. 키 없던 기존 프로필은 덤프 바이트 그대로라 회귀 안전해.
+[Max] 깨진 항목(topic 빈값·outline 비배열·section 없음) 다 폐기하고 유효 0개면 블록 통째로 생략하게 가드 넣었어. 테스트 7개 추가했고 typecheck/test(577)/build 전부 통과. …replacer 한 줄로 토큰 절약되니 묘하게 뿌듯하네. 놓친 거 있으면 말해줘.
+[Joy] 맥스 또 빠르네 나 git diff부터 보고 AC 세개 다 돌려볼게
+[Joy] replacer가 reference_outlines 키만 빼는 거 노드로 직접 확인했어 키 없던 기존 프로필은 stringify 바이트 진짜 똑같고 있을때만 깔끔하게 빠지네 회귀 가드 굿
+[Joy] 가독 블록도 봤어 주제는 대괄호로 섹션은 번호매김 note는 대시로 붙고 두번 호출 바이트 동일까지 테스트로 잡았네 결정적이고 좋아
+[Joy] 깨진 항목 방어 꼼꼼하다 배열 아님 topic 없음 outline 비배열 section 없음 유효0개 전부 폐기하고 크래시 안 나 테스트 7개로 다 커버됨
+[Joy] structure_extractor 스키마랑 extract 스크립트 prepare.ts 하나도 안 건드렸고 금지경로 클린해
+[Joy] typecheck exit 0 test 577개(570+7) build exit 0 전부 통과 기존 테스트 약화된거 하나도 없어 통과야 수고했어 맥스 🎉
+[리드] 깔끔하게 끝났네. AC 세 개 다 exit 0, 조이도 PASS. reference_outlines 없을 땐 바이트 불변까지 확인됐고. step1 completed로 마킹한다. 수고했어 둘 다 👏
