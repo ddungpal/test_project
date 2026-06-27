@@ -177,12 +177,8 @@
     },
     {
       "dir": "stage-gen-autorefresh",
-      "status": "running",
-      "progress": "0/1",
-      "running_step": "0 (proposal-gen-working-marker)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-27T17:49:40+0900"
+      "status": "completed",
+      "completed_at": "2026-06-27T17:50:21+0900"
     },
     {
       "dir": "copy-learn-structure-view",
