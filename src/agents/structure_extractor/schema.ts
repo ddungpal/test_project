@@ -30,6 +30,16 @@ export interface StructureStylePatterns {
   confidence?: "high" | "tentative";
   /** 저표본·소수 사례 경고(tentative 패턴 메모). 빈 배열 가능 → required 제외. */
   tentative_notes?: string[];
+  /**
+   * 코퍼스 각 편의 실제 목차(few-shot 참조용). 집계 패턴(section_archetypes 등)과 다른, 구체 목차다.
+   * 옵셔널(없어도 1단계 동작 보존). 렌더링은 step1 몫(여기선 추출·저장만).
+   */
+  reference_outlines?: {
+    /** 그 편 주제. */
+    topic: string;
+    /** 실제 목차(섹션 순서대로, 각 한 줄). */
+    outline: { section: string; note?: string }[];
+  }[];
 }
 
 export interface StructureExtractionOutput {
@@ -44,6 +54,8 @@ export interface StructureExtractionOutput {
   banned?: StructureStylePatterns["banned"];
   confidence?: StructureStylePatterns["confidence"];
   tentative_notes?: StructureStylePatterns["tentative_notes"];
+  /** claude-p 가 reference_outlines 를 patterns 밖 top-level 로 낼 경우의 거울 필드(foldStructureStrayFields 가 흡수). */
+  reference_outlines?: StructureStylePatterns["reference_outlines"];
 }
 
 const strArray = { type: "array", items: { type: "string" } } as const;
@@ -53,6 +65,32 @@ const strArray = { type: "array", items: { type: "string" } } as const;
 const bannedSchema = strArray; // 옵셔널 빈 가능 배열 — required 제외.
 const confidenceSchema = { type: "string", enum: ["high", "tentative"] } as const; // 옵셔널.
 const tentativeNotesSchema = strArray; // 옵셔널 빈 가능 배열 — required 제외.
+
+// reference_outlines 스키마 — patterns 내부·top-level 거울 양쪽에서 재사용(드리프트 방지).
+//   집계 패턴과 별개인 '구체 목차' 배열. 옵셔널·required 제외. 중첩 object 도 additionalProperties:false 로 닫는다.
+const referenceOutlinesSchema = {
+  type: "array",
+  items: {
+    type: "object",
+    additionalProperties: false,
+    required: ["topic"], // outline 은 빈 가능 → required 제외.
+    properties: {
+      topic: { type: "string" },
+      outline: {
+        type: "array",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["section"], // note 는 옵셔널.
+          properties: {
+            section: { type: "string" },
+            note: { type: "string" },
+          },
+        },
+      },
+    },
+  },
+} as const;
 
 export const STRUCTURE_STYLE_SCHEMA: JsonSchema = {
   type: "object",
@@ -76,6 +114,8 @@ export const STRUCTURE_STYLE_SCHEMA: JsonSchema = {
         banned: bannedSchema,
         confidence: confidenceSchema,
         tentative_notes: tentativeNotesSchema,
+        // 구체 목차(few-shot). 집계 패턴과 별개. 옵셔널·required 제외. top-level 거울과 동일 정의.
+        reference_outlines: referenceOutlinesSchema,
       },
     },
     evidence_summary: { type: "string" },
@@ -84,6 +124,8 @@ export const STRUCTURE_STYLE_SCHEMA: JsonSchema = {
     banned: bannedSchema,
     confidence: confidenceSchema,
     tentative_notes: tentativeNotesSchema,
+    // ★ reference_outlines top-level 거울 — claude-p 가 patterns 밖으로 낼 사례 허용(옵셔널, required 불변).
+    reference_outlines: referenceOutlinesSchema,
   },
 };
 
@@ -105,5 +147,7 @@ export const STRUCTURE_EXTRACTION_SYSTEM = [
   "- 전형적 전개 순서 메모(ordering_notes).",
   "- 안 쓰는 구성(banned): 김짠부가 쓰지 않는/어울리지 않는 구성을 부재 근거로 적는다.",
   "- 표본이 적어 확신이 약하면 confidence='tentative' 와 tentative_notes 로 표시한다.",
+  "- 추가로, 입력 스크립트 중 대표 편들의 실제 목차를 reference_outlines 로 충실히 출력하라 — 그 편이 실제로 전개된 섹션 순서대로, 각 섹션은 짧은 한 줄. 요약은 충실히, 날조·창작 금지(스크립트에 없는 섹션 추가 금지). 최대 6편만, 서로 구성이 다른 편 위주로.",
+  "- 주의: 집계 패턴(section_archetypes·flow_principles 등)과 구체 목차(reference_outlines)는 서로 다른 것이다 — 집계 패턴은 여러 편에서 뽑은 일반 사양, reference_outlines 는 개별 편의 실제 목차다. 둘을 혼동하지 마라.",
   "- 한국어로 작성한다.",
 ].join("\n");

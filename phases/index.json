@@ -169,6 +169,15 @@
       "dir": "structure-style-learning",
       "status": "completed",
       "completed_at": "2026-06-27T15:56:36+0900"
+    },
+    {
+      "dir": "structure-outline-fewshot",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (outline-extract)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-06-27T16:36:46+0900"
     }
   ]
 }

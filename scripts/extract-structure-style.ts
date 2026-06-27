@@ -46,16 +46,48 @@ export function foldStructureStrayFields(data: StructureExtractionOutput): Struc
   const banned = p.banned ?? data.banned;
   const confidence = p.confidence ?? data.confidence;
   const tentative_notes = p.tentative_notes ?? data.tentative_notes;
+  const reference_outlines = p.reference_outlines ?? data.reference_outlines;
   return {
     ...p,
     ...(banned !== undefined ? { banned } : {}),
     ...(confidence !== undefined ? { confidence } : {}),
     ...(tentative_notes !== undefined ? { tentative_notes } : {}),
+    ...(reference_outlines !== undefined ? { reference_outlines } : {}),
   };
+}
+
+const REFERENCE_OUTLINES_CAP = 6; // 대표 편 목차 최대 6편(few-shot 비대 방지).
+
+/**
+ * reference_outlines 방어 정규화(순수). claude-p 깨진 출력 안전:
+ *   - 빈 topic·빈 outline 항목 폐기, outline 내 section 없거나 빈 문자열인 항목 제거(note 는 있을 때만).
+ *   - 정제 후 outline 이 비면 그 편 통째 폐기, 최종 cap 6.
+ *   반환이 빈 배열이면 undefined(상위에서 키 자체를 안 얹어 exactOptionalPropertyTypes 준수).
+ */
+function normalizeReferenceOutlines(
+  raw: StructureExtractionOutput["patterns"]["reference_outlines"],
+): StructureStylePatterns["reference_outlines"] {
+  if (!Array.isArray(raw)) return undefined;
+  const cleaned = raw
+    .map((entry) => {
+      const topic = typeof entry?.topic === "string" ? entry.topic.trim() : "";
+      const outlineSrc = Array.isArray(entry?.outline) ? entry.outline : [];
+      const outline = outlineSrc
+        .map((o) => {
+          const section = typeof o?.section === "string" ? o.section.trim() : "";
+          const note = typeof o?.note === "string" ? o.note.trim() : "";
+          return { section, ...(note ? { note } : {}) };
+        })
+        .filter((o) => o.section.length > 0); // section 없거나 빈 문자열인 항목 제거.
+      return { topic, outline };
+    })
+    .filter((entry) => entry.topic.length > 0 && entry.outline.length > 0); // 빈 topic·빈 outline 폐기.
+  return cleaned.length ? cleaned.slice(0, REFERENCE_OUTLINES_CAP) : undefined;
 }
 
 /** rawP(LLM 산출 patterns)를 StructureStylePatterns 로 안전 정규화(빈 가능 배열 ?? [] + 옵셔널 신뢰도). */
 export function normalizeStructurePatterns(rawP: StructureExtractionOutput["patterns"]): StructureStylePatterns {
+  const reference_outlines = normalizeReferenceOutlines(rawP.reference_outlines);
   return {
     section_archetypes: rawP.section_archetypes ?? [],
     flow_principles: rawP.flow_principles ?? [],
@@ -64,9 +96,10 @@ export function normalizeStructurePatterns(rawP: StructureExtractionOutput["patt
     misconception_handling: rawP.misconception_handling,
     ordering_notes: rawP.ordering_notes,
     banned: rawP.banned ?? [],
-    // confidence·tentative_notes 는 값 있을 때만 키 포함(exactOptionalPropertyTypes 준수).
+    // confidence·tentative_notes·reference_outlines 는 값 있을 때만 키 포함(exactOptionalPropertyTypes 준수).
     ...(rawP.confidence !== undefined ? { confidence: rawP.confidence } : {}),
     ...(rawP.tentative_notes !== undefined ? { tentative_notes: rawP.tentative_notes } : {}),
+    ...(reference_outlines !== undefined ? { reference_outlines } : {}),
   };
 }
 
