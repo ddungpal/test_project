@@ -172,12 +172,8 @@
     },
     {
       "dir": "structure-outline-fewshot",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (outline-fewshot-render)",
-      "attempt": 1,
-      "elapsed_seconds": 360,
-      "heartbeat_at": "2026-06-27T16:43:41+0900"
+      "status": "completed",
+      "completed_at": "2026-06-27T16:44:25+0900"
     }
   ]
 }
