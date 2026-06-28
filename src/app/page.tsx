@@ -2,6 +2,7 @@ import { listRuns, listReferenceEditions, type RunListItem } from "@/lib/dashboa
 import { STATE_LABEL, runTone, type RunTone } from "@/lib/dashboard/labels";
 import { isDevBypass, requireOwnerPage } from "@/app/actions/auth";
 import { NewRunButton } from "@/components/NewRunButton";
+import { StandaloneRunButton } from "@/components/StandaloneRunButton";
 import { DeleteRunButton } from "@/components/DeleteRunButton";
 
 // Phase 3.1 — 대시보드 진입: 런 목록 + 새 편 시작. (런 상세=제안→선택은 3.2)
@@ -68,6 +69,10 @@ export default async function Home() {
 
       <div className="mt-8">
         <NewRunButton references={references} />
+      </div>
+
+      <div className="mt-4">
+        <StandaloneRunButton />
       </div>
 
       <section className="mt-10">

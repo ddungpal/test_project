@@ -65,3 +65,24 @@
 [Joy] callLLM import 0(주석만 있음), raw update 0으로 transitionRun만 쓰고, structure도 일반 walk 타고. 무관 fixture도 안 딸려왔어
 [Joy] 기존 throw 테스트는 동작 바뀌어서 정당하게 교체됐고, 게이트 필터를 테스트에서 그대로 재현해서 usable 통과까지 검증함. 봐주기 없이 봤는데 통과! 맥스 굿굿 👍
 [리드] 조이 PASS, AC exit 0 둘 다 확인했어. money-safety 핵심(verified 금지·unverified+human_approved=true로 정직하게 게이트 통과)까지 정확히 짚어줘서 좋았다. step3 완료 처리할게. 다음은 step4 단독 실행 UI(에스더 차례).
+
+=== Step 4: standalone-ui ===
+
+=== Step 4: standalone-ui ===
+[리드] 마지막 step이다. 메인 화면(page.tsx)에 '단독 실행' 섹션 추가 — 크루 6개 중 하나 고르면 STANDALONE_DEPS[stage].seeds 기준으로 필요한 입력칸만 동적으로 뜨고, 제출하면 runStandalone 호출 후 /runs/[id]로 이동. 에스더, UI라 네가 맡아줘. NewRunButton 패턴 그대로 미러하고 TRUS 3색·격동고딕만. 작업하면서 chat.md에 네 말투로 한 줄씩 남겨줘.
+[Esther] 음.. 나야 에스더. 마지막 step 맡았어. NewRunButton이랑 deps.ts 다 읽었고, STANDALONE_DEPS.seeds로 입력칸 동적 렌더하는 구조 머리에 그려졌어. 별도 라우트 안 만들고 page.tsx에 섹션만 깔끔하게 추가할게.
+[Esther] 크루 고르면 그 단계가 진짜 필요한 입력만 뜨게 할 거야. 셜록은 썸네일 안 받고, 촉이는 입력칸 아예 없고. seeds가 단일 출처라 내가 임의로 칸 더 안 만들어. 이건 자신 있어.
+[Esther] StandaloneRunButton 만들고 page.tsx 새 편 시작 섹션 바로 아래에 끼워넣었어. 기존 run 목록은 안 건드렸어. 크루 탭은 노랑 활성/외곽선 비활성으로 NewRunButton이랑 톤 맞췄고, 필수 입력 안 채우면 버튼 비활성 + 안내 한 줄. 단독 실행은 새 편 시작이랑 시각적으로 살짝 구분되게 외곽선만 회색으로 줬어. 위계 정리한 거야 이건.
+[Esther] 이제 typecheck/test/build 셋 다 돌려볼게. 떨리네 살짝 🙈
+[Esther] 됐어! typecheck 0, test 614개 다 통과, build도 0. 기존 거 하나도 안 깨졌어. 단독 실행 섹션 깔끔하게 들어갔고 셜록 고르면 썸네일 칸 안 뜨는 것도 확인. 마무리할게 :)
+[리드] AC 나도 직접 돌렸어. typecheck 0, test 0(614개), build 0. 조이, git diff랑 같이 검수 부탁해. 폼이 STANDALONE_DEPS 기반으로 크루별 필요한 입력만 뜨는지, 셜록에 썸네일 입력 없는지, TRUS 3색·그림자 없는지, 기존 run 목록 안 깨졌는지 봐줘.
+[Joy] 오 에스더 단독실행 UI 왔네! StandaloneRunButton 신규 + page.tsx 섹션 추가만, 깔끔하다
+[Joy] seeds 동적렌더 확인했어. 셜록(research)에 썸네일 입력 없음, 구다리(structure)도 썸네일 없음 굿굿
+[Joy] runStandalone(target, rawInputs) 호출하고 성공시 router.push(/runs/id) 이동 맞음. shadow/gradient 클래스도 없고 trus 3색만 쓰네
+[Joy] 이제 npm typecheck/test/build 직접 돌려볼게 잠깐만~
+[Joy] AC 셋 다 통과! typecheck exit 0, test 614개 그대로 exit 0, build도 exit 0 깔끔
+[Joy] build 라우트 목록에 /standalone 없고 메인 / 에 섹션만 붙음. 별도 라우트 안 만든 거 확인 굿
+[Joy] 사소한 거 하나: thumbnail 단계 크루명을 "썸네일"로 적었는데 CLAUDE.md상 훅이가 썸네일·제목 둘 다 담당이긴 해. 기능엔 영향 없어서 통과! 제안만 살짝 남겨둘게
+[Joy] 에스더 이번 것도 깔끔하다 통과야 수고했어 🎉
+[Joy] 다 봤어! 셜록에 썸네일 입력 없고, 폼이 seeds 단일출처로 동적 렌더되고, 별도 라우트도 안 만들었네. AC 셋 다 exit 0, 테스트 614개 그대로. 통과! 🎉
+[리드] 좋아, Step 4 PASS. 단독 실행 phase 5개 step 다 닫혔다. 다들 수고했어 👏

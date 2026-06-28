@@ -188,11 +188,11 @@
     {
       "dir": "standalone-stages",
       "status": "running",
-      "progress": "3/5",
-      "running_step": "3 (standalone-script-seed)",
+      "progress": "4/5",
+      "running_step": "4 (standalone-ui)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-28T12:20:01+0900"
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-06-28T12:26:55+0900"
     }
   ]
 }
