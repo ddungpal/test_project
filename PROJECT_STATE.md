@@ -4,7 +4,20 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-27(저녁 — 구다리 스크립트 학습(2 phase)+라이브 활성화 + 자동새로고침 버그픽스 + /copy-learn 구조학습 표시. tip=`4cf96bc`·test 586·typecheck 0·전부 origin push 완료) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음(재개점) = 라이브 검증(localhost:3000, dev 서버 떠있음·claude-p $0): ①구다리 새 구성 런 — 김짠부식 구성(고정인사→비유 개념정의→오개념박살→케이스분기→커피쿠폰)·실제 목차 흐름 반영 확인(활성화 전과 비교) ②`/copy-learn` "구성 학습(구다리)" 섹션에 추출된 구조 보이는지 ③구성 생성 시 결과 자동표시(수동 새로고침 불필요) ④확정후 손편집·AI재생성(다운스트림)·새 썸네일 런 주제키워드/호기심갭. 검증 후 후속 후보: 구다리 3단계(성과기반 목차 랭킹)·썸네일 방법 B(예시30+)·OpenAI/구글 키 rotate(배포 전 최우선). ((이전 tip d5c93fd 이하 이력은 아래.))**_
+_Last updated: 2026-06-28(낮 — **단독 실행(standalone-stages) phase 완료·main push·마이그레이션 적용·dev 서버 기동**. tip=`ce73c77`·test 614(+28)·typecheck 0·origin push 완료) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음(재개점) = 단독 실행 라이브 검증(localhost:3000 떠있음·claude-p $0): 메인 '단독 실행' 섹션 → ①셜록 골라 입력칸이 주제+구성만 뜨는지(썸네일 안 물음=핵심 목적) → 실행 시 /runs/[id]로 리서치만 도는지 ②구다리=주제만(제목 선택)으로 구성안 ③짠펜=구성+검증사실(여러줄)로 스크립트 ④단독 run이 메인 목록엔 안 보이는지(숨김). 그다음 기존 구다리 학습 검증(아래). 검증 후 후속: 구다리 3단계(성과기반 목차 랭킹)·썸네일 방법 B(예시30+)·⚠️OpenAI/구글 키 rotate(배포 전 최우선). ((이전 재개점=구다리 학습 검증은 아래 세션로그.))**_
+
+> ## 📜 세션 로그 (2026-06-28 낮) — 단독 실행(standalone-stages) phase (하네스 5 step, main push `ce73c77`, test 586→614)
+> **사용자 요구=각 크루를 선형 파이프라인 강제 없이 '단독 도구'처럼 개별 실행(브레인스토밍으로 (1)단독도구형 확정, 짠펜 포함·메인화면 진입). 방법 A=스크래치 런 시딩. 하네스 5 step 전부 1라운드 PASS·AC(typecheck/test/build) exit 0. ff-merge·push·feat 정리·마이그레이션 적용·dev 재기동까지 완료.**
+> - **핵심 설계**: DB 트리거가 INSERT를 `state='created'` 강제+전이표만 허용 → 임시 run을 만들어 목표 단계 `enters`까지 `transitionRun`으로 walk하며 사용자 입력만 `stage_proposals`+`stage_selections`(+짠펜은 `research_facts`/`explanation_assets`)에 **LLM 0·$0**로 시드 → 목표 단계 하나만 평소처럼 실행. 기존 실행엔진·게이트·lineage·학습자산 100% 재사용.
+> - **의존성 진실 반영**: `STANDALONE_DEPS`(deps.ts)가 진짜 필요한 입력만 — **셜록=주제+구성, 구다리=주제(+제목옵션), 둘 다 썸네일 안 물음**(셜록은 썸네일 미사용). structure shape=`{approach, outline:[{section,goal,why}]}`(structurer/stage.ts 소비형 일치).
+> - **step0 `standalone-deps-core`**: 순수 의존성맵+selection shaping(topic/title→{title}, structure→outline). **step1 `standalone-run-flag`**: 마이그레이션 26 `production_runs.is_standalone`(additive·default false) + `listRuns` 필터(메인 목록서 단독 run 숨김, 상세 /runs/[id]는 불변). **✅ 사용자 마이그레이션 적용 완료.** **step2 `standalone-seeder`**: `seed.ts`(seedStandaloneRun)+`standaloneRun.ts`(runStandalone, use server) — walk+시드+이벤트 발사(raw update 0). **step3 `standalone-script-seed`**(money-safety 격리): 짠펜 facts를 `human_approved=true`·`verification_status='unverified'`로 시드 → scriptCell 게이트 **미수정** 통과(verified-CHECK 우회). **step4 `standalone-ui`**(Esther): `StandaloneRunButton.tsx`+메인 page.tsx 섹션, 크루 6탭·STANDALONE_DEPS로 필요한 입력만 동적 렌더.
+> - **Joy 규칙 제안 1건**(`phases/standalone-stages/rules-proposals.md`): 단독UI thumbnail 크루 라벨('썸네일')이 CLAUDE.md 크루정의(훅이=썸네일·제목)와 표면 불일치 — 라벨 컨벤션만, 기능 무관. **병합/무시 미결정**(다음 세션 rules review에서).
+> - **▶ 다음 = 단독 실행 라이브 검증**(위 재개점 ①~④). dev·inngest 기동됨·preflight ✅.
+
+> ## 📜 세션 로그 (2026-06-27 저녁) — 구다리(구성) 스크립트 학습 활성화 + 픽스 (tip=`4cf96bc`)
+> _(상세는 아래 6-27 세션 로그들. 단독실행 검증 후 이어서 구다리 새 구성 런으로 김짠부식 구성·실제 목차 반영 확인.)_
+
+_(2026-06-27 tip)_ 단계: **실사용 검증 + 학습 루프 강화. ▶▶ (이전 재개점) 라이브 검증: ①구다리 새 구성 런 — 김짠부식 구성(고정인사→비유 개념정의→오개념박살→케이스분기→커피쿠폰)·실제 목차 흐름 반영 확인(활성화 전과 비교) ②`/copy-learn` "구성 학습(구다리)" 섹션에 추출된 구조 보이는지 ③구성 생성 시 결과 자동표시(수동 새로고침 불필요) ④확정후 손편집·AI재생성(다운스트림)·새 썸네일 런 주제키워드/호기심갭. 검증 후 후속 후보: 구다리 3단계(성과기반 목차 랭킹)·썸네일 방법 B(예시30+)·OpenAI/구글 키 rotate(배포 전 최우선). ((이전 tip d5c93fd 이하 이력은 아래.))**_
 
 > ## 📜 세션 로그 (2026-06-27 낮 밤5) — 구다리(구성) 스크립트 학습 2 phase + 라이브 활성화 (하네스 2 phase, main push `c7edca3`, test 549→577)
 > **구다리가 5크루 중 학습 레버가 가장 약했음(고정 SYSTEM + 입력 참고만) → 김짠부 실제 스크립트를 학습해 목차 짜게 함. 검증된 tone 추출 파이프라인 복제. 각 step 1라운드 PASS·AC exit 0. ff-merge·push.**
