@@ -42,7 +42,11 @@
     {
       "step": 4,
       "name": "standalone-ui",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-06-28T12:20:55+0900",
+      "team_round": "1/3 PASS",
+      "summary": "메인 화면 '단독 실행' 섹션 — 신규 src/components/StandaloneRunButton.tsx(use client, NewRunButton 패턴 미러) + src/app/page.tsx에 섹션 임포트(기존 run 목록 불변). 크루 6개 탭(촉이/훅이/썸네일/구다리/셜록/짠펜) 선택 시 STANDALONE_DEPS[stage].seeds 단일 출처로 필요한 입력칸만 동적 렌더(selection→input, research_facts/explanation_assets→textarea, required:false→'(선택)', topic은 seeds 빈배열→버튼만). required 미충족 시 disabled+안내. 제출→runStandalone(target,rawInputs)→router.push('/runs/[id]'). 별도 라우트 없음. TRUS 3색·그라데이션/그림자 0. typecheck·test(614)·build exit 0.",
+      "completed_at": "2026-06-28T12:27:39+0900"
     }
   ],
   "created_at": "2026-06-28T11:50:23+0900"
