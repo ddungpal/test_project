@@ -187,12 +187,8 @@
     },
     {
       "dir": "standalone-stages",
-      "status": "running",
-      "progress": "4/5",
-      "running_step": "4 (standalone-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 360,
-      "heartbeat_at": "2026-06-28T12:26:55+0900"
+      "status": "completed",
+      "completed_at": "2026-06-28T12:27:39+0900"
     }
   ]
 }
