@@ -22,12 +22,21 @@ interface Store {
   production_runs: Row[];
   stage_proposals: Row[];
   stage_selections: Row[];
+  research_facts: Row[];
+  explanation_assets: Row[];
 }
 
 function makeSupa() {
   let seq = 0;
   const id = (p: string) => `${p}${++seq}`;
-  const store: Store = { contents: [], production_runs: [], stage_proposals: [], stage_selections: [] };
+  const store: Store = {
+    contents: [],
+    production_runs: [],
+    stage_proposals: [],
+    stage_selections: [],
+    research_facts: [],
+    explanation_assets: [],
+  };
 
   // select 체인: 누적 eq 필터 + order/limit를 적용해 행을 거른다.
   function selectChain(table: keyof Store, _cols: string) {
@@ -162,9 +171,117 @@ describe("seedStandaloneRun — 단독 실행 시더", () => {
     await expect(seedStandaloneRun(supa, "research", { topic: "주제만" })).rejects.toThrow(/구성/);
   });
 
-  it("script 타깃은 throw(step3 격리)", async () => {
+});
+
+// ── script 타깃: research_facts/explanation_assets 시드(money-safety) ─────────
+// scriptCell.ts:53-81 게이트를 그대로 재현해 시드 행이 usable 필터를 통과하는지 검증한다.
+//   usable fact = human_approved===true || (escalated_to_human===false && verification_status==="verified")
+//   usable asset = kind==="number" ? math_verified===true : distortion_checked===true
+function usableFacts(store: Store, runId: string): Row[] {
+  return store.research_facts
+    .filter((f) => f.run_id === runId)
+    .filter((f) => f.human_approved === true || (f.escalated_to_human === false && f.verification_status === "verified"));
+}
+function usableAssets(store: Store, runId: string): Row[] {
+  return store.explanation_assets
+    .filter((a) => a.run_id === runId)
+    .filter((a) => (a.kind === "number" ? a.math_verified === true : a.distortion_checked === true));
+}
+
+describe("seedStandaloneRun — script 타깃(facts/assets 시드)", () => {
+  it("시드 후 run.state === research_approved", async () => {
+    const { supa, store } = makeSupa();
+    const runId = await seedStandaloneRun(supa, "script", {
+      structure: "인트로 → 본론 → 마무리",
+      facts: "사실 A",
+    });
+    expect(stateOf(store, runId)).toBe("research_approved");
+    expect(store.production_runs.find((r) => r.id === runId)!.is_standalone).toBe(true);
+  });
+
+  it("structure selection이 getSelectedStagePayload로 정확히 읽힘", async () => {
     const { supa } = makeSupa();
-    await expect(seedStandaloneRun(supa, "script", { structure: "x", facts: "y" })).rejects.toThrow(/step3/);
+    const runId = await seedStandaloneRun(supa, "script", {
+      structure: "공포 → 해소",
+      facts: "사실 A",
+    });
+    const structure = (await getSelectedStagePayload(supa, runId, "structure")) as {
+      approach: string;
+      outline: Array<{ section: string }>;
+    };
+    expect(structure.approach).toBe("사용자 입력 구성");
+    expect(structure.outline[0]?.section).toBe("공포 → 해소");
+  });
+
+  it("research_facts: 여러 줄 → 여러 행, 모두 usable 필터(human_approved===true) 통과", async () => {
+    const { supa, store } = makeSupa();
+    const runId = await seedStandaloneRun(supa, "script", {
+      structure: "구성",
+      facts: "첫째 사실\n둘째 사실\n  \n셋째 사실",
+    });
+    // 빈 줄(공백만)은 무시 → 3행.
+    const seeded = store.research_facts.filter((f) => f.run_id === runId);
+    expect(seeded).toHaveLength(3);
+    expect(seeded.map((f) => f.claim)).toEqual(["첫째 사실", "둘째 사실", "셋째 사실"]);
+    // 시드 fact는 verified가 아니라 human_approved=true로 통과(거짓 검증 금지).
+    for (const f of seeded) {
+      expect(f.verification_status).toBe("unverified");
+      expect(f.human_approved).toBe(true);
+    }
+    expect(usableFacts(store, runId)).toHaveLength(3);
+  });
+
+  it("explanation_assets: number 줄=math_verified, analogy 줄=distortion_checked, 둘 다 usable 통과", async () => {
+    const { supa, store } = makeSupa();
+    const runId = await seedStandaloneRun(supa, "script", {
+      structure: "구성",
+      facts: "사실 A",
+      assets: "number|복리|월 10만원 30년=약 1억\nanalogy|복리|눈덩이 굴리기",
+    });
+    const num = store.explanation_assets.find((a) => a.kind === "number" && a.run_id === runId)!;
+    const ana = store.explanation_assets.find((a) => a.kind === "analogy" && a.run_id === runId)!;
+    expect(num.math_verified).toBe(true);
+    expect(num.numeric_example).toBe("월 10만원 30년=약 1억");
+    expect(num.concept).toBe("복리");
+    expect(ana.distortion_checked).toBe(true);
+    expect(ana.analogy).toBe("눈덩이 굴리기");
+    expect(usableAssets(store, runId)).toHaveLength(2);
+  });
+
+  it("플래그 false인 자산(직접 삽입)은 usable 필터에서 제외", async () => {
+    const { supa, store } = makeSupa();
+    const runId = await seedStandaloneRun(supa, "script", {
+      structure: "구성",
+      facts: "사실 A",
+      assets: "number|개념|검증된 숫자",
+    });
+    // 직접 미검증 자산 삽입(시드 경로 아님) → usable에서 빠져야 함.
+    store.explanation_assets.push({ id: "asset_x", run_id: runId, concept: "X", kind: "number", math_verified: false });
+    store.explanation_assets.push({ id: "asset_y", run_id: runId, concept: "Y", kind: "analogy", distortion_checked: false });
+    expect(usableAssets(store, runId)).toHaveLength(1); // 시드한 1개만.
+  });
+
+  it("assets 미입력이면 0행(짠펜은 facts만으로 동작)", async () => {
+    const { supa, store } = makeSupa();
+    const runId = await seedStandaloneRun(supa, "script", { structure: "구성", facts: "사실 A" });
+    expect(store.explanation_assets.filter((a) => a.run_id === runId)).toHaveLength(0);
+  });
+
+  it("facts 누락(required)이면 throw", async () => {
+    const { supa } = makeSupa();
+    await expect(seedStandaloneRun(supa, "script", { structure: "구성" })).rejects.toThrow(/검증된 사실/);
+  });
+
+  it("facts가 공백 줄만이면 throw(유효 행 0)", async () => {
+    const { supa } = makeSupa();
+    await expect(seedStandaloneRun(supa, "script", { structure: "구성", facts: "  \n \n" })).rejects.toThrow(/검증된 사실/);
+  });
+
+  it("assets kind가 number/analogy가 아니면 throw", async () => {
+    const { supa } = makeSupa();
+    await expect(
+      seedStandaloneRun(supa, "script", { structure: "구성", facts: "사실 A", assets: "graph|개념|뭔가" }),
+    ).rejects.toThrow(/kind/);
   });
 });
 

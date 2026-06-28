@@ -4,7 +4,7 @@
 //   2) RUN_STATES 선형순서(=합법 forward 전이)를 created→enters까지 인접쌍으로 transitionRun walk(raw update 금지).
 //   3) STANDALONE_DEPS[target].seeds 중 selection을 사용자 입력으로 stage_proposals+stage_selections에 시드
 //      (getSelectedStagePayload 계약 정확 만족: candidates[0].idx===0, chosen_idx===0).
-//   ⚠ script 타깃은 facts/assets 시드가 money-safety라 step3로 격리 → 즉시 throw.
+//   4) script 타깃만: research_facts/explanation_assets를 사용자 입력으로 시드(money-safety 게이트 통과 방식 준수).
 
 import type { Json } from "../../lib/supabase/database.types.js";
 import type { Supa } from "../runState.js";
@@ -41,11 +41,6 @@ export async function seedStandaloneRun(
   target: Stage,
   rawInputs: Record<string, string>,
 ): Promise<string> {
-  // script는 research_facts/explanation_assets 시드(money-safety)가 필요 → step3 격리.
-  if (target === "script") {
-    throw new Error("script 단독 실행은 step3에서 구현");
-  }
-
   const dep = STANDALONE_DEPS[target];
 
   // 1) content(produced/in_production) + run(is_standalone). state는 트리거가 'created' 강제 — 넣지 않음.
@@ -77,7 +72,7 @@ export async function seedStandaloneRun(
 
   // 3) selection 시드 — 사용자 입력이 있는 것만. required인데 없으면 throw.
   for (const seed of dep.seeds) {
-    if (seed.kind !== "selection" || !seed.stage) continue; // facts/assets는 step3(여기 도달 안 함).
+    if (seed.kind !== "selection" || !seed.stage) continue; // facts/assets는 아래 seedScriptResources에서 처리.
     const text = (rawInputs[seed.field] ?? "").trim();
     if (!text) {
       if (seed.required) throw new Error(`필수 입력 누락: ${seed.label}(${seed.field})`);
@@ -100,5 +95,83 @@ export async function seedStandaloneRun(
     if (se) throw new Error(`stage_selections insert 실패(${seed.stage}): ${se.message}`);
   }
 
+  // 4) script 타깃만: research_facts / explanation_assets 시드(money-safety).
+  if (target === "script") {
+    await seedScriptResources(supa, runId, rawInputs);
+  }
+
   return runId;
+}
+
+/**
+ * script 단독 실행용 research_facts / explanation_assets 시드.
+ *   ⚠ 게이트(scriptCell.ts:53-81)를 약화하지 않고 '정직하게' 통과시킨다:
+ *     - fact는 verification_status='unverified'로 두고 human_approved=true로 통과.
+ *       (AI 자동생성 미검증 fact 차단이 게이트 목적인데, 단독 모드 fact는 사람이 직접 입력한 것이라
+ *        human_approved=true가 정직한 표현이고 그 목적에 부합. verified로 넣으면 거짓 검증 + verified-CHECK 위반.)
+ *     - 자산은 사용자 입력이므로 검증 플래그를 사람 책임으로 true 시드
+ *       (게이트가 number=math_verified·analogy=distortion_checked만 통과시키므로).
+ */
+async function seedScriptResources(
+  supa: Supa,
+  runId: string,
+  rawInputs: Record<string, string>,
+): Promise<void> {
+  // research_facts(필수): 줄바꿈 분리, 비어있지 않은 각 줄 1개 = fact 1행.
+  const factLines = (rawInputs["facts"] ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+  if (factLines.length === 0) throw new Error("필수 입력 누락: 검증된 사실(facts)");
+
+  for (const claim of factLines) {
+    const { error: ferr } = await supa.from("research_facts").insert({
+      run_id: runId,
+      claim,
+      // 사람이 직접 입력 → human_approved=true로 게이트 통과(verified로 거짓 검증하지 않음).
+      human_approved: true,
+      escalated_to_human: false,
+      verification_status: "unverified", // verified-CHECK(독립출처2·citation·quote·금융→primary) 미발동.
+      is_financial: false,
+      freshness: "fresh", // freshness 게이트 stale 차단 회피(사람 입력이라 갓 입력 = fresh).
+      recheck_after: null,
+    });
+    if (ferr) throw new Error(`research_facts insert 실패: ${ferr.message}`);
+  }
+
+  // explanation_assets(선택): rawInputs["assets"]가 있을 때만. 포맷 `kind|concept|text` 한 줄 1자산.
+  const assetLines = (rawInputs["assets"] ?? "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
+
+  for (const line of assetLines) {
+    const [kind, concept, ...rest] = line.split("|");
+    const text = rest.join("|").trim();
+    const k = (kind ?? "").trim();
+    const c = (concept ?? "").trim();
+    if (k === "number") {
+      const { error: aerr } = await supa.from("explanation_assets").insert({
+        run_id: runId,
+        concept: c,
+        kind: "number",
+        numeric_example: text,
+        math_verified: true, // 사용자 입력 자산 → 사람 책임으로 검증 플래그 true(게이트 통과).
+        used_in_script: false,
+      });
+      if (aerr) throw new Error(`explanation_assets insert 실패: ${aerr.message}`);
+    } else if (k === "analogy") {
+      const { error: aerr } = await supa.from("explanation_assets").insert({
+        run_id: runId,
+        concept: c,
+        kind: "analogy",
+        analogy: text,
+        distortion_checked: true, // 사용자 입력 자산 → 사람 책임으로 검증 플래그 true(게이트 통과).
+        used_in_script: false,
+      });
+      if (aerr) throw new Error(`explanation_assets insert 실패: ${aerr.message}`);
+    } else {
+      throw new Error(`explanation_assets kind는 number|analogy만 가능(입력: "${k}")`);
+    }
+  }
 }

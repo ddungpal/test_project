@@ -50,3 +50,18 @@
 [Joy] 맥스 이번거 진짜 깔끔하다~ 통과! VERDICT PASS 👍
 [Joy] 검수 9개 포인트 전부 통과! typecheck exit 0, test 606개(+8 신규) 다 초록불 🎉 시드가 llm 안 물고 transitionRun만 쓰는 것도, script throw도, title_thumb 이벤트 우회도 다 확인했어. PASS!
 [리드] 굿. 맥스가 PIPELINE event drift까지 잡아서 우회한 게 좋았다. Step 2 완료 처리할게.
+
+=== Step 3: standalone-script-seed ===
+[리드] 맥스, step3 짠펜 단독 시드 차례야. 핵심은 scriptCell 게이트를 절대 안 건드리고, 게이트를 통과하는 행만 시드하는 거. facts는 human_approved=true·verification_status='unverified'로 넣어서 verified-CHECK 우회하고, assets는 number→math_verified, analogy→distortion_checked만 true로. 자세한 건 task로 보낼게. 작업하면서 chat.md에 한 줄씩 남겨줘.
+[Max] step3 시작했어. 게이트 코드랑 마이그레이션 먼저 다 읽어봤고, walk 경로가 research_approved까지 합법인지 확인했어.
+[Max] throw 빼고 script 시드 구현했어. fact는 human_approved=true로만 통과시키고 verified는 절대 안 건드렸어. 이제 타입체크랑 테스트 돌려본다.
+[Max] 타입체크 통과하고 테스트 614개 다 초록불이야. 신규 8개 추가했고 기존 거 안 깨졌어. 게이트는 한 줄도 안 건드렸으니 한번 봐줘.
+[리드] 조이, step3 검수 부탁해. AC 직접 재실행했고 typecheck exit 0 / test 614 passed(+8) 확인했어. scriptCell 게이트 안 건드렸는지, fact가 unverified+human_approved=true로 verified-CHECK 우회하는지, 시드 경로 callLLM 0회인지 중점으로 봐줘.
+
+[Joy] 오 맥스 step3 빠르다~ 내가 바로 git diff 봤어. scriptCell.ts diff 완전 비어있다, 게이트 한 줄도 안 건드림 굿굿
+[Joy] seed.ts도 봤는데 facts는 unverified+human_approved=true로 정직하게 통과시키네. verified로 거짓검증 안 하고. 이게 핵심인데 잘 잡았다
+[Joy] verified-CHECK는 verification_status<>verified면 자동 만족이라 unverified는 안전. recheck_after=null+freshness=fresh라 freshness 게이트도 안 걸리고. 이제 typecheck랑 test 돌려볼게 ☕
+[Joy] typecheck exit 0, test 614개 전부 통과(step2 606에서 +8)! 깔끔하다 🎉
+[Joy] callLLM import 0(주석만 있음), raw update 0으로 transitionRun만 쓰고, structure도 일반 walk 타고. 무관 fixture도 안 딸려왔어
+[Joy] 기존 throw 테스트는 동작 바뀌어서 정당하게 교체됐고, 게이트 필터를 테스트에서 그대로 재현해서 usable 통과까지 검증함. 봐주기 없이 봤는데 통과! 맥스 굿굿 👍
+[리드] 조이 PASS, AC exit 0 둘 다 확인했어. money-safety 핵심(verified 금지·unverified+human_approved=true로 정직하게 게이트 통과)까지 정확히 짚어줘서 좋았다. step3 완료 처리할게. 다음은 step4 단독 실행 UI(에스더 차례).
