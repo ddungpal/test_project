@@ -42,6 +42,7 @@ type ProductionRuns = {
   rework_count: number; abort_reason: string | null; // migration 12(반장 마감)
   paused_stage: "research" | "script" | null; // migration 13(soft-cap 재개 단계 보존)
   progress_note: string | null; // migration 15(단계 내부 서브진행 'i/n·라벨')
+  is_standalone: boolean; // migration 26(단독 실행 임시 run — listRuns 에서 숨김)
   created_at: string; updated_at: string;
 };
 type Transcripts = { id: string; content_id: string; youtube_video_id: string; lang: string | null; full_text: string; segments: Json | null; source: "subtitle" | "whisper" | null; fetched_at: string };

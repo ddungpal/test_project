@@ -24,7 +24,8 @@ export async function listRuns(limit = 50): Promise<RunListItem[]> {
   const supa = createAdminClient();
   const { data: runs, error } = await supa
     .from("production_runs")
-    .select("id, state, cost_usd, rework_count, abort_reason, created_at, content_id")
+    .select("id, state, cost_usd, rework_count, abort_reason, created_at, content_id, is_standalone")
+    .eq("is_standalone", false) // 메인 목록은 파이프라인 run 만(단독 run 숨김). 상세 조회엔 이 필터 없음.
     .order("created_at", { ascending: false })
     .limit(limit);
   if (error) throw new Error(`런 목록 조회 실패: ${error.message}`);

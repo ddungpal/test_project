@@ -188,11 +188,11 @@
     {
       "dir": "standalone-stages",
       "status": "running",
-      "progress": "0/5",
-      "running_step": "0 (standalone-deps-core)",
+      "progress": "1/5",
+      "running_step": "1 (standalone-run-flag)",
       "attempt": 1,
-      "elapsed_seconds": 360,
-      "heartbeat_at": "2026-06-28T11:56:23+0900"
+      "elapsed_seconds": 300,
+      "heartbeat_at": "2026-06-28T12:02:06+0900"
     }
   ]
 }
