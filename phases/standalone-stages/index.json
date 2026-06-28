@@ -1,0 +1,37 @@
+{
+  "project": "produce script",
+  "phase": "standalone-stages",
+  "goal": "각 크루(촉이·훅이·썸네일·구다리·셜록·짠펜)를 선형 파이프라인 강제 없이 '단독 도구'처럼 개별 실행한다(목적=한 단계만 필요할 때 앞단계를 다시 안 돌려도 됨). 방법=스크래치 런 시딩: DB 트리거가 INSERT를 state='created'로 강제하고 전이표만 허용하므로, 임시 run을 만들어 목표 단계의 enters/fromState까지 transitionRun으로 walk하며 사용자가 붙여넣은 입력만 stage_proposals+stage_selections(+script는 research_facts/explanation_assets)에 LLM 없이($0) 시드한 뒤, 목표 단계 '하나만' 평소처럼 실행한다. 기존 실행엔진·게이트·lineage·학습자산(말투·스타일·우승썸네일) 100% 재사용. 의존성 맵으로 진짜 필요한 입력만 요구(셜록=주제+구성, 썸네일은 안 물음 — 셜록은 썸네일을 안 읽음). 임시 run은 production_runs.is_standalone으로 메인 목록에서 숨김. 결과는 기존 /runs/[id] 상세 재사용. 짠펜은 검증 게이트(money-safety) 통과분만 읽으므로, 사용자가 직접 넣은 팩트를 human_approved=true로 시드해 게이트 코드를 안 건드리고 통과(별도 step3로 격리). step 0(deps-core 순수 의존성맵+selection payload shaping)→1(run-flag 마이그레이션 is_standalone+listRuns 필터)→2(seeder 제안단계 topic/title/thumbnail/structure/research)→3(script-seed 짠펜 facts/assets 안전 시드)→4(ui 메인 화면 '단독 실행' 섹션, Esther). 모든 단독 실행 학습/생성 claude-p $0.",
+  "steps": [
+    {
+      "step": 0,
+      "name": "standalone-deps-core",
+      "status": "completed",
+      "started_at": "2026-06-28T11:50:23+0900",
+      "team_round": "1/3 PASS",
+      "summary": "src/pipeline/standalone/deps.ts 순수 모듈 신규 — STANDALONE_DEPS(단계별 시드 의존성 맵, enters는 PIPELINE 도출·structure/research에 썸네일 없음) + selection payload shaping 헬퍼(topic/title→{title}, structure→{approach,outline:[{section,goal,why}]}). research_facts/explanation_assets는 SeedKind 분류만(행 빌더는 step3). typecheck·test(598) exit 0.",
+      "completed_at": "2026-06-28T11:57:06+0900"
+    },
+    {
+      "step": 1,
+      "name": "standalone-run-flag",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "standalone-seeder",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "standalone-script-seed",
+      "status": "pending"
+    },
+    {
+      "step": 4,
+      "name": "standalone-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-28T11:50:23+0900"
+}
