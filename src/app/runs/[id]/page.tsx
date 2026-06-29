@@ -27,6 +27,8 @@ import { CostPanel } from "@/components/CostPanel";
 import { RunControls } from "@/components/RunControls";
 import { StageStepper } from "@/components/StageStepper";
 import { parseSubProgress } from "@/lib/dashboard/stageProgress";
+import { GenerateScopeButton } from "@/components/GenerateScopeButton";
+import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
 import type { RunState } from "@/domain/enums";
 
@@ -266,7 +268,8 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
         <ResearchScopeGate runId={runId} proposalId={scope.proposalId} candidates={scope.candidates} />
       </div>
     ) : (
-      <WaitingNote text="검증 후보를 불러오는 중… 새로고침하세요." />
+      // 후보 0개(셜록 scope 미생성·stale) — 막다른 "불러오는 중" 대신 후보 생성 복구 버튼.
+      <GenerateScopeButton runId={runId} />
     );
   } else if (runState === "researching") {
     // 진행 마커(researchCell가 단계마다 progress_note에 "i/n·라벨" 기록)를 본문에 노출 — 어느 작업 중인지.
@@ -311,7 +314,10 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
   return (
     <section className="mt-8">
       <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">리서치 (셜록)</h2>
-      <div className="mt-3">{body}</div>
+      <div className="mt-3">
+        <ResearchPhaseStepper state={runState} />
+        {body}
+      </div>
     </section>
   );
 }

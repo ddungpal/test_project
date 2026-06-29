@@ -19,7 +19,7 @@ export interface SherlockScopeOutput {
 
 export const SHERLOCK_SCOPE_SCHEMA: JsonSchema = {
   type: "object",
-  additionalProperties: false,
+  additionalProperties: true, // 루트도 stray 허용(claude-p 내성). required로 claims·concepts 존재는 강제.
   required: ["claims", "concepts"],
   properties: {
     claims: {
@@ -27,7 +27,7 @@ export const SHERLOCK_SCOPE_SCHEMA: JsonSchema = {
       minItems: 1,
       items: {
         type: "object",
-        additionalProperties: false,
+        additionalProperties: true, // claude-p가 여분 필드를 붙여도 통과 — 필수·타입은 유지, stray는 buildScopeCandidates가 필드 명시선택해 버림(무해).
         required: ["text", "is_financial"],
         properties: { text: { type: "string", minLength: 1 }, is_financial: { type: "boolean" }, section: { type: "string" } },
       },
@@ -37,7 +37,7 @@ export const SHERLOCK_SCOPE_SCHEMA: JsonSchema = {
       minItems: 1,
       items: {
         type: "object",
-        additionalProperties: false,
+        additionalProperties: true, // claude-p가 여분 필드를 붙여도 통과 — 필수·타입은 유지, stray는 buildScopeCandidates가 필드 명시선택해 버림(무해).
         required: ["name", "needs_number", "needs_analogy"],
         properties: {
           name: { type: "string", minLength: 1 },
