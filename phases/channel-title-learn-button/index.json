@@ -1,0 +1,21 @@
+{
+  "project": "produce script",
+  "phase": "channel-title-learn-button",
+  "team_round": "2/3 PASS",
+  "steps": [
+    {
+      "step": 0,
+      "name": "channel-learn-core",
+      "status": "completed",
+      "started_at": "2026-06-29T14:08:42+0900",
+      "completed_at": "2026-06-29T14:24:00+0900",
+      "summary": "채널 제목 학습 코어를 서버 호출 가능 모듈로 분리: src/ingest/channelTitles.ts에 fetchChannelTitles(파일 I/O 없는 네트워크 fetch) 추가, 신규 src/performance/titleStyleLearn.ts에 extractTitleStylePatterns(빈 입력 null)·saveTitleStyleDraft(component_type='title' 스코프 version max+1, draft) 분리. CLI 두 스크립트(ingest-channel-titles·extract-title-style)는 공유 함수로 위임하되 dry-run/--commit·산출물 파일·콘솔 출력 보존. TITLE_STYLE_SYSTEM·STYLE_EXTRACTION_SCHEMA·normalize·fold 재사용. tests/titleStyleLearn.test.ts 추가. AC typecheck/test(651)/build 전부 exit 0."
+    },
+    {
+      "step": 1,
+      "name": "channel-learn-button",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-29T14:08:42+0900"
+}
