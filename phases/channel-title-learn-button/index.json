@@ -20,5 +20,6 @@
       "summary": "/copy-learn에 '채널 제목 학습' 버튼 추가. 서버액션 requestChannelTitleRelearn(@zzanboo 상수 고정, YOUTUBE_API_KEY 사용)이 step0 코어 fetchChannelTitles→extractTitleStylePatterns(loadConfig)→saveTitleStyleDraft를 호출해 title draft만 생성(활성화는 별도 사람 게이트). requestCopyRelearn 동기 await·requireOwner·createAdminClient·auditLog best-effort('channel_title_relearn_requested')·// ponytail 주석 미러. 파일 I/O 0(서버리스 호환), 제목0/추출null이면 created:false(과금·INSERT 0). CopyLearningForm StylePanel에 busy 'channel' 태그·스피너·router.refresh로 버튼 추가, TRUS 3색 일관. auditLog enum에 액션값 추가. AC typecheck/test(651)/build 전부 exit 0."
     }
   ],
-  "created_at": "2026-06-29T14:08:42+0900"
+  "created_at": "2026-06-29T14:08:42+0900",
+  "completed_at": "2026-06-29T14:31:22+0900"
 }
