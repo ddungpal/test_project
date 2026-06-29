@@ -5,7 +5,16 @@ import { SHERLOCK_SCOPE_SCHEMA, SHERLOCK_SCOPE_SYSTEM, type SherlockScopeOutput 
 export async function scopeStep(
   llm: CallLLMDeps,
   runId: string,
-  input: { topic: string; title: string; outline: unknown; budget?: { claims: number; concepts: number } },
+  // ★ reason·existing은 재생성(regenerateResearchScope) 전용 옵셔널 필드. 값이 있을 때만 input에 담아야
+  //   기존 호출(둘 다 없음)이 byte-identical → promptHash·parity 픽스처 불변.
+  input: {
+    topic: string;
+    title: string;
+    outline: unknown;
+    budget?: { claims: number; concepts: number };
+    reason?: string;
+    existing?: { claims: string[]; concepts: string[] };
+  },
 ): Promise<SherlockScopeOutput> {
   const r = await callLLM<SherlockScopeOutput>(
     { roleId: "sherlock_lead", system: SHERLOCK_SCOPE_SYSTEM, input, schema: SHERLOCK_SCOPE_SCHEMA, runId, maxTokens: 2048 },

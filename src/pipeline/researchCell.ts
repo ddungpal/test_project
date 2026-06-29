@@ -263,7 +263,13 @@ export async function loadSelectedScope(
   if (se) throw new Error(`research selection 조회 실패: ${se.message}`);
   if (!selection) throw new Error(`run ${runId}의 research 제안에 scope 선택 기록이 없음.`);
 
-  const picked = (selection.edited_payload as unknown as { selectedClaimIdx?: number[]; selectedConceptIdx?: number[] } | null) ?? {};
+  const picked = (selection.edited_payload as unknown as {
+    selectedClaimIdx?: number[];
+    selectedConceptIdx?: number[];
+    // 수동 추가분(selectResearchScope가 인라인 저장) — candidates엔 없고 선택에만 있다.
+    manualClaims?: { text: string; is_financial: boolean; section?: string }[];
+    manualConcepts?: { name: string; needs_number: boolean; needs_analogy: boolean; section?: string }[];
+  } | null) ?? {};
   const claimIdx = new Set(picked.selectedClaimIdx ?? []);
   const conceptIdx = new Set(picked.selectedConceptIdx ?? []);
 
@@ -288,6 +294,22 @@ export async function loadSelectedScope(
       });
     }
   }
+
+  // 수동 추가분 병합 — candidates엔 없으므로 edited_payload에 저장된 값을 그대로 ScopeClaim/ScopeConcept로 변환.
+  //   ★ 수동 claim의 is_financial은 저장된 값(자동판정+토글 결과)을 그대로 쓴다(여기서 재판정 안 함).
+  //   수동분도 검증·예시 파이프라인을 동일하게 탄다(검증 로직 자체는 불변). section 옵셔널 보존.
+  for (const mc of picked.manualClaims ?? []) {
+    claims.push({ text: mc.text, is_financial: mc.is_financial, ...(mc.section !== undefined ? { section: mc.section } : {}) });
+  }
+  for (const mc of picked.manualConcepts ?? []) {
+    concepts.push({
+      name: mc.name,
+      needs_number: mc.needs_number,
+      needs_analogy: mc.needs_analogy,
+      ...(mc.section !== undefined ? { section: mc.section } : {}),
+    });
+  }
+
   return { claims, concepts };
 }
 

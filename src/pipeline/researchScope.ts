@@ -12,12 +12,53 @@ import { countOutlineSections, suggestDefaultSelection } from "./researchBudget.
 import type { Candidate } from "./stageContract.js";
 import type { CostGuard, InMemoryCostLedger } from "../llm/costGuard.js";
 import type { Json } from "../lib/supabase/database.types.js";
+import type { SherlockScopeOutput } from "../agents/sherlock_lead/schema.js";
+import type { LlmBackendDriver } from "../llm/types.js";
+
+/** scope 결과(claims+concepts) → stage_proposals candidate 배열 빌드.
+ *  runResearchScope의 4) 로직을 그대로 추출(바이트 동일) — regenerateResearchScope와 공유.
+ *  budget은 상위 N개만 default_selected=true 표시(상한 아님). 배열 순서 = 중요도. 블라인드 slice 없음. */
+function buildScopeCandidates(scope: SherlockScopeOutput, budget: { claims: number; concepts: number }): Candidate[] {
+  const candidates: Candidate[] = [];
+  let idx = 0;
+  scope.claims.forEach((c, i) => {
+    candidates.push({
+      idx: idx++,
+      payload: {
+        kind: "claim",
+        ...(c.section !== undefined ? { section: c.section } : {}),
+        default_selected: i < budget.claims,
+        text: c.text,
+        is_financial: c.is_financial,
+      } as unknown,
+      reason: c.is_financial ? "금융·수치 주장(강검증 대상)" : "사실 검증 대상",
+      evidence_ids: [],
+    });
+  });
+  scope.concepts.forEach((c, i) => {
+    candidates.push({
+      idx: idx++,
+      payload: {
+        kind: "concept",
+        ...(c.section !== undefined ? { section: c.section } : {}),
+        default_selected: i < budget.concepts,
+        name: c.name,
+        needs_number: c.needs_number,
+        needs_analogy: c.needs_analogy,
+      } as unknown,
+      reason: "시청자가 어려워할 핵심 개념(설명자산 대상)",
+      evidence_ids: [],
+    });
+  });
+  return candidates;
+}
 
 export interface ResearchScopeDeps {
   supa: Supa;
   config: LlmConfig;
   costGuard: CostGuard;
   ledger?: InMemoryCostLedger;
+  driver?: LlmBackendDriver; // 테스트·spike용 LLM 백엔드 주입(미지정 시 config.backend). regenerate가 scopeStep에 전달.
 }
 
 export interface ResearchScopeResult {
@@ -69,37 +110,8 @@ export async function runResearchScope(runId: string, deps: ResearchScopeDeps): 
 
     // 4) 후보 배열 — claims + concepts 전부(블라인드 slice 없음). 배열 순서 = 중요도.
     //    budget은 상위 N개만 default_selected=true로 표시(기본 체크 힌트). 나머지는 false지만 모두 저장된다.
-    const candidates: Candidate[] = [];
-    let idx = 0;
-    scope.claims.forEach((c, i) => {
-      candidates.push({
-        idx: idx++,
-        payload: {
-          kind: "claim",
-          ...(c.section !== undefined ? { section: c.section } : {}),
-          default_selected: i < budget.claims,
-          text: c.text,
-          is_financial: c.is_financial,
-        } as unknown,
-        reason: c.is_financial ? "금융·수치 주장(강검증 대상)" : "사실 검증 대상",
-        evidence_ids: [],
-      });
-    });
-    scope.concepts.forEach((c, i) => {
-      candidates.push({
-        idx: idx++,
-        payload: {
-          kind: "concept",
-          ...(c.section !== undefined ? { section: c.section } : {}),
-          default_selected: i < budget.concepts,
-          name: c.name,
-          needs_number: c.needs_number,
-          needs_analogy: c.needs_analogy,
-        } as unknown,
-        reason: "시청자가 어려워할 핵심 개념(설명자산 대상)",
-        evidence_ids: [],
-      });
-    });
+    //    (regenerate와 공유하는 buildScopeCandidates로 추출 — 출력은 바이트 동일.)
+    const candidates: Candidate[] = buildScopeCandidates(scope, budget);
 
     // 5) proposed 저장(컨펌 전 = 저장 후 표시) — runProposalStage 저장부 미러(새 방식 발명 금지).
     const { data: proposal, error: pe } = await supa
@@ -121,6 +133,91 @@ export async function runResearchScope(runId: string, deps: ResearchScopeDeps): 
   }
 }
 
+/** scope 재생성(a) — 셜록 후보가 부족할 때 '기존 외 추가'를 받는다.
+ *  research_scoped에서만(아니면 throw). 새 stage_proposals(stage='research') 행을 INSERT하되 **전이하지 않는다**
+ *  (research_scoped 유지). loadSelectedScope·selectResearchScope가 '최신' proposal을 읽으니 자동 반영된다.
+ *  reason·기존 후보 텍스트를 scopeStep에 전달해 "기존 외 추가·이유 반영·중복 회피"하게 한다.
+ *  ★ 픽스처 보존: 이 함수만 scopeStep input에 reason/existing을 채운다(runResearchScope는 byte-identical 유지). */
+export async function regenerateResearchScope(
+  supa: Supa,
+  runId: string,
+  deps: ResearchScopeDeps,
+  reason?: string,
+): Promise<{ proposalId: string }> {
+  const { config, costGuard, ledger } = deps;
+  const llm = { config, costGuard, ...(deps.driver ? { driver: deps.driver } : {}) };
+  const run = await getRun(supa, runId);
+
+  // research_scoped에서만 — 다른 state면 명확히 거부(scope 게이트 외 단계에서 재생성 금지).
+  if (run.state !== "research_scoped") {
+    throw new Error(`scope 재생성은 'research_scoped'에서만 가능(현재 '${run.state}').`);
+  }
+
+  await setProgress(supa, runId, "검증 범위 추가 생성 (셜록)");
+  try {
+    // 1) 컨텍스트(runResearchScope와 동일 패턴).
+    const structure = await getSelectedStagePayload(supa, runId, "structure");
+    const topic = (await getSelectedStagePayload(supa, runId, "topic") as { title?: string } | null)?.title ?? "";
+    const title = (await getSelectedStagePayload(supa, runId, "title_thumb") as { title?: string } | null)?.title ?? "";
+    const budget = suggestDefaultSelection(countOutlineSections(structure), config.research);
+
+    // 2) 기존 후보 텍스트(중복 회피용) — 최신 research proposal에서 claim text·concept name만 추출.
+    const { data: existingProp } = await supa
+      .from("stage_proposals")
+      .select("candidates")
+      .eq("run_id", runId)
+      .eq("stage", "research")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    type ScopePayload =
+      | { kind: "claim"; text: string }
+      | { kind: "concept"; name: string }
+      | Record<string, unknown>;
+    const existingCands = (existingProp?.candidates as unknown as { payload: ScopePayload }[]) ?? [];
+    const existingClaims = existingCands
+      .map((c) => c.payload)
+      .filter((p): p is { kind: "claim"; text: string } => (p as { kind?: string }).kind === "claim")
+      .map((p) => p.text);
+    const existingConcepts = existingCands
+      .map((c) => c.payload)
+      .filter((p): p is { kind: "concept"; name: string } => (p as { kind?: string }).kind === "concept")
+      .map((p) => p.name);
+
+    // 3) 셜록 재호출 — reason·existing은 값이 있을 때만 input에 담는다(promptHash 영향은 regenerate 경로에 국한).
+    const trimmedReason = reason?.trim();
+    const scope = await scopeStep(llm, runId, {
+      topic,
+      title,
+      outline: structure,
+      budget,
+      ...(trimmedReason ? { reason: trimmedReason } : {}),
+      ...(existingClaims.length || existingConcepts.length
+        ? { existing: { claims: existingClaims, concepts: existingConcepts } }
+        : {}),
+    });
+
+    // 4) 후보 빌드(runResearchScope와 공유) + 새 proposal INSERT(전이 없음 — 최신 proposal이 자동 반영).
+    const candidates = buildScopeCandidates(scope, budget);
+    const { data: proposal, error: pe } = await supa
+      .from("stage_proposals")
+      .insert({ run_id: runId, stage: "research", candidates: candidates as unknown as Json, prompt_run_ref: "scope" })
+      .select("id")
+      .single();
+    if (pe) throw new Error(`stage_proposals(research) insert 실패: ${pe.message}`);
+
+    // 5) cost_ledger flush + 누계 갱신(전이는 안 하지만 실비는 정산해야 비용 유실 없음 — runResearchScope 패턴).
+    const stageCost = await flushLedger(supa, runId, ledger);
+    if (stageCost > 0) {
+      await supa.from("production_runs").update({ cost_usd: run.cost_usd + stageCost }).eq("id", runId);
+    }
+
+    return { proposalId: proposal.id };
+  } finally {
+    await setProgress(supa, runId, null);
+  }
+}
+
 // 사람 게이트(§8.1) — 사용자가 고른 scope 후보(claims/concepts) idx 집합을 기록 + research_scoped→researching 전이.
 //   gate.ts selectProposal/confirmThumbnailSet 미러(새 방식 발명 금지):
 //   - research_scoped에서만(아니면 throw), proposal이 이 run·stage='research'에 속하는지 스코프검증.
@@ -128,20 +225,39 @@ export async function runResearchScope(runId: string, deps: ResearchScopeDeps): 
 //   - 선택 idx가 실제 candidate idx에 존재하는지 검증(없는 idx 섞이면 throw — 교차 오염·오타 차단).
 //   - 다중 선택이라 chosen_idx는 0 센티넬(confirmThumbnailSet 패턴), 선택 집합은 edited_payload에 기록.
 //   ★ 이벤트는 여기서 발사하지 않는다(이 모듈은 inngest 미import) — 검증 트리거는 서버액션 몫.
+// 수동 추가(b) — 사용자가 직접 입력한 claim/concept. proposal candidates를 '변형하지 않고' 선택(edited_payload)에 인라인.
+//   ★ is_financial은 detectFinancial 자동판정 + 사용자 토글의 '결과값'을 그대로 받는다(여기서 재판정 안 함 — 토글이 최종).
+export interface ManualClaim {
+  text: string;
+  is_financial: boolean;
+  section?: string;
+}
+export interface ManualConcept {
+  name: string;
+  needs_number: boolean;
+  needs_analogy: boolean;
+  section?: string;
+}
+
 export async function selectResearchScope(
   supa: Supa,
   runId: string,
   proposalId: string,
   selected: { claims: number[]; concepts: number[] },
+  // 수동 추가는 옵셔널(기존 호출부·테스트 불변). proposal candidates를 변형하지 않고 선택에만 인라인 저장한다.
+  manual?: { claims?: ManualClaim[]; concepts?: ManualConcept[] },
 ): Promise<void> {
   const run = await getRun(supa, runId);
   if (run.state !== "research_scoped") {
     throw new Error(`research scope 선택은 'research_scoped'에서만 가능(현재 '${run.state}').`);
   }
 
-  // 0개 가드 — 최소 1개. 전부 빼면 리서치할 대상이 0건이라 검증 단계가 무의미.
-  if (selected.claims.length + selected.concepts.length === 0) {
-    throw new Error("최소 1개 이상의 검증 후보(claim/concept)를 선택해야 합니다.");
+  const manualClaims = manual?.claims ?? [];
+  const manualConcepts = manual?.concepts ?? [];
+
+  // 0개 가드 — 최소 1개. 선택 idx 개수 + 수동 추가 개수 합산(둘 다 비면 검증 대상이 0건이라 무의미).
+  if (selected.claims.length + selected.concepts.length + manualClaims.length + manualConcepts.length === 0) {
+    throw new Error("최소 1개 이상의 검증 후보(claim/concept)를 선택하거나 추가해야 합니다.");
   }
 
   // proposal이 이 run·"research"에 속하는지(selectProposal 스코프검증 미러) + candidates 로드.
@@ -166,9 +282,13 @@ export async function selectResearchScope(
   }
 
   // 다중 선택이라 chosen_idx=0 센티넬(confirmThumbnailSet 패턴), 선택 집합은 edited_payload에.
+  //   수동 추가분은 candidates를 변형하지 않고 여기 인라인(드리프트·출처혼동 차단). 값이 없으면 키 자체를 빼서
+  //   기존 edited_payload({selectedClaimIdx, selectedConceptIdx})와 byte-identical 유지(기존 테스트 불변).
   const editedPayload = {
     selectedClaimIdx: selected.claims,
     selectedConceptIdx: selected.concepts,
+    ...(manualClaims.length ? { manualClaims } : {}),
+    ...(manualConcepts.length ? { manualConcepts } : {}),
   } as unknown as Json;
   const { error: se } = await supa
     .from("stage_selections")

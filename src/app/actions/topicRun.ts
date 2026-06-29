@@ -11,7 +11,8 @@ import type { TitlePayload, ThumbnailPayload } from "../../lib/dashboard/proposa
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
-import { selectResearchScope } from "../../pipeline/researchScope.js";
+import { selectResearchScope, regenerateResearchScope, type ManualClaim, type ManualConcept } from "../../pipeline/researchScope.js";
+import { withStageRuntime } from "../../pipeline/stageRuntime.js";
 import { enterScriptReview, approveScript, requestScriptRework } from "../../pipeline/scriptGate.js";
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
@@ -240,18 +241,44 @@ export async function selectResearchScopeAction(
   runId: string,
   proposalId: string,
   selected: { claims: number[]; concepts: number[] },
+  // 수동 추가(b)는 옵셔널 — proposal candidates를 변형하지 않고 selectResearchScope가 선택에 인라인 저장한다.
+  manual?: { claims?: ManualClaim[]; concepts?: ManualConcept[] },
 ): Promise<void> {
   const ownerId = await requireOwner();
   const supa = createAdminClient();
-  await selectResearchScope(supa, runId, proposalId, selected);
+  await selectResearchScope(supa, runId, proposalId, selected, manual);
   await inngest.send({ name: "run/research.requested", data: { runId } });
   await auditLog(supa, {
     actorId: ownerId,
     action: "stage_selected",
     targetType: "run",
     targetId: runId,
-    detail: { stage: "research", claims: selected.claims.length, concepts: selected.concepts.length },
+    detail: {
+      stage: "research",
+      claims: selected.claims.length,
+      concepts: selected.concepts.length,
+      manualClaims: manual?.claims?.length ?? 0,
+      manualConcepts: manual?.concepts?.length ?? 0,
+    },
   });
+}
+
+// scope 재생성(a·§8.2 단계경계) — 셜록 후보 부족 시 '기존 외 추가'를 받는다. 새 proposal INSERT·전이 없음
+//   (research_scoped 유지). select*Action 패턴 미러(requireOwner·비용가드·auditLog). LLM 1회라 withStageRuntime로 감싼다.
+export async function regenerateResearchScopeAction(runId: string, reason?: string): Promise<{ proposalId?: string }> {
+  const ownerId = await requireOwner();
+  const guarded = await withStageRuntime(runId, (deps) =>
+    regenerateResearchScope(deps.supa, runId, deps, reason),
+  );
+  const supa = createAdminClient();
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "stage_regenerated",
+    targetType: "run",
+    targetId: runId,
+    detail: { stage: "research", ...(reason && reason.trim() ? { reason } : {}), status: guarded.status },
+  });
+  return guarded.status === "ok" ? { proposalId: guarded.value.proposalId } : {};
 }
 export async function openResearchReview(runId: string) {
   await requireOwner();
