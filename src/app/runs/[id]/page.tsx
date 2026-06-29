@@ -24,6 +24,7 @@ import { SegmentList } from "@/components/SegmentList";
 import { CostPanel } from "@/components/CostPanel";
 import { RunControls } from "@/components/RunControls";
 import { StageStepper } from "@/components/StageStepper";
+import { parseSubProgress } from "@/lib/dashboard/stageProgress";
 import { SourceLinks } from "@/components/SourceLinks";
 import type { RunState } from "@/domain/enums";
 
@@ -246,7 +247,7 @@ function ResearchPanel({ rv }: { rv: ResearchView }) {
 }
 
 // 리서치 단계(3.3) — 시작/대기/검수시작/트리아지/승인후.
-function ResearchSection({ runId, runState, rv }: { runId: string; runState: RunState; rv: ResearchView | null }) {
+function ResearchSection({ runId, runState, rv, progressNote }: { runId: string; runState: RunState; rv: ResearchView | null; progressNote: string | null }) {
   let body: React.ReactNode;
   if (runState === "structure_selected") {
     body = (
@@ -256,7 +257,14 @@ function ResearchSection({ runId, runState, rv }: { runId: string; runState: Run
       </div>
     );
   } else if (runState === "researching") {
-    body = <WaitingNote text="셜록이 리서치 중… (inngest:dev 가동 필요)" />;
+    // 진행 마커(researchCell가 단계마다 progress_note에 "i/n·라벨" 기록)를 본문에 노출 — 어느 작업 중인지.
+    //   마커 없으면(셀 미가동·inngest down) 기존 안내로 폴백.
+    const sub = parseSubProgress(progressNote);
+    body = (
+      <WaitingNote
+        text={sub ? `셜록 — ${sub.label} (${sub.index}/${sub.total})` : "셜록이 리서치 중… (inngest:dev 가동 필요)"}
+      />
+    );
   } else if (runState === "research_ready") {
     body = (
       <div className="flex flex-col gap-4">
@@ -311,10 +319,12 @@ function ScriptSection({
   runId,
   runState,
   segments,
+  progressNote,
 }: {
   runId: string;
   runState: RunState;
   segments: SegmentView[] | null;
+  progressNote: string | null;
 }) {
   let body: React.ReactNode;
   if (runState === "research_approved") {
@@ -325,7 +335,15 @@ function ScriptSection({
       </div>
     );
   } else if (runState === "scripting") {
-    body = <WaitingNote text="짠펜이 대본 작성 중… (inngest:dev 가동 필요)" />;
+    {
+      // 짠펜도 진행 마커("1/2·대본 작성"·"2/2·표절 검사")를 본문에 노출. 없으면 기존 안내로 폴백.
+      const sub = parseSubProgress(progressNote);
+      body = (
+        <WaitingNote
+          text={sub ? `짠펜 — ${sub.label} (${sub.index}/${sub.total})` : "짠펜이 대본 작성 중… (inngest:dev 가동 필요)"}
+        />
+      );
+    }
   } else if (runState === "script_ready") {
     body = (
       <div className="flex flex-col gap-4">
@@ -448,8 +466,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} />
       ))}
 
-      <ResearchSection runId={run.id} runState={run.state} rv={rv} />
-      <ScriptSection runId={run.id} runState={run.state} segments={segments} />
+      <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
+      <ScriptSection runId={run.id} runState={run.state} segments={segments} progressNote={run.progressNote} />
       <CostSection cost={cost} />
     </main>
   );
