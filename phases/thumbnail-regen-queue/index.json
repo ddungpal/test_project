@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "regen-queue-wiring",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-29T12:24:30+0900",
+      "summary": "ThumbnailStudio 재생성 상태모델을 단일추적(busy/startId) → 슬롯별 비차단 큐(pending:idx→candidateKey 스냅샷, confirmBusy)로 리팩터. 슬롯 disable=confirmBusy||(idx in pending)로 한 슬롯 재생성 중 다른 슬롯 비차단(핵심 버그 해소). 완료감지=step0 resolveCompletedSlots(payload 비교)·clearSlots 소비, candidate id 미사용. 전체재생성·확정만 confirmBusy||hasPending로 전체잠금. 교정 패널 독립성·5분 타임아웃 보존. useTransition pending은 disable 미사용으로 비차단 보존. proposalId prop 제거(호출부 page.tsx 정리). 백엔드 무변경. AC typecheck/test/build 전부 exit 0(645 passed).",
+      "completed_at": "2026-06-29T12:32:57+0900"
     }
   ],
   "created_at": "2026-06-29T12:18:25+0900"
