@@ -1,28 +1,47 @@
 graph TD
-  INP["📥 DB에 데이터가 들어오는 3경로<br/>① 사람 입력: 주제 · 성과 수치 · 교정 / copy-learn 영상<br/>② 자동 수집(ingest): 유튜브 자막·댓글(HMAC) · 구글독스 대본<br/>③ 파이프라인: 각 단계가 결과를 자동 저장"]:::in
+  INP["📥 DB 입력 3경로<br/>① 사람: 주제 · 성과수치 · 교정 / copy-learn 영상<br/>② 자동수집(ingest): 자막·댓글(HMAC) · 구글독스 대본<br/>③ 파이프라인: 각 단계 결과 자동 저장"]:::in
 
-  S1["① 주제 · 촉이<br/>📖 읽기: 댓글 키워드 집계(L1) · 인사이트(L3)<br/>🤖 AI 1회: 주제 N개 + 이유<br/>💾 저장: 제안 stage_proposals(L2)"]:::step
-  S2["② 제목·썸네일 · 훅이<br/>📖 읽기: 선택주제 · 말투(L3) · 우승썸네일 문구(L3)<br/>🤖 AI 1회: 제목 3안 · 썸네일안<br/>💾 저장: 제안 stage_proposals(L2)"]:::step
-  S3["③ 구성 · 구다리<br/>📖 읽기: 주제·제목 · 인사이트(L3) · 말투(L3)<br/>🤖 AI 1회: 구성 2안<br/>💾 저장: 제안 stage_proposals(L2)"]:::step
-  S4["④ 리서치 · 셜록셀<br/>📖 읽기: 구성 · 웹검색 출처(L1)<br/>🤖 AI 5종: 범위→팩트검증·숫자·비유→반론<br/>💾 저장: 검증팩트·설명자료(L2)"]:::step
-  S5["⑤ 대본 · 짠펜<br/>📖 읽기: 승인팩트·자료 · 말투(L3)<br/>🤖 AI 1회: 대본 + 출처연결(lineage)<br/>💾 저장: 대본조각 script_segments(L2)"]:::step
+  S1["① 주제 · 촉이 (topic_scout)<br/>📖 댓글키워드(L1) · 외부신호(검색·뉴스) · 인사이트(L3)<br/>🤖 AI 1회: 주제 후보 3 + 이유 + 시청자수준<br/>💾 stage_proposals(L2)"]:::step
 
-  PERF["📊 성과 performance_metrics(L2)<br/>24h 클릭률 · 조회수 · A/B<br/>(유튜브 분석 ⚠️ 현재 수동입력)"]:::data
-  LEARN["🧠 학습 지식 L3 (재료 = 처음↔최종 차이 × 성과)<br/>말투 tone · 문구 style(제목v1·썸네일v4)<br/>구성 패턴 · 교정 correction"]:::learn
+  subgraph H["② 제목·썸네일 · 훅이"]
+    direction TB
+    T1["제목 (hook_maker)<br/>📖 선택주제 · 말투(L3) · 제목스타일(L3) · 외부 고조회 제목<br/>🤖 AI 1회 또는 스켈레톤 로컬생성: 제목 3안<br/>🛡️ 베낌가드(ref_similarity) · 스타일부합 체크<br/>💾 stage_proposals(L2)"]:::step
+    T2["썸네일 (thumbnail_maker)<br/>📖 선택제목 · 말투(L3) · 썸네일스타일(L3) · 우승썸네일<br/>🤖 AI 1회 또는 로컬생성: 메인문구·박스·레이아웃 3안<br/>🛡️ 주제키워드 누락(topic_missing) 경고<br/>💾 stage_proposals(L2)"]:::step
+    T1 -->|"👤 선택"| T2
+  end
+
+  S3["③ 구성 · 구다리 (structurer)<br/>📖 주제·제목 · 구성인사이트(L3) · 쉬운설명톤(L3) · 구성스타일(L3)<br/>🤖 AI 1회: 구성 3안 (전개전략 + 섹션 목차)<br/>💾 stage_proposals(L2)"]:::step
+
+  subgraph RC["④ 리서치 · 셜록 셀 (fan-out → join)"]
+    direction TB
+    R1["1. 셜록 팀장 (sherlock_lead)<br/>🤖 구성 → 검증대상 분해<br/>claims(사실) · concepts(개념) 산출"]:::step
+    R2["2. 팩트검증가 (fact_verifier) ×N 병렬<br/>🤖 claim별 웹검색 + 검증 (출처계층·인용·신선도)<br/>금융claim=공식도메인만 · 인젝션 방어 · 실패시 강등"]:::step
+    R3["3. 교차정리 (reconcile · AI 0회)<br/>⚙️ 7무결성 가드 · 삼각검증 · 인용확인<br/>미검증/상충 → 👤 사람검수 escalation"]:::data
+    R4["4. 셈이(numbers) + 유이(analogist) 병렬<br/>🤖 검증된 사실 기반 숫자예시 · 일상비유<br/>⚙️ 검산·왜곡 코드 재확인"]:::step
+    R5["5. 반론 (critic)<br/>🤖 확증편향 차단: 누락주장 · 반증 탐색"]:::step
+    R1 --> R2 --> R3 --> R4 --> R5
+  end
+
+  S5["⑤ 대본 · 짠펜 (scribe)<br/>📖 승인팩트 · 설명자산 · 말투(L3)<br/>🤖 AI 1회(웹 차단): 대본 + 출처연결(lineage)<br/>🛡️ 표절가드(shingle) · 신선도 게이트<br/>💾 script_segments + segment↔fact/asset(L2)"]:::step
+
+  PERF["📊 성과 performance_metrics(L2)<br/>24h 클릭률 · 조회수 · A/B (⚠️ 현재 수동입력)"]:::data
+  EXT["🧪 학습 추출 (파이프라인 외 · 사람 활성화 게이트)<br/>말투추출(tone) · 제목스타일(title) · 썸네일스타일(style)<br/>구성스타일(structure) · 회고(retrospectivist) · 교정차이분석"]:::learn
+  LEARN["🧠 L3 지식 (재료 = 처음↔최종 차이 × 성과)<br/>tone_profile · style_profiles(제목·썸네일·구성)<br/>insights(승인) · correction"]:::learn
 
   INP --> S1
-  S1 -->|"👤 선택"| S2
-  S2 -->|"👤 선택"| S3
-  S3 -->|"👤 선택"| S4
-  S4 -->|"👤 승인"| S5
+  S1 -->|"👤 선택"| T1
+  T2 -->|"👤 선택"| S3
+  S3 -->|"👤 선택"| R1
+  R5 -->|"👤 승인"| S5
   S5 -->|"👤 검수"| PERF
-  PERF --> LEARN
+  PERF --> EXT --> LEARN
   LEARN -."말투 주입".-> S5
-  LEARN -."문구 주입".-> S2
+  LEARN -."말투·문구 주입".-> T1
+  LEARN -."말투·문구 주입".-> T2
   LEARN -."구성 주입".-> S3
   LEARN -."인사이트".-> S1
 
-  LEG["🟨 🤖 = AI 모델 호출 (단계당 단 1회, 리서치만 다중)<br/>👤 = 사람만, AI 0회 — '선택/승인'이 곧 학습 입력<br/>읽기·대기는 비용 0 · 모든 AI는 callLLM 한 경로로만"]:::legend
+  LEG["🟨 🤖 = AI 호출 (단계당 1회, 리서치만 다중) · ⚙️ = 코드로직(AI 0회)<br/>👤 = 사람만 — '선택/승인'이 곧 학습 입력 · 🛡️ = 가드<br/>읽기·대기 비용 0 · 모든 AI는 callLLM 한 경로로만"]:::legend
 
   classDef in fill:#ffffff,color:#121212,stroke:#121212,stroke-width:2px
   classDef step fill:#F8F082,color:#121212,stroke:#121212,stroke-width:2px
