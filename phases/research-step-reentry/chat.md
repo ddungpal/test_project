@@ -48,3 +48,33 @@
 [Joy] 7무결성가드 fact_verifier detectFinancial 금융 로직 파일 하나도 안 건드렸고, 기존 테스트도 삭제 0줄에 94줄 순수 추가만. 약화 없음
 [Joy] AC 직접 다 돌렸어. typecheck exit 0, test 710개 전부 통과 exit 0(step1 691에서 +19), build도 exit 0. 깔끔하게 통과다 맥스 손 빠르다 나 커피 탈 틈도 없네 통과 축하해
 [리드] 좋아, Step 2 통과 확정. AC 3종 내가 돌린 것도 조이가 돌린 것도 전부 exit 0이고 가드 네 개 다 지켜졌어. index.json completed로 갱신했어. 수고들 했어 — 다음은 step3 reentry-ui야.
+
+=== Step 3: reentry-ui ===
+[리드] 마지막 step이야 — 순수 프론트엔드. step0~2 백엔드는 절대 안 건드리고, (1)선택 게이트(research_scoped)에 "더 뽑아줘"(이유)·"직접 추가"(수동·금융토글) 붙이고 (2)결과/검수(research_ready·research_review)에 ①다시선택·②다시검증(비용안내!)·④예시다시 버튼 다는 거야.
+[리드] 맥스, 이거 구현 좀 맡아줄게. 액션은 이미 다 있어 — regenerateResearchScopeAction(runId,reason)·selectResearchScopeAction에 manual 인자·backToResearchScope·reverifyResearch·regenResearchExamples. RegenerateButton 이유입력 UX랑 FactCard Tag 톤 그대로 미러하면 돼. TRUS 3색만, 재진입 버튼은 보조(outline) 위계로. ②엔 재과금 안내 꼭 넣고.
+[리드] 에스더는 맥스 끝나면 디자인 위계·TRUS 준수·UX(확인 다이얼로그·pending·금융 ⚠️ 배지) 폴리시 봐줘.
+=== Step 3: reentry-ui ===
+[Max] step3 시작. 백엔드는 안 건드리고 UI만 손볼게. ResearchScopeGate, page.tsx, 그리고 새 컴포넌트 ResearchReentryActions 만들 거야. 관련 파일들 다 읽었어 — 액션 시그니처, detectFinancial, ManualClaim/Concept 타입, FactCard·RegenerateButton 톤 확인했고.
+[Max] ResearchScopeGate 보강 끝. 더 뽑아줘(재생성, 이유 선택), 직접 추가(claim/concept) 폼 넣었어. claim 금융 토글은 안 만지면 타이핑 따라 자동, 만지면 고정으로 했고. 0개 가드는 후보+수동 합산으로 확장했어. 이제 결과/검수 재진입 버튼 컴포넌트 만들게.
+[Max] ResearchReentryActions 만들고 page.tsx의 research_ready·research_review 둘 다에 끼워넣었어. ②다시 검증엔 다이얼로그랑 화면 텍스트 양쪽에 비용 안내 박아뒀고. typecheck·test(710개)·build 다 통과. 백엔드는 안 건드렸어. 놓친 거 있으면 말해줘.
+
+[Esther] 음.. Max가 만든 재진입 UI 세 파일이랑 미러 원본(RegenerateButton, FactCard) 다 읽었어. 톤은 잘 맞춰놨더라, 일단 칭찬부터.
+[Esther] 근데 ResearchScopeGate 수동 claim 금융 토글에서 financialTouched라는 필드를 set하는데 타입엔 없는 거라 좀 걸려. 어디서 읽지도 않아서 typecheck부터 돌려볼게.
+
+[Esther] 전체적으로 색이랑 위계는 잘 잡혀있어. 3색만 쓰고 그림자 그라데이션 없고, 주 액션만 노랑 채움이고 나머진 다 outline. 이건 깔끔해.
+[Esther] 두 군데만 손봤어. 하나는 ResearchScopeGate에 financialTouched라는 안 쓰는 죽은 필드 지웠고, 다른 하나가 진짜 중요한 거야.
+[Esther] ②다시 검증이 ①④랑 버튼 모양이 똑같아서 비용 드는 액션인 줄 한눈에 모르겠더라고. 새 색 쓰는 건 금지니까 색 말고, 라벨에 ⚠️랑 (비용)을 붙이고 비용 안내문이랑 aria-describedby로 묶었어. 이러면 색 안 건드리고도 ②가 위험한 액션이라는 게 확 들어와. 이건 자신 있어.
+[Esther] 자 이제 typecheck 테스트 빌드 셋 다 돌려본다.
+
+[Esther] 다 통과했어. typecheck 0, 테스트 710개 다 초록, 빌드도 깨끗하게 됐어. /runs/[id] 라우트도 정상이고.
+[Esther] 결론은 디자인 위계랑 TRUS 준수는 Max가 이미 잘 해놨고, 나는 ②다시검증 비용 가시성만 한 칸 더 끌어올린 거야. 색 안 늘리고 마커랑 aria로. 만족스러워 🙂
+[리드] 둘 다 수고했어. AC 내가 직접 다 돌렸어 — typecheck/test(710)/build 전부 exit 0 확인. 조이, 독립 검수 부탁해. 특히 에스더가 지운 필드 때문에 수동 claim 금융 토글이 "안 만지면 타이핑 따라 자동, 만지면 고정" 동작 안 깨졌는지 봐줘.
+
+[Joy] step3 reentry-ui 검수 들어간다~ git diff부터 봤는데 신규는 ResearchReentryActions.tsx 하나, 수정은 ScopeGate랑 page.tsx 뿐이네. 백엔드 안 건드린 거 깔끔 굿굿
+[Joy] 금융 토글 로직 확인했어! claimFinTouched 기반으로 미수정이면 detectFinancial 자동추종, 만지면 고정. financialTouched 잔여필드 없이 멀쩡하게 동작하네 에스더 정리 잘했다
+[Joy] 비용안내도 다이얼로그+화면 둘 다 있고 aria-describedby로 ②버튼이랑 연결까지 했네 디테일 좋다 맥스
+[Joy] 이제 AC 돌려본다 typecheck/test/build 가즈아
+
+[Joy] AC 3종 다 통과! typecheck exit0, test 710개 통과(step2랑 같은 710 — 테스트 안 줄었어) exit0, build exit0
+[Joy] 디자인도 trus 3색만 쓰고 그림자/그라데이션 없음, 재진입 버튼은 outline 보조위계 굿. 백엔드 무변경, 범위외 부산물도 없고 신규는 ReentryActions 하나뿐. 완벽하다 통과 🎉 맥스 에스더 수고했어!
+[리드] 좋아, Step 3 통과 확정. Joy VERDICT PASS고 AC 3종 내가 돌린 것도 Joy가 돌린 것도 전부 exit 0이야. 백엔드 무변경·TRUS 3색·재진입 버튼·수동추가 다 확인. research-step-reentry 페이즈 완료됐어 수고했어 모두! 🎉

@@ -18,6 +18,7 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { EnterReviewButton } from "@/components/EnterReviewButton";
 import { ResearchReview } from "@/components/ResearchReview";
 import { ResearchScopeGate } from "@/components/ResearchScopeGate";
+import { ResearchReentryActions } from "@/components/ResearchReentryActions";
 import { FactCard } from "@/components/FactCard";
 import { EnterScriptReviewButton } from "@/components/EnterScriptReviewButton";
 import { ScriptReview } from "@/components/ScriptReview";
@@ -283,6 +284,7 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
           <EnterReviewButton runId={runId} />
           <p className="text-xs text-trus-white/40">고위험 fact만 검수 대상으로 띄웁니다(전건 검토 아님). 아래는 생성된 리서치 미리보기.</p>
         </div>
+        <ResearchReentryActions runId={runId} />
         {rv && <ResearchPanel rv={rv} />}
       </div>
     );
@@ -296,6 +298,7 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
         ) : (
           <ApproveAllInline runId={runId} />
         )}
+        <ResearchReentryActions runId={runId} />
         {rv && <ResearchPanel rv={rv} />}
       </div>
     );
