@@ -22,7 +22,7 @@ import type { Supa } from "../src/pipeline/runState.js";
 function cfg(mode: "hybrid" | "llm" | "local"): LlmConfig {
   return {
     backend: "claude-p", fixtures: "off", copyGenMode: mode, softCapUsd: 7, hardCapUsd: 10, maxRework: 2,
-    research: { maxClaims: 4, maxConcepts: 4, koreanOfficialDomains: [] },
+    research: { maxClaims: 4, maxConcepts: 4, koreanOfficialDomains: [], claimsPerSection: 1.5, conceptsPerSection: 1, floor: 2, ceiling: 8 },
     search: { defaultTtlSeconds: 86_400, volatilityTtlSeconds: { static: 1, slow: 1, fast: 1 } },
     ab: { decisiveMargin: 0.1, marginalMargin: 0.03, ctrNormCap: 10, ctrBoostFactor: 0.3, viewsConfFloor: 0.5 },
   };

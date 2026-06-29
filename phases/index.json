@@ -208,11 +208,11 @@
     {
       "dir": "research-scope-gate",
       "status": "running",
-      "progress": "0/4",
-      "running_step": "0 (scope-state-machine)",
+      "progress": "1/4",
+      "running_step": "1 (scope-candidates)",
       "attempt": 1,
-      "elapsed_seconds": 660,
-      "heartbeat_at": "2026-06-29T15:50:43+0900"
+      "elapsed_seconds": 780,
+      "heartbeat_at": "2026-06-29T16:04:05+0900"
     }
   ]
 }

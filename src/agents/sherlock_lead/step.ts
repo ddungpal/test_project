@@ -5,7 +5,7 @@ import { SHERLOCK_SCOPE_SCHEMA, SHERLOCK_SCOPE_SYSTEM, type SherlockScopeOutput 
 export async function scopeStep(
   llm: CallLLMDeps,
   runId: string,
-  input: { topic: string; title: string; outline: unknown },
+  input: { topic: string; title: string; outline: unknown; budget?: { claims: number; concepts: number } },
 ): Promise<SherlockScopeOutput> {
   const r = await callLLM<SherlockScopeOutput>(
     { roleId: "sherlock_lead", system: SHERLOCK_SCOPE_SYSTEM, input, schema: SHERLOCK_SCOPE_SCHEMA, runId, maxTokens: 2048 },

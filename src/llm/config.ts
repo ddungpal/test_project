@@ -32,6 +32,11 @@ export interface LlmConfig {
     maxClaims: number;
     maxConcepts: number;
     koreanOfficialDomains: readonly string[];
+    /** scope 제안의 '기본 선택 개수' 산출용(섹션 비례 + floor/ceiling). 상한 아님 — UI 기본 체크 힌트(researchBudget.ts). */
+    claimsPerSection: number;
+    conceptsPerSection: number;
+    floor: number;
+    ceiling: number;
   };
   /** 검색 캐시 TTL(발굴 신선도 B). volatility 미지정 쿼리는 default, 지정 시 해당 TTL.
    *  TTL은 fixture(record 모드)에만 의미 — stale fixture를 라이브 재호출로 갱신. replay(개발 $0)는 stale이어도 유지. */
@@ -71,6 +76,7 @@ export function loadConfig(): LlmConfig {
   if (softCapUsd > hardCapUsd) {
     throw new Error(`COST_SOFT_CAP_USD(${softCapUsd}) must be <= COST_HARD_CAP_USD(${hardCapUsd})`);
   }
+  const researchCeiling = envNum("RESEARCH_DEFAULT_CEILING", 8);
   return {
     backend,
     fixtures,
@@ -82,6 +88,10 @@ export function loadConfig(): LlmConfig {
       maxClaims: envNum("RESEARCH_MAX_CLAIMS", 4),
       maxConcepts: envNum("RESEARCH_MAX_CONCEPTS", 4),
       koreanOfficialDomains: KOREAN_OFFICIAL_DOMAINS,
+      claimsPerSection: envNum("RESEARCH_CLAIMS_PER_SECTION", 1.5),
+      conceptsPerSection: envNum("RESEARCH_CONCEPTS_PER_SECTION", 1),
+      floor: envNum("RESEARCH_DEFAULT_FLOOR", 2),
+      ceiling: researchCeiling,
     },
     search: {
       defaultTtlSeconds: envNum("SEARCH_CACHE_TTL_SECONDS", 86_400), // 1일
