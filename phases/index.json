@@ -213,11 +213,11 @@
     {
       "dir": "research-step-reentry",
       "status": "running",
-      "progress": "1/4",
-      "running_step": "1 (scope-augment)",
+      "progress": "2/4",
+      "running_step": "2 (reentry-actions)",
       "attempt": 1,
-      "elapsed_seconds": 780,
-      "heartbeat_at": "2026-06-29T17:30:28+0900"
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-06-29T17:38:33+0900"
     }
   ]
 }

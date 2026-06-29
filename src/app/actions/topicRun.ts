@@ -12,6 +12,7 @@ import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
 import { selectResearchScope, regenerateResearchScope, type ManualClaim, type ManualConcept } from "../../pipeline/researchScope.js";
+import { reenterResearch } from "../../pipeline/researchReentry.js";
 import { withStageRuntime } from "../../pipeline/stageRuntime.js";
 import { enterScriptReview, approveScript, requestScriptRework } from "../../pipeline/scriptGate.js";
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
@@ -280,6 +281,38 @@ export async function regenerateResearchScopeAction(runId: string, reason?: stri
   });
   return guarded.status === "ok" ? { proposalId: guarded.value.proposalId } : {};
 }
+// 리서치 단계 내부 되돌림(re-entry, migration 28) — 사용자가 결과/검수에서 이전으로 복귀해 다시 돈다.
+//   세 액션 모두: requireOwner → reenterResearch(가드+전이) → (이벤트 필요 시) run/research.requested 재발행 → auditLog.
+//   ★ 새 Inngest 이벤트/함수 금지 — 기존 라우팅(researchStage가 researching 상태 + fromStep으로 분기)을 재사용.
+//   ★ rework_count 미증가(reenterResearch가 빈 patch로 전이 — 내부 재진입은 비용 캡으로만 제한, step0 정책).
+//   auditLog는 기존 라벨(stage_regenerated) 재사용 + detail.kind로 종류 기록(새 AuditAction enum 추가 안 함).
+
+// ① 다시 선택/보완: research_ready/research_review → research_scoped. 전이만(셀 실행·이벤트 없음).
+export async function backToResearchScope(runId: string): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await reenterResearch(supa, runId, "scope");
+  await auditLog(supa, { actorId: ownerId, action: "stage_regenerated", targetType: "run", targetId: runId, detail: { stage: "research", reentry: true, kind: "scope" } });
+}
+
+// ② 다시 검증: research_ready/research_review → researching → run/research.requested(fromStep='full').
+export async function reverifyResearch(runId: string): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  const res = await reenterResearch(supa, runId, "reverify");
+  if (res.event) await inngest.send({ name: "run/research.requested", data: { runId, fromStep: res.fromStep } });
+  await auditLog(supa, { actorId: ownerId, action: "stage_regenerated", targetType: "run", targetId: runId, detail: { stage: "research", reentry: true, kind: "reverify" } });
+}
+
+// ④ 예시 다시 생성: research_ready/research_review → researching → run/research.requested(fromStep='examples').
+export async function regenResearchExamples(runId: string): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  const res = await reenterResearch(supa, runId, "examples");
+  if (res.event) await inngest.send({ name: "run/research.requested", data: { runId, fromStep: res.fromStep } });
+  await auditLog(supa, { actorId: ownerId, action: "stage_regenerated", targetType: "run", targetId: runId, detail: { stage: "research", reentry: true, kind: "examples" } });
+}
+
 export async function openResearchReview(runId: string) {
   await requireOwner();
   const supa = createAdminClient();
