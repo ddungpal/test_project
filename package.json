@@ -14,6 +14,7 @@
     "parity:replay": "vitest run tests/parity.test.ts",
     "parity:live": "tsx scripts/parity-live.ts",
     "tone:extract": "tsx scripts/extract-tone.ts",
+    "title:extract": "tsx scripts/extract-title-style.ts",
     "slice:topic": "tsx scripts/run-topic-slice.ts",
     "preflight": "tsx scripts/dev-preflight.ts",
     "inngest:dev": "inngest-cli dev -u http://localhost:3000/api/inngest"

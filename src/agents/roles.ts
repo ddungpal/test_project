@@ -29,6 +29,7 @@ export const ROLES = {
   // 학습 작업(파이프라인 단계 아님) — corpus 위에서 1회 도는 말투 추출(§12). 짠펜이 의존하는 자산 생성.
   tone_extractor: { roleId: "tone_extractor", name: "말투추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus
   style_extractor: { roleId: "style_extractor", name: "스타일추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus. 파이프라인 단계 아님.
+  title_extractor: { roleId: "title_extractor", name: "제목스타일추출", defaultModel: "opus", tools: [] }, // 채널 raw 제목에서 제목 스타일 1회 추출(훅이 의존 자산). 파이프라인 단계 아님. roleId 영구.
   structure_extractor: { roleId: "structure_extractor", name: "구성추출", defaultModel: "opus", tools: [] }, // 코퍼스 구성/전개 패턴 1회 추출(구다리 의존 자산). 파이프라인 단계 아님. roleId 영구.
   // 학습 루프 회고(Phase 4) — 발행 후 성과+선택+반응을 인과로 복기→인사이트 draft. 편당 1회·저빈도·고가치 → opus.
   retrospectivist: { roleId: "retrospectivist", name: "회고", defaultModel: "opus", tools: [] },

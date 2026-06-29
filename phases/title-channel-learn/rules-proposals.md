@@ -1,0 +1,1 @@
+- 제안: 하네스 step 검수 통과 직후 index.json의 해당 step을 pending→completed + summary 로 갱신하는 책임자를 명확히 한다(현재 started_at만 찍히고 pending 잔존). (근거: rules.md "step 완료 시 index.json completed+summary" 규칙이 검수 단계에서 누락되는 패턴 방지)
