@@ -14,7 +14,10 @@ import { isCapError, flushLedger } from "../src/pipeline/runGuards.js";
 describe("상태머신(enums)", () => {
   it("정상 전이 흐름 허용", () => {
     expect(canTransition("created", "topic_proposed")).toBe(true);
-    expect(canTransition("structure_selected", "researching")).toBe(true);
+    // 리서치 선택 게이트: 구성 확정 → scope 게이트 → 리서치(직행 차단).
+    expect(canTransition("structure_selected", "research_scoped")).toBe(true);
+    expect(canTransition("research_scoped", "researching")).toBe(true);
+    expect(canTransition("structure_selected", "researching")).toBe(false); // 직행 막힘 — scope 경유
     expect(canTransition("research_ready", "research_review")).toBe(true);
     expect(canTransition("research_review", "research_approved")).toBe(true);
   });

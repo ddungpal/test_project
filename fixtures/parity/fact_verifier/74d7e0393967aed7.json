@@ -1,0 +1,12 @@
+{
+  "promptHash": "74d7e0393967aed76157459c77818610642e49b8085b79bd868c25d468429e82",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"중도해지 시 정부기여금·비과세 혜택 지급 여부는 해지 사유(특별중도해지 vs 일반중도해지)에 따라 크게 달라지므로, '일부 혜택이 사라지지 않는다'는 단정은 조건을 생략한 오해 소지가 있음\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 3건의 검색결과는 모두 '[MOCK 검색결과 — 실제 사실 아님]' 표식이 붙은 개발용 더미 데이터로, 실재하는 사실 근거가 아니다. claim을 뒷받침하는 실제 문장이나 독립된 발행처의 일치 근거가 존재하지 않으므로 검증 불가로 판정한다. 인용 가능한 실제 content 문장이 없어 quote_excerpt는 null, citation_verified는 false로 처리한다.\"}",
+  "usage": {
+    "inTok": 710,
+    "outTok": 137,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-29T05:52:14.219Z"
+}

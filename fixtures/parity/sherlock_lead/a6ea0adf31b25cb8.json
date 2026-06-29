@@ -1,0 +1,12 @@
+{
+  "promptHash": "a6ea0adf31b25cb8ca45cdcf73a5899a86d8ec7e66398845cd86ae43ee37f6b3",
+  "roleId": "sherlock_lead",
+  "model": "opus",
+  "rawJson": "{\"claims\":[{\"text\":\"청년도약계좌와 청년미래적금은 서로 다른 정부 지원 적금/금융 상품으로 동시에 존재한다\",\"is_financial\":true},{\"text\":\"청년도약계좌에서 청년미래적금으로 '갈아타기(중도해지 후 신규 가입)'가 제도상 허용된다\",\"is_financial\":true},{\"text\":\"청년도약계좌를 중도해지해도 그동안 납입한 원금과 일부 혜택은 사라지지 않는다\",\"is_financial\":true},{\"text\":\"청년도약계좌 중도해지 시 정부기여금·비과세 혜택이 일부 또는 전부 회수·상실될 수 있다\",\"is_financial\":true},{\"text\":\"청년도약계좌의 가입 대상은 특정 연령(청년) 및 소득 요건을 충족해야 한다\",\"is_financial\":true},{\"text\":\"청년미래적금의 가입 대상은 특정 연령 및 소득 요건을 충족해야 한다\",\"is_financial\":true},{\"text\":\"청년도약계좌는 정부기여금이 지급되며 그 규모는 소득 구간에 따라 달라진다\",\"is_financial\":true},{\"text\":\"청년도약계좌는 이자소득 비과세 혜택이 적용된다\",\"is_financial\":true},{\"text\":\"청년도약계좌의 만기(납입 기간)는 정해진 연수가 있다\",\"is_financial\":true},{\"text\":\"청년미래적금과 청년도약계좌는 만기·금리·정부지원 방식·납입 한도에서 차이가 있다\",\"is_financial\":true},{\"text\":\"한 사람이 청년도약계좌와 청년미래적금에 동시 가입(중복 가입)할 수 있는지에 대한 제도상 제한이 있다\",\"is_financial\":true},{\"text\":\"가입 기간이 일정 기간(예: 특정 연차) 경과했는지에 따라 갈아타기 시 손익이 달라진다\",\"is_financial\":true},{\"text\":\"중도해지 사유가 특별중도해지(특정 사유)에 해당하면 비과세·기여금 혜택이 유지될 수 있다\",\"is_financial\":true},{\"text\":\"소득 구간이 낮을수록 청년도약계좌의 정부기여금 매칭 비율이 높다\",\"is_financial\":true}],\"concepts\":[{\"name\":\"청년도약계좌의 정부기여금 매칭 구조\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"이자소득 비과세 혜택의 의미\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"중도해지 시 혜택 회수(원금은 남지만 기여금·비과세는 사라질 수 있음)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"특별중도해지와 일반중도해지의 차이\",\"needs_number\":false,\"needs_analogy\":true},{\"name\":\"두 상품의 성격 차이(목적·만기·지원방식)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"소득 구간별 혜택 차등(기여금·우대금리)\",\"needs_number\":true,\"needs_analogy\":true},{\"name\":\"갈아타기 시 기회비용(이미 받은 혜택 vs 새 상품 혜택)\",\"needs_number\":true,\"needs_analogy\":true}]}",
+  "usage": {
+    "inTok": 605,
+    "outTok": 401,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-29T05:51:54.751Z"
+}

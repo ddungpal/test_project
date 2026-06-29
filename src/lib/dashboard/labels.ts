@@ -13,6 +13,7 @@ export const STATE_LABEL: Record<RunState, string> = {
   thumbnails_selected: "썸네일 선택됨",
   structure_proposed: "구성 제안됨",
   structure_selected: "구성 선택됨",
+  research_scoped: "리서치 범위 확정(시작 대기)",
   researching: "리서치 진행중",
   research_ready: "리서치 완료(검수 대기)",
   research_review: "리서치 검수중",

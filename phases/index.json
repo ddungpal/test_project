@@ -204,6 +204,15 @@
       "dir": "channel-title-learn-button",
       "status": "completed",
       "completed_at": "2026-06-29T14:31:22+0900"
+    },
+    {
+      "dir": "research-scope-gate",
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (scope-state-machine)",
+      "attempt": 1,
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-06-29T15:50:43+0900"
     }
   ]
 }

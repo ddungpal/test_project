@@ -29,6 +29,7 @@ const STATE_MAP: Record<RunState, { step: number; phase: Phase }> = {
   thumbnails_selected: { step: 3, phase: "await_start" }, // 썸네일 확정 → 구성 시작 대기
   structure_proposed: { step: 3, phase: "await_select" },
   structure_selected: { step: 4, phase: "await_start" },
+  research_scoped: { step: 4, phase: "await_start" }, // 셜록 scope 후 사용자 선택 대기(리서치 시작 게이트) — UI 배선은 step1
   researching: { step: 4, phase: "working" },
   research_ready: { step: 4, phase: "await_review" },
   research_review: { step: 4, phase: "await_review" },

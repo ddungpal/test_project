@@ -12,6 +12,7 @@ export const RUN_STATES = [
   "thumbnails_selected",
   "structure_proposed",
   "structure_selected",
+  "research_scoped",
   "researching",
   "research_ready",
   "research_review",
@@ -37,7 +38,8 @@ export const ALLOWED_TRANSITIONS: Record<RunState, readonly RunState[]> = {
   thumbnails_proposed: ["thumbnails_selected", "aborted"],
   thumbnails_selected: ["structure_proposed", "aborted"],
   structure_proposed: ["structure_selected", "aborted"],
-  structure_selected: ["researching", "aborted"],
+  structure_selected: ["research_scoped", "aborted"], // 리서치 직행 차단 → scope 게이트 경유
+  research_scoped: ["researching", "aborted"], // 셜록 scope 후 사용자 선택 → 리서치 시작
   researching: ["research_ready", "paused_soft_cap", "aborted"],
   research_ready: ["research_review", "aborted"],
   research_review: ["research_approved", "researching", "aborted"], // rework 재진입

@@ -1,0 +1,12 @@
+{
+  "promptHash": "00e813ed6cd239ca2cf72c4884f4b56b05bf8f6abd0f1325eb7ee455c94f3634",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":null,\"freshness\":\"unknown\",\"reasoning\":\"제공된 3개 검색결과는 모두 '[MOCK 검색결과 — 실제 사실 아님]' 표식이 있는 개발용 더미 데이터로, 실제 사실 근거로 사용할 수 없다. 국가법령정보센터·국세청·금융위원회 명의로 표기되어 있으나 본문 자체가 더미임을 명시하고 있어 claim을 뒷받침하는 실재 문장이 없다. 따라서 발췌 가능한 인용도 없고(citation_verified=false), 독립 출처 수는 0으로 처리한다. 규칙상 MOCK 표식 결과는 could_not_verify로 판정한다. 발행 시점 정보도 모두 null이라 freshness는 unknown.\"}",
+  "usage": {
+    "inTok": 723,
+    "outTok": 132,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-29T05:52:14.220Z"
+}
