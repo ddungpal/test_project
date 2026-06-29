@@ -12,12 +12,15 @@ export function LiveRefresh({ fallbackMs = 20000, active = true }: { fallbackMs?
   const router = useRouter();
   const [secs, setSecs] = useState(0);
   const [live, setLive] = useState(false);
+  // 채널명은 인스턴스마다 고유 — 싱글톤 클라이언트에서 같은 이름 재구독 시
+  // "cannot add postgres_changes callbacks after subscribe()" 충돌(리마운트·StrictMode·다중 인스턴스) 방지.
+  const [channelName] = useState(() => `production_runs_live:${crypto.randomUUID()}`);
 
   useEffect(() => {
     const supa = createSupabaseBrowserClient();
     // production_runs 전체 변경 구독(단독 owner·소수 런 → 테이블 단위로 충분). 변경 시 서버 재조회.
     const channel = supa
-      .channel("production_runs_live")
+      .channel(channelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "production_runs" }, () => router.refresh())
       .subscribe((status) => setLive(status === "SUBSCRIBED"));
 
@@ -30,7 +33,7 @@ export function LiveRefresh({ fallbackMs = 20000, active = true }: { fallbackMs?
       if (tick) clearInterval(tick);
       if (poll) clearInterval(poll);
     };
-  }, [router, fallbackMs, active]);
+  }, [router, fallbackMs, active, channelName]);
 
   return (
     <span className="inline-flex items-center gap-1.5 text-xs text-trus-yellow/80">
