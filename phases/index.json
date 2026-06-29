@@ -197,12 +197,8 @@
     },
     {
       "dir": "thumbnail-regen-queue",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (regen-queue-wiring)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-06-29T12:32:30+0900"
+      "status": "completed",
+      "completed_at": "2026-06-29T12:32:57+0900"
     }
   ]
 }
