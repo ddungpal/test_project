@@ -20,7 +20,8 @@ export const researchStageFn = inngest.createFunction(
           // structure_selected면 scope 제안(게이트)만 — fan-out 검증은 사용자 선택 후. 그 외는 기존 셀.
           const run = await getRun(deps.supa, event.data.runId);
           if (run.state === "structure_selected") return runResearchScope(event.data.runId, deps);
-          return runResearchCell(event.data.runId, deps);
+          // fromStep='examples'면 셈이·유이만 재생성(②③⑦ 스킵·research_facts 보존). 없으면 'full'(현행).
+          return runResearchCell(event.data.runId, deps, { fromStep: event.data.fromStep ?? "full" });
         },
         { softAck: event.data.softAck },
       );

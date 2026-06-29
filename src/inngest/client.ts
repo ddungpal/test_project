@@ -12,7 +12,8 @@ import { Inngest, EventSchemas } from "inngest";
 // reason: '다시 생성' 시 사용자가 적은 선택적 이유(transient·프롬프트용, DB 미저장). 없으면 기존과 동일.
 // forceLlm: 'LLM으로 새로 써줘' — 로컬($0) 생성을 건너뛰고 callLLM 강제(step2 계약, step3 UI에서 전달). 없으면 hybrid 기본.
 // postConfirm: 확정 후 재생성 — 상태 전이 없이 새 proposal만 INSERT(selectedState에서도 진입, 낙관잠금 없음).
-type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean };
+// fromStep: 리서치 부분 재진입(migration 28) — 'examples'면 셈이·유이만 재생성(②③⑦·research_facts 보존). 없으면 'full'(현행). research.requested에서만 사용.
+type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean; fromStep?: "full" | "examples" };
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };

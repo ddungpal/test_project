@@ -17,6 +17,9 @@ import { criticStep } from "../agents/critic/step.js";
 import type { NumbersOutput } from "../agents/numbers/schema.js";
 import type { AnalogistOutput } from "../agents/analogist/schema.js";
 import type { CriticOutput } from "../agents/critic/schema.js";
+import type { ResearchFactContext } from "../agents/numbers/step.js";
+import type { LlmBackendDriver } from "../llm/types.js";
+import type { VerificationStatus } from "../domain/enums.js";
 
 export interface ResearchCellDeps {
   supa: Supa;
@@ -24,7 +27,14 @@ export interface ResearchCellDeps {
   costGuard: CostGuard;
   ledger?: InMemoryCostLedger;
   searchBackend?: SearchBackend; // 미지정 시 env(SEARCH_BACKEND)
+  driver?: LlmBackendDriver; // 테스트·spike용 LLM 백엔드 주입(미지정 시 config.backend). callLLM에 그대로 전달.
 }
+
+/** 리서치 재진입 모드(migration 28·되돌림 전이).
+ *  - 'full'(기본): 현행 동작 그대로 — scope→팩트검증→리콘실→예시→반론. 회귀 0(바이트 동일).
+ *  - 'examples': 같은 scope·같은 검증결과 위에서 숫자/비유(셈이·유이)만 다시 — 팩트검증·리콘실·반론 스킵,
+ *    research_facts 보존(절대 삭제 금지), explanation_assets만 재생성. 비용 절감용 부분 재진입. */
+export type ResearchFromStep = "full" | "examples";
 
 export interface ResearchCellResult {
   runId: string;
@@ -36,13 +46,20 @@ export interface ResearchCellResult {
   skipped: boolean;
 }
 
-export async function runResearchCell(runId: string, deps: ResearchCellDeps): Promise<ResearchCellResult> {
+export async function runResearchCell(
+  runId: string,
+  deps: ResearchCellDeps,
+  opts: { fromStep?: ResearchFromStep } = {},
+): Promise<ResearchCellResult> {
   const { supa, config, costGuard, ledger } = deps;
-  const llm = { config, costGuard };
+  const llm = { config, costGuard, ...(deps.driver ? { driver: deps.driver } : {}) };
   const { koreanOfficialDomains } = config.research;
+  const fromStep: ResearchFromStep = opts.fromStep ?? "full";
   const run = await getRun(supa, runId);
 
   // 0) 멱등: 이미 research_ready면 기존 결과 요약 반환.
+  //    재진입(fromStep='examples')은 액션이 research_ready→researching로 전이시킨 뒤 셀을 호출하는 전제라
+  //    이 가드에 닿지 않는다(진입 시 state=researching). 이 조기반환은 크래시 후 중복 호출만 단락한다.
   if (run.state === "research_ready") {
     const { count: fc } = await supa.from("research_facts").select("*", { count: "exact", head: true }).eq("run_id", runId);
     if ((fc ?? 0) > 0) {
@@ -51,11 +68,18 @@ export async function runResearchCell(runId: string, deps: ResearchCellDeps): Pr
       return { runId, state: "research_ready", factCount: fc ?? 0, assetCount: ac ?? 0, escalatedCount: ec ?? 0, critic: { missing: [], counter_evidence: [] }, skipped: true };
     }
   }
-  // 진입 가드: 셀은 'researching'에서만 시작(크래시 후 재개 포함). step0이 structure_selected→researching
-  //   직행 전이를 없앴고(scope 게이트 경유), 선택 액션이 research_scoped→researching로 전이시킨 뒤 이벤트를
-  //   재발행하므로 셀 진입 시점엔 항상 researching이다. 옛 structure_selected 진입은 죽은 길(전이 거부) → 제거.
+  // 진입 가드: 셀은 'researching'에서만 시작(크래시 후 재개·재진입 포함). step0이 structure_selected→researching
+  //   직행 전이를 없앴고(scope 게이트 경유), 선택/재진입 액션이 (research_scoped|research_ready|research_review)
+  //   →researching로 전이시킨 뒤 이벤트를 재발행하므로 셀 진입 시점엔 항상 researching이다.
   if (run.state !== "researching") {
-    throw new Error(`research 셀은 'researching'에서만(현재 '${run.state}'). scope 선택(research_scoped→researching) 후 진입한다.`);
+    throw new Error(`research 셀은 'researching'에서만(현재 '${run.state}'). scope 선택·재진입(→researching) 후 진입한다.`);
+  }
+
+  // ── 재진입: 예시만(fromStep='examples') ──────────────────────────────────
+  //   ②팩트검증·③리콘실·⑦반론을 스킵하고, 기존 research_facts를 보존한 채 숫자/비유(셈이·유이)만 재생성한다.
+  //   비용 절감용(검증은 비싸고 안정적, 예시 품질만 다시 굴리고 싶을 때). research_facts는 절대 삭제 금지.
+  if (fromStep === "examples") {
+    return runExamplesReentry(runId, deps, llm);
   }
 
   // 1) 컨텍스트: 선택된 구성 + 주제·제목.
@@ -128,6 +152,83 @@ export async function runResearchCell(runId: string, deps: ResearchCellDeps): Pr
 
   const escalatedCount = factRows.filter((f) => f.escalated_to_human).length;
   return { runId, state: "research_ready", factCount: factRows.length, assetCount: assetRows.length, escalatedCount, critic, skipped: false };
+}
+
+/** 예시만 재진입(fromStep='examples'). full 경로와 분리해 검증 로직(②③⑦)을 절대 건드리지 않는다.
+ *  rework 결정: 리서치 내부 재진입(scope 재조정·예시 재생성·검수 후 재진입)은 rework_count를 올리지 않는다.
+ *    교차단계 rework(scripting→researching 등 freshness 되돌림)와 구분하고, 비용은 2단 캡으로만 제한한다.
+ *    → 여기서 bumpRework를 호출하지 않는다(의도적).
+ *  흐름: research_facts(run_id) 로드 → factContext 구성 → concepts는 loadSelectedScope →
+ *        셈이·유이만 재실행 → explanation_assets만 delete+insert(research_facts 보존) →
+ *        critic 미실행(빈 값) → researching→research_ready 복귀(full과 동일 전이). */
+async function runExamplesReentry(
+  runId: string,
+  deps: ResearchCellDeps,
+  llm: { config: LlmConfig; costGuard: CostGuard; driver?: LlmBackendDriver },
+): Promise<ResearchCellResult> {
+  const { supa, ledger } = deps;
+  const run = await getRun(supa, runId); // 누계 cost_usd 시점 재확보(가드 직후라 researching 보장).
+
+  // 1) 기존 검증 사실 로드 — 재검증 안 함(②③ 스킵). factContext는 full 경로와 동형({claim, status, quote}).
+  await setProgress(supa, runId, "1/2·기존 검증 사실 로드 (재검증 없음)");
+  const { data: factData, error: fe } = await supa
+    .from("research_facts")
+    .select("claim, verification_status, quote_excerpt, escalated_to_human")
+    .eq("run_id", runId);
+  if (fe) throw new Error(`research_facts 로드 실패: ${fe.message}`);
+  const existingFacts = (factData ?? []) as {
+    claim: string;
+    verification_status: VerificationStatus;
+    quote_excerpt: string | null;
+    escalated_to_human: boolean;
+  }[];
+  const factContext: ResearchFactContext[] = existingFacts.map((f) => ({
+    claim: f.claim,
+    verification_status: f.verification_status,
+    quote_excerpt: f.quote_excerpt,
+  }));
+
+  // 2) concepts는 선택된 scope에서(블라인드 slice 없음). claims는 재검증 안 하므로 불필요.
+  const { concepts } = await loadSelectedScope(supa, runId);
+
+  // 3) 셈이·유이만 재실행 — full 경로와 동일 호출(검증된 사실에 grounding). 캡 에러만 전파, 그 외는 빈 배열 강등.
+  await setProgress(supa, runId, "2/2·숫자·비유 재생성 (셈이∥유이)");
+  const numPs: Promise<NumbersOutput["assets"]> =
+    concepts.some((c) => c.needs_number)
+      ? numbersStep(llm, runId, { concepts: concepts.filter((c) => c.needs_number), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as NumbersOutput["assets"]; })
+      : Promise.resolve([] as NumbersOutput["assets"]);
+  const anaPs: Promise<AnalogistOutput["assets"]> =
+    concepts.some((c) => c.needs_analogy)
+      ? analogyStep(llm, runId, { concepts: concepts.filter((c) => c.needs_analogy), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as AnalogistOutput["assets"]; })
+      : Promise.resolve([] as AnalogistOutput["assets"]);
+  const [numSettled, anaSettled] = await Promise.all([Promise.allSettled([numPs]), Promise.allSettled([anaPs])]);
+  await throwIfCapRejected([...numSettled, ...anaSettled], supa, runId, run.cost_usd, ledger);
+  const numberAssets = numSettled[0]!.status === "fulfilled" ? numSettled[0]!.value : [];
+  const analogyAssets = anaSettled[0]!.status === "fulfilled" ? anaSettled[0]!.value : [];
+  const assetRows = buildAssetRows(runId, numberAssets, analogyAssets);
+
+  // 4) 저장 — explanation_assets만 교체. ★ research_facts는 절대 삭제하지 않는다(검증 보존).
+  await supa.from("explanation_assets").delete().eq("run_id", runId);
+  if (assetRows.length) {
+    const { error } = await supa.from("explanation_assets").insert(assetRows);
+    if (error) throw new Error(`explanation_assets insert 실패: ${error.message}`);
+  }
+
+  // 5) cost flush + 전이(full과 동일: researching→research_ready). critic 미실행 → 빈 값(보존 의미).
+  const stageCost = await flushLedger(supa, runId, ledger);
+  await setProgress(supa, runId, null);
+  await transitionRun(supa, runId, "researching", "research_ready", { cost_usd: run.cost_usd + stageCost });
+
+  const escalatedCount = existingFacts.filter((f) => f.escalated_to_human).length;
+  return {
+    runId,
+    state: "research_ready",
+    factCount: existingFacts.length, // 보존된 기존 facts 수.
+    assetCount: assetRows.length, // 재생성된 예시 수.
+    escalatedCount,
+    critic: { missing: [], counter_evidence: [] }, // 반론 미실행(스킵) — 기존 critic 결과는 DB에 없으므로 빈 값.
+    skipped: false,
+  };
 }
 
 /** 사용자가 고른 scope 후보만 복원한다(블라인드 slice 없음 — researchScope.selectResearchScope가 기록한 그대로).

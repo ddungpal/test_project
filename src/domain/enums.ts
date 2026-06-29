@@ -41,8 +41,9 @@ export const ALLOWED_TRANSITIONS: Record<RunState, readonly RunState[]> = {
   structure_selected: ["research_scoped", "aborted"], // 리서치 직행 차단 → scope 게이트 경유
   research_scoped: ["researching", "aborted"], // 셜록 scope 후 사용자 선택 → 리서치 시작
   researching: ["research_ready", "paused_soft_cap", "aborted"],
-  research_ready: ["research_review", "aborted"],
-  research_review: ["research_approved", "researching", "aborted"], // rework 재진입
+  // 리서치 내부 되돌림(re-entry, migration 28): research_scoped(scope 재선택)·researching(예시만 재생성)로 복귀.
+  research_ready: ["research_review", "research_scoped", "researching", "aborted"],
+  research_review: ["research_approved", "research_scoped", "researching", "aborted"], // rework 재진입 + scope 재선택
   research_approved: ["scripting", "aborted"],
   scripting: ["script_ready", "researching", "paused_soft_cap", "aborted"], // freshness rework
   script_ready: ["script_review", "aborted"],
