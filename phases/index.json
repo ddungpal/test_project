@@ -192,12 +192,8 @@
     },
     {
       "dir": "title-channel-learn",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (title-style-extract)",
-      "attempt": 1,
-      "elapsed_seconds": 540,
-      "heartbeat_at": "2026-06-29T11:19:35+0900"
+      "status": "completed",
+      "completed_at": "2026-06-29T11:20:07+0900"
     }
   ]
 }
