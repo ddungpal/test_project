@@ -1,0 +1,31 @@
+graph TD
+  U["👤 김짠부<br/>주제 아이디어 입력"]:::user
+  S1["① 주제 · 촉이<br/>🤖 주제 여러 개 + 이유 제안"]:::step
+  S2["② 제목·썸네일 · 훅이<br/>🤖 제목 3안 · 썸네일안 제안"]:::step
+  S3["③ 구성 · 구다리<br/>🤖 구성 2안 제안"]:::step
+  S4["④ 리서치 · 셜록셀<br/>🤖 AI 5명이 팩트 교차검증"]:::step
+  S5["⑤ 대본 · 짠펜<br/>🤖 김짠부 말투로 대본 초안"]:::step
+  VID["🎬 영상 업로드"]:::out
+  PERF[("📊 성과 데이터<br/>24h 클릭률 · 조회수 · A/B 결과")]:::data
+  LEARN["🧠 학습 루프<br/>잘된 영상에서 말투·문구·구성을 배워<br/>다음 영상에 자동 반영"]:::learn
+
+  U -->|"👤 선택"| S1
+  S1 -->|"👤 선택"| S2
+  S2 -->|"👤 선택"| S3
+  S3 -->|"👤 선택"| S4
+  S4 -->|"👤 승인"| S5
+  S5 -->|"👤 검수"| VID
+  VID --> PERF --> LEARN
+  LEARN -."말투 ↑".-> S5
+  LEARN -."문구 ↑".-> S2
+  LEARN -."구성 ↑".-> S3
+  LEARN -."주제 감각 ↑".-> S1
+
+  LEG["🤖 = AI가 제안 · 👤 = 김짠부는 '선택'만 하면 됨"]:::legend
+
+  classDef user fill:#121212,color:#F8F082,stroke:#121212,stroke-width:2px
+  classDef step fill:#F8F082,color:#121212,stroke:#121212,stroke-width:2px
+  classDef out fill:#ffffff,color:#121212,stroke:#121212,stroke-width:2px
+  classDef data fill:#ffffff,color:#121212,stroke:#121212,stroke-width:2px
+  classDef learn fill:#121212,color:#F8F082,stroke:#121212,stroke-width:2px
+  classDef legend fill:#ffffff,color:#121212,stroke:#121212,stroke-dasharray:4

@@ -1,0 +1,31 @@
+graph TD
+  INP["📥 DB에 데이터가 들어오는 3경로<br/>① 사람 입력: 주제 · 성과 수치 · 교정 / copy-learn 영상<br/>② 자동 수집(ingest): 유튜브 자막·댓글(HMAC) · 구글독스 대본<br/>③ 파이프라인: 각 단계가 결과를 자동 저장"]:::in
+
+  S1["① 주제 · 촉이<br/>📖 읽기: 댓글 키워드 집계(L1) · 인사이트(L3)<br/>🤖 AI 1회: 주제 N개 + 이유<br/>💾 저장: 제안 stage_proposals(L2)"]:::step
+  S2["② 제목·썸네일 · 훅이<br/>📖 읽기: 선택주제 · 말투(L3) · 우승썸네일 문구(L3)<br/>🤖 AI 1회: 제목 3안 · 썸네일안<br/>💾 저장: 제안 stage_proposals(L2)"]:::step
+  S3["③ 구성 · 구다리<br/>📖 읽기: 주제·제목 · 인사이트(L3) · 말투(L3)<br/>🤖 AI 1회: 구성 2안<br/>💾 저장: 제안 stage_proposals(L2)"]:::step
+  S4["④ 리서치 · 셜록셀<br/>📖 읽기: 구성 · 웹검색 출처(L1)<br/>🤖 AI 5종: 범위→팩트검증·숫자·비유→반론<br/>💾 저장: 검증팩트·설명자료(L2)"]:::step
+  S5["⑤ 대본 · 짠펜<br/>📖 읽기: 승인팩트·자료 · 말투(L3)<br/>🤖 AI 1회: 대본 + 출처연결(lineage)<br/>💾 저장: 대본조각 script_segments(L2)"]:::step
+
+  PERF["📊 성과 performance_metrics(L2)<br/>24h 클릭률 · 조회수 · A/B<br/>(유튜브 분석 ⚠️ 현재 수동입력)"]:::data
+  LEARN["🧠 학습 지식 L3 (재료 = 처음↔최종 차이 × 성과)<br/>말투 tone · 문구 style(제목v1·썸네일v4)<br/>구성 패턴 · 교정 correction"]:::learn
+
+  INP --> S1
+  S1 -->|"👤 선택"| S2
+  S2 -->|"👤 선택"| S3
+  S3 -->|"👤 선택"| S4
+  S4 -->|"👤 승인"| S5
+  S5 -->|"👤 검수"| PERF
+  PERF --> LEARN
+  LEARN -."말투 주입".-> S5
+  LEARN -."문구 주입".-> S2
+  LEARN -."구성 주입".-> S3
+  LEARN -."인사이트".-> S1
+
+  LEG["🟨 🤖 = AI 모델 호출 (단계당 단 1회, 리서치만 다중)<br/>👤 = 사람만, AI 0회 — '선택/승인'이 곧 학습 입력<br/>읽기·대기는 비용 0 · 모든 AI는 callLLM 한 경로로만"]:::legend
+
+  classDef in fill:#ffffff,color:#121212,stroke:#121212,stroke-width:2px
+  classDef step fill:#F8F082,color:#121212,stroke:#121212,stroke-width:2px
+  classDef data fill:#ffffff,color:#121212,stroke:#121212,stroke-width:2px
+  classDef learn fill:#121212,color:#F8F082,stroke:#121212,stroke-width:2px
+  classDef legend fill:#ffffff,color:#121212,stroke:#121212,stroke-dasharray:4
