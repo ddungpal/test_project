@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "scope-candidates",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-29T15:51:05+0900",
+      "completed_at": "2026-06-29T16:04:12+0900",
+      "summary": "셜록 scope를 '검증 실행'에서 '제안'으로 분리. 신규 researchScope.ts(runResearchScope): structure_selected에서만 진입, getSelectedStagePayload로 outline·topic·title 읽고 scopeStep 호출, claims+concepts 후보를 블라인드 slice 없이 전부 stage_proposals(stage='research')에 저장(runProposalStage 저장부 미러), structure_selected→research_scoped 전이만. fan-out 검증 일절 안 함(step2 몫). budget은 default_selected 마킹(상위 N개)에만 쓰고 후보는 전부 저장. 신규 순수 헬퍼 researchBudget.ts(countOutlineSections·suggestDefaultSelection, 섹션비례+floor/ceiling 클램프)+테스트 9개. schema.ts: ScopeClaim/ScopeConcept에 section 옵셔널 추가, SYSTEM에 섹션 고루 커버·중요도순·budget=상한아님 명시. step.ts scopeStep input에 budget? 추가. config.research에 claimsPerSection/conceptsPerSection/floor/ceiling+.env.example 4개. researchStage.ts: run.state로 scope/cell 분기(runResearchCell 무변경). 멱등(이미 research_scoped+proposal이면 기존 반환). cfg() 헬퍼 4개 테스트 파일에 새 research 필드 추가. AC: typecheck/test(660)/build 전부 exit 0. sherlock_lead promptHash 변경(SYSTEM/SCHEMA/input)으로 기존 fixture 6개는 stale이나 자동 테스트가 scope를 replay하지 않아 npm test 그린 — 실 재기록은 사용자 dev 풀런(Supabase) 필요."
     },
     {
       "step": 2,
