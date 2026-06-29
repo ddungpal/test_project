@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRunDetail, type StageView } from "@/lib/dashboard/runDetail";
-import { getResearchView, type ResearchView } from "@/lib/dashboard/researchView";
+import { getResearchView, getResearchScopeView, type ResearchView, type ScopeGateView } from "@/lib/dashboard/researchView";
 import { getScriptView, getCostView, type SegmentView, type CostView } from "@/lib/dashboard/scriptView";
 import { STAGE_DESCRIPTORS, type StageDescriptor } from "@/pipeline/stages";
 import { STATE_LABEL, runTone } from "@/lib/dashboard/labels";
@@ -17,6 +17,7 @@ import { PostConfirmThumbnailsEdit } from "@/components/PostConfirmThumbnailsEdi
 import { RefreshButton } from "@/components/RefreshButton";
 import { EnterReviewButton } from "@/components/EnterReviewButton";
 import { ResearchReview } from "@/components/ResearchReview";
+import { ResearchScopeGate } from "@/components/ResearchScopeGate";
 import { FactCard } from "@/components/FactCard";
 import { EnterScriptReviewButton } from "@/components/EnterScriptReviewButton";
 import { ScriptReview } from "@/components/ScriptReview";
@@ -247,7 +248,7 @@ function ResearchPanel({ rv }: { rv: ResearchView }) {
 }
 
 // 리서치 단계(3.3) — 시작/대기/검수시작/트리아지/승인후.
-function ResearchSection({ runId, runState, rv, progressNote }: { runId: string; runState: RunState; rv: ResearchView | null; progressNote: string | null }) {
+function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: string; runState: RunState; rv: ResearchView | null; scope: ScopeGateView | null; progressNote: string | null }) {
   let body: React.ReactNode;
   if (runState === "structure_selected") {
     body = (
@@ -255,6 +256,16 @@ function ResearchSection({ runId, runState, rv, progressNote }: { runId: string;
         <RequestStageButton runId={runId} next="research" label="리서치 시작 (셜록)" />
         <p className="text-xs text-trus-white/40">누르면 셜록 셀(팩트검증·셈이·유이·반론)이 돌아갑니다 — 잠시 후 새로고침.</p>
       </div>
+    );
+  } else if (runState === "research_scoped") {
+    // 셜록 scope 게이트 — 검증 후보를 사용자가 고른다(고른 것만 검증·출처확인). scope 없으면 폴백.
+    body = scope ? (
+      <div className="flex flex-col gap-4">
+        <p className="text-xs text-trus-white/40">셜록이 검증 후보를 뽑았습니다 — 리서치할 항목을 고르세요. 고른 것만 검증·출처확인합니다.</p>
+        <ResearchScopeGate runId={runId} proposalId={scope.proposalId} candidates={scope.candidates} />
+      </div>
+    ) : (
+      <WaitingNote text="검증 후보를 불러오는 중… 새로고침하세요." />
     );
   } else if (runState === "researching") {
     // 진행 마커(researchCell가 단계마다 progress_note에 "i/n·라벨" 기록)를 본문에 노출 — 어느 작업 중인지.
@@ -401,8 +412,9 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   const heading = content.title || content.topic || "(주제 미정)";
 
   // 상태에 따라 필요한 추가 조회(병렬). 비용은 항상.
-  const [rv, segments, cost] = await Promise.all([
+  const [rv, scope, segments, cost] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
+    run.state === "research_scoped" ? getResearchScopeView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
   ]);
@@ -466,7 +478,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} />
       ))}
 
-      <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
+      <ResearchSection runId={run.id} runState={run.state} rv={rv} scope={scope} progressNote={run.progressNote} />
       <ScriptSection runId={run.id} runState={run.state} segments={segments} progressNote={run.progressNote} />
       <CostSection cost={cost} />
     </main>

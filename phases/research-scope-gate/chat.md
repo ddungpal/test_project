@@ -58,3 +58,27 @@
 [Joy] 딱 하나 사소한거 docs/manual.html(154KB untracked)이 워킹트리에 떠있는데 step2 명세랑 무관해. 커밋할 때 이건 빼줘! 코드엔 영향 없으니 통과는 통과야
 
 [리드] 1라운드 PASS. AC 셋 다 exit 0 내가 직접 확인했고(test 668) 조이 그라운드트루스도 일치. step2 scope-select-verify 완료 — 선택 기록+0개가드, 선택분만 검증(블라인드 slice 제거), 검증로직 불변, 이벤트 재사용. UI 게이트는 step3로 넘긴다. docs/manual.html은 무관 untracked라 커밋 제외 대상.
+
+=== Step 3: scope-gate-ui ===
+
+[리드] 마지막 step이야. research_scoped에서 셜록 후보를 섹션별로 보여주고 사용자가 체크해서 고른 것만 리서치 시작하는 UI. 순수 프론트엔드 — 백엔드(상태·셀·액션·검증)는 step0~2에서 끝났으니 절대 안 건드린다. 맥스는 뷰 로더+page.tsx 배선, 에스더는 ScopeGate 컴포넌트 디자인. 둘이 같은 계약 공유하고 다른 파일 맡아서 충돌 없게 갈게.
+
+[Max] step3 백엔드쪽 맡았어. 로더(getResearchScopeView)랑 page.tsx 배선만 한다. researchScope.ts candidates 구조 다 확인했고, 후보는 안 자르고 전부 반환하게 할게.
+
+[Esther] 음.. 나는 ScopeGate 컴포넌트 맡았어. 레퍼런스부터 정독했는데 ProposalSelector랑 ResearchReview 톤이 딱 좋더라. 그거 미러링해서 갈게.
+[Esther] 조심스럽지만 하나 정할게 — 후보를 섹션별로 그룹핑하면 목차가 한눈에 들어와서 사용자가 "이 섹션은 통째로 다 검증" 같은 판단을 하기 쉬워. 이건 자신 있어.
+
+[Max] 로더랑 page 배선 다 해놨어. research_scoped 분기 넣고 scope null이면 폴백도 달았어. 에스더 ResearchScopeGate가 아직 없어서 그 import만 빨간데, 내가 임시 스텁 끼워서 돌려보니 typecheck는 깔끔하게 통과하더라. 내 쪽 타입은 계약대로 맞아. 스텁은 다시 지웠으니 진짜 컴포넌트는 에스더가 만들면 돼. 합류하면 build까지 같이 돌릴게.
+
+[Esther] 컴포넌트 다 만들었어. 맥스가 ScopeCandidateView 벌써 합쳐놨길래 typecheck 돌려봤는데 내 컴포넌트 쪽은 에러 0이야. 깔끔해서 기분 좋다.
+[Esther] UX 결정 몇 개 정리할게. 체크 항목을 카드 통째로 누르게 했어(role=checkbox·aria-checked로 키보드·스크린리더 대응). 라디오였던 ProposalSelector랑 달리 여긴 다중선택이라 ✓ 토글로 갔고.
+[Esther] 금융 항목은 ⚠️ 검수 대상 예고 배지로 노란 테두리 강조해서 "이건 나중에 사람 손 거친다"가 바로 보이게. concept은 숫자 예시 필요·비유 필요 작은 배지로.
+[Esther] 색은 trus-yellow·trus-white·trus-black 세 개랑 투명도만 썼어. 그림자·그라데이션·새 폰트 전혀 안 썼고 기존 카드 톤(border 위주, hover bg-trus-white/0.03) 그대로 미러링했어. 이건 자신 있어.
+[Esther] 아 그리고 잠깐 식겁했는데 처음 Write가 디스크에 안 떨어져서 한 번 다시 썼어 🙈 지금은 156줄 멀쩡히 있어.
+
+[Joy] 자 스텝3 검수 들어간다~ 일단 git diff랑 신규 컴포넌트부터 쫙 훑어볼게! UI/뷰로더 전용이라니까 백엔드 안 건드렸는지가 포인트겠네 👀
+[Joy] 다 봤다~ typecheck exit0, test 668 다 통과, build도 exit0! 백엔드는 손도 안 댔고(코드는 page.tsx/researchView.ts/신규 컴포넌트 딱 3개) 후보 자르는 slice도 없고 TRUS 3색도 완벽. 액션 시그니처도 딱 맞고 선택 0개 버튼 비활성, 금융 배지, requireOwner까지 다 됐어. 맥스 에스더 굿굿 통과 🎉
+
+[Joy] step3 검수 끝! AC 셋 다 내 손으로 다시 돌렸어 — typecheck exit0 / test 668 exit0 / build exit0, 리드 값이랑 딱 일치. research_scoped 분기·후보 전부노출(.slice/filter 0건)·섹션그룹·체크박스·금융 ⚠️배지·0개 비활성·selectResearchScopeAction 시그니처까지 다 맞아
+[Joy] TRUS도 grep으로 shadow/gradient/타색·타폰트 0건 확인했고 백엔드 파일은 변경 0건이야. 컴포넌트+뷰로더+page 배선 딱 3파일. 통과! 수고했어 둘 다 🎉
+[리드] 1라운드 PASS. AC 셋 다 exit 0 내가 직접 확인했고(test 668) Joy 그라운드트루스도 일치. step3 scope-gate-ui 완료 — research_scoped에서 셜록 후보 섹션별로 전부 보여주고 고른 것만 검증 시작. 이걸로 research-scope-gate phase 0~3 전부 끝났다. 셜록 리서치 선택 게이트 완성 🎉

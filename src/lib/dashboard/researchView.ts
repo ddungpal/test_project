@@ -42,6 +42,77 @@ export interface ResearchView {
   autoPassedCount: number;
 }
 
+// ── 셜록 scope 게이트 뷰(research_scoped) — 검증 후보 선택 UI용 읽기전용 뷰모델 ──
+//   researchScope.runResearchScope가 stage_proposals(stage='research')에 저장한 candidates를 그대로 노출.
+//   ★ 후보를 자르거나 필터링하지 않는다(전부 반환 — 사용자가 전부 보고 선택). 저장 순서(=중요도) 보존.
+export interface ScopeCandidateView {
+  idx: number; // 전역 candidate idx (action에 그대로 전달)
+  kind: "claim" | "concept";
+  section: string | null;
+  text: string; // claim.text 또는 concept.name
+  isFinancial: boolean; // concept은 false
+  needsNumber: boolean; // claim은 false
+  needsAnalogy: boolean; // claim은 false
+  defaultSelected: boolean;
+}
+
+export interface ScopeGateView {
+  proposalId: string;
+  candidates: ScopeCandidateView[];
+}
+
+// researchScope.ts가 저장하는 candidate payload(변경 금지) — 읽기용 형태.
+interface ScopeCandidateRow {
+  idx: number;
+  payload:
+    | { kind: "claim"; section?: string; default_selected: boolean; text: string; is_financial: boolean }
+    | { kind: "concept"; section?: string; default_selected: boolean; name: string; needs_number: boolean; needs_analogy: boolean };
+}
+
+export async function getResearchScopeView(runId: string): Promise<ScopeGateView | null> {
+  const supa = createAdminClient();
+
+  const { data: proposal, error } = await supa
+    .from("stage_proposals")
+    .select("id, candidates")
+    .eq("run_id", runId)
+    .eq("stage", "research")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw new Error(`research scope proposal 조회 실패: ${error.message}`);
+  if (!proposal) return null;
+
+  const rows = (proposal.candidates as unknown as ScopeCandidateRow[]) ?? [];
+  const candidates: ScopeCandidateView[] = rows.map((c) => {
+    const p = c.payload;
+    if (p.kind === "claim") {
+      return {
+        idx: c.idx,
+        kind: "claim",
+        section: p.section ?? null,
+        text: p.text,
+        isFinancial: p.is_financial,
+        needsNumber: false,
+        needsAnalogy: false,
+        defaultSelected: p.default_selected,
+      };
+    }
+    return {
+      idx: c.idx,
+      kind: "concept",
+      section: p.section ?? null,
+      text: p.name,
+      isFinancial: false,
+      needsNumber: p.needs_number,
+      needsAnalogy: p.needs_analogy,
+      defaultSelected: p.default_selected,
+    };
+  });
+
+  return { proposalId: proposal.id, candidates };
+}
+
 export async function getResearchView(runId: string): Promise<ResearchView> {
   const supa = createAdminClient();
 
