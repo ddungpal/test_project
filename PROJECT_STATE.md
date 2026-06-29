@@ -4,8 +4,27 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-29(낮5 — **리서치 단계내 재진입(research-step-reentry) phase 완료·main ff-머지(로컬)**. main tip=`9e98a95`·test 710(+42)·typecheck 0·**origin push 안 함**·**⚠️마이그레이션 28 미적용**. 마이그레이션 27은 ✅적용됨) · 단계: **실사용 검증 + 학습 루프 강화. ▶▶ 다음(재개점): (0) ⚠️**마이그레이션 `20260629120028_research_reentry_transitions.sql` Supabase 적용**(리서치 재진입 동작 선결) + origin push. (1) 리서치 재진입 라이브 검증(dev): research_scoped에서 "더 뽑아줘(재생성)·직접 추가(수동·금융토글)" + 결과/검수에서 "①다시선택·②다시검증(비용)·④예시다시" 버튼 동작. (2) 리서치 선택 게이트(마27 적용됨)·채널 제목학습 버튼·썸네일 비차단 큐 검증. (3) 단독 실행 검증. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+_Last updated: 2026-06-29(낮6 — **리서치 게이트 라이브 검증 + UX픽스 + 스크립트 품질 로드맵 확정**. main tip=`f027c84`·test 710·typecheck 0·**origin push 완료**·마이그레이션 27·28 ✅적용됨) · 단계: **실사용 검증 중 → 스크립트 품질 개선(형식 도입)이 다음 큰 과제. ▶▶▶ 다음(재개점) = 스크립트 품질 5-phase 로드맵 착수**(아래 "🎯 스크립트 품질 로드맵" 섹션 참조): (0)tavily 켜기 → **(1) `script-format-model` 하네스 phase 설계·실행부터**(형식 토대 — 이게 없으면 표·케이스·시각 못 얹음) → P2 outline-format → P3 비교표 → P4 케이스+댓글 → P5 시각큐. 그 외 검증 대기: 리서치 재진입(마28 적용됨)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
 
+> ## 🎯 스크립트 품질 로드맵 (2026-06-29 확정 — 다음 세션 주작업)
+> **문제(라이브 검증으로 발견)**: 짠펜 스크립트가 **형식 없는 짧은 단락 나열** — 김짠부 특유의 ①비교표 ②케이스 분기 ③시각요소(자막/캡처)가 전무. + 리서치 살이 얇음(mock). **근본**: 짠펜 출력 스키마가 `{ord,text,used_fact_idxs,used_asset_idxs}` **프로즈 전용**(src/agents/scribe/schema.ts) — 표/케이스/시각을 담을 자리가 없음. 구성(구다리)도 섹션에 '형식' 미지정. (구다리는 케이스분기·비유정의 패턴을 *학습은 했는데* 출력에 형식 표현이 없어 뭉개짐.)
+> **해결 = 5-phase 로드맵(전부 반영해야 실사용 가능, 의존성 순)**:
+> - **P0 tavily 켜기**(설정·phase 아님): `SEARCH_BACKEND=tavily` — 살 먼저 채워 "내용 얇음 vs 형식 없음" 분리 확인.
+> - **P1 `script-format-model`(토대 ★먼저)**: `script_segments`에 `kind`(prose·table·case·visual)+`payload`(jsonb) 마이그레이션 / 짠펜 출력 스키마 확장(블록 emit·하위호환=기본 prose) / UI kind별 렌더 스캐폴드 / +A3 문단↔근거(script_segment_facts) 가시화. **이게 P3~P5의 전제.**
+> - **P2 `outline-format`**: 구다리 outline 섹션에 `format`(비교형→table·결정형→case·개념→explain) 지정 → 짠펜이 format 받아 kind 블록 생성. 구다리 학습 패턴을 형식으로 승격.
+> - **P3 `comparison-table`(B1·사용자 최우선 예시)**: 셜록이 비교 차원(가입조건·금리·혜택·중도해지…) 데이터 생성/추출 + 짠펜 표 블록 + UI 표. (청년도약계좌 vs 청년미래적금 비교표)
+> - **P4 `case-branching`(B2+댓글발굴)**: `comments_raw`(4092건)에서 "자주 묻는 궁금증" 발굴 → 케이스 후보 + 짠펜 케이스 블록 + UI. ("이런 상황이면 A / 저런 상황이면 B")
+> - **P5 `visual-cues`(B3)**: 자막/캡처/표 위치 시각 큐 + UI.
+> 의존성: P1→P2→{P3,P4,P5}(P3~P5 서로 독립·순서 가변, 단 P3 우선). 한 번에 하나씩 하네스 phase(설계→실행→머지→검증). 각 ~4 step.
+> **▶ 착수점 = P0(tavily) + P1(script-format-model) 설계.**
+
+> ## 📜 세션 로그 (2026-06-29 낮6) — 리서치 게이트 라이브 검증 + UX 픽스 3건 (소규모·직접 수정, main push `f027c84`)
+> **리서치 선택 게이트(마27 적용 후)를 라이브 검증하며 발견한 것 직접 수정. 전부 typecheck 0·test 710. + 스크립트 품질 로드맵 확정(위 🎯 섹션).**
+> - **GenerateScopeButton**(`src/components/`): research_scoped인데 셜록 후보 0개(stale 런·scope 미생성)일 때 "불러오는 중" 막다른 화면 대신 **"셜록 후보 생성하기"** 버튼(regenerateResearchScope 재사용·동기·claude-p $0). page.tsx 폴백 교체.
+> - **scope 스키마 stray 허용**(`sherlock_lead/schema.ts`): `[sherlock_lead] /concepts/0 must NOT have additional properties` 에러 — claude-p가 여분 필드를 붙이는 알려진 함정(style-extract-fold-stray 클래스). `SHERLOCK_SCOPE_SCHEMA` additionalProperties=true(루트+items)로 내성. 필수·타입은 유지, stray는 buildScopeCandidates가 필드 명시선택해 버림(무해). (참고: scope 후보 생성 버튼은 Inngest 아니라 **서버액션 동기** 호출 — Inngest run 안 뜨는 게 정상.)
+> - **ResearchPhaseStepper**(`src/components/`): 리서치 섹션 상단에 **4단계 진행 표시기**(후보선택→검증실행→검수→완료, 현재=노랑·끝=✓·남음=회색, "지금 X·남은 N개"). researching 중엔 기존 i/5 세부 진행바와 병행.
+> - **개념 정리(사용자 Q&A)**: ②검증실행=AI 자동 1차 팩트체크 / ③검수=사람 고위험만 최종확인. 후보=뼈대(주제)만 → 검증이 사실·출처·인용·숫자·비유(살) 붙임 → 짠펜이 목차+말투로 엮음. 살 깊이는 tavily 여부에 달림(현 mock).
+>
 > ## 📜 세션 로그 (2026-06-29 낮5) — 리서치 단계내 재진입(research-step-reentry) phase (하네스 4 step, main ff-머지 `9e98a95`, test 668→710)
 > **맥락**: 사용자 요구 = 리서치 5단계(①선택→②검증→③정리→④예시→⑤반론) **안에서 이전 단계로 되돌아가 다시(B)**. 검토로 ⑤critic은 미저장·미표시라 제외, ③은 결정적 글루라 제외 → **재진입점=①②④**로 합의. + ①에서 셜록 후보 부족 시 **재생성(a)·수동추가(b)** 도 사용자 지적으로 포함. 금융 여부는 자동판정+토글.
 > - **4 step 전부 1라운드 PASS**(맥스·조이, UI엔 에스더). **step0 `reentry-state-cell`**: 마이그레이션 28(되돌림 전이 4개 additive: research_ready/review→research_scoped·researching) + enums + 셀 **`fromStep`**('full'/'examples'=②③⑤ 스킵·research_facts 보존·assets만 재생성·driver 주입 테스트). 리서치 내부 재진입은 **rework_count 미증가**. **step1 `scope-augment`**: `regenerateResearchScope`(research_scoped서만·새 proposal·전이없음, scopeStep input은 reason/existing 있을때만 주입→**기존 호출 byte-identical·fixture 보존**) + 수동추가(edited_payload 인라인·candidates 미변형) + 순수 `financialHeuristic.detectFinancial` + `loadSelectedScope` 병합(0개 가드=후보+수동 합산). **step2 `reentry-actions`**: `researchReentry.ts` 헬퍼 + 액션 `backToResearchScope`(①)·`reverifyResearch`(②full)·`regenResearchExamples`(④examples) — 상태가드(ready/review만)·새 이벤트 없이 run/research.requested+fromStep 재사용·rework 미증가·audit는 stage_regenerated+detail.kind. **step3 `reentry-ui`**(에스더): ScopeGate에 "더 뽑아줘/직접 추가(금융 토글 auto-until-touched)" + `ResearchReentryActions`(결과/검수에 ①②④, ②엔 ⚠️(비용) 라벨+aria). TRUS 3색.
