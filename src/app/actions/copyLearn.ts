@@ -7,6 +7,8 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { styleRelearnSweep } from "../../performance/styleRelearn.js";
+import { fetchChannelTitles } from "../../ingest/channelTitles.js";
+import { extractTitleStylePatterns, saveTitleStyleDraft } from "../../performance/titleStyleLearn.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
 import { loadConfig } from "../../llm/config.js";
@@ -346,6 +348,56 @@ export async function requestCopyRelearn(): Promise<{
     title: { created: titleCreated },
     anyCreated: thumbnailCreated || titleCreated,
   };
+}
+
+// 채널 제목 학습 대상 핸들 — @zzanboo 고정(입력 인자/입력칸 없음). 김짠부 채널 단일 출처.
+const CHANNEL_TITLE_LEARN_HANDLE = "@zzanboo";
+
+/**
+ * 채널 제목 학습(사람 게이트). requireOwner 후 @zzanboo 채널 최근 50개 제목을 가져와 제목 스타일 draft 까지만.
+ *   ★ activate 는 별도(기존 '최신 초안 활성화' 버튼) — 여기선 draft 만, 자동 활성화 없음.
+ *   ★ @zzanboo 고정(입력 인자 없음). 파일 안 거침(메모리만 — 서버리스 호환). step0 코어 호출만(재구현 금지).
+ *   흐름: requireOwner → fetchChannelTitles → extractTitleStylePatterns → (null 아니면) saveTitleStyleDraft → auditLog.
+ *   제목 0개거나 추출 null 이면 created:false(과금/INSERT 0 — saveTitleStyleDraft 미호출). version=null.
+ *   YOUTUBE_API_KEY 미설정이면 명확한 에러 throw(채널 fetch 전 차단).
+ *   // ponytail: 동기 await — 개발(claude-p $0·수십초)엔 적합. 운영에서 LLM 이 길어 서버액션 타임아웃이 문제되면
+ *   //   다시 Inngest 비동기 + 상태 폴링으로 옮긴다(requestCopyRelearn 과 동일 결).
+ */
+export async function requestChannelTitleRelearn(): Promise<{
+  created: boolean;
+  version: number | null;
+  titlesCount: number;
+}> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const apiKey = process.env.YOUTUBE_API_KEY;
+  if (!apiKey) throw new Error("YOUTUBE_API_KEY 가 설정되지 않았습니다(.env 확인).");
+
+  const titles = await fetchChannelTitles(CHANNEL_TITLE_LEARN_HANDLE, apiKey);
+  const titlesCount = titles.length;
+
+  // 제목 0개거나 추출 null → draft 미생성(과금/INSERT 0). created:false 로 "변경 없음" 안내.
+  const extracted = await extractTitleStylePatterns(titles, loadConfig());
+  if (!extracted) {
+    await auditLog(supa, {
+      actorId: ownerId,
+      action: "channel_title_relearn_requested",
+      detail: { created: false, titlesCount },
+    });
+    return { created: false, version: null, titlesCount };
+  }
+
+  // extractTitleStylePatterns 는 {patterns, evidence_summary} 반환 — saveTitleStyleDraft 엔 patterns 만 넘긴다.
+  const { version } = await saveTitleStyleDraft(supa, extracted.patterns);
+
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "channel_title_relearn_requested",
+    detail: { created: true, version, titlesCount },
+  });
+
+  return { created: true, version, titlesCount };
 }
 
 /**

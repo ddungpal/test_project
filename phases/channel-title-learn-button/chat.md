@@ -16,3 +16,21 @@
 [Joy] 오케이 봤어 JSON 파싱 잘 되고 step0 completed에 summary도 알차네 코드는 처음부터 통과였고 이제 진짜 끝 통과 🎉
 [Joy] 재검수 라운드2 끝! index.json 이제 유효하고 step0도 completed에 summary까지 빵빵하게 채워졌네 굿굿. typecheck 다시 돌려도 exit 0이고 test/build는 전 라운드 그대로 통과니까 깔끔하게 통과시킬게 🎉
 [리드] 좋아, step0 마감. 채널 fetch·학습 코어가 파일 안 거치고 메모리로 흐르게 분리됐고 CLI 동작도 그대로 보존됐어. 다음은 step1에서 이 함수들 위에 /copy-learn 버튼(서버액션) 얹는다. 수고했어 둘 다 👏
+
+=== Step 1: channel-learn-button ===
+
+[리드] 맥스, step1이야. step0에서 만든 코어(fetchChannelTitles·extractTitleStylePatterns·saveTitleStyleDraft) 위에 /copy-learn 버튼 하나 얹는 거야. 서버액션 requestChannelTitleRelearn(@zzanboo 고정) + CopyLearningForm에 "채널 제목 학습" 버튼. 로직 새로 짜지 말고 코어 호출만. requestCopyRelearn 패턴 미러해줘. 시작 전에 CLAUDE.md·.claude/rules·관련 docs 직접 읽고, 작업하면서 chat.md에 네 말투로 한 줄씩 남겨줘.
+[Max] step1 받았어. step0 코어 셋(fetchChannelTitles·extractTitleStylePatterns·saveTitleStyleDraft) 시그니처랑 requestCopyRelearn 패턴, StylePanel UX 다 봤어. 로직 새로 안 짜고 코어 호출만 얹을게.
+[Max] 서버액션 requestChannelTitleRelearn 넣었어. requestCopyRelearn 그대로 미러해서 동기 await·requireOwner·auditLog best-effort에 ponytail 주석까지. @zzanboo 상수 고정이고 YOUTUBE_API_KEY 없으면 fetch 전에 막아. 제목 0개나 추출 null이면 saveTitleStyleDraft 안 부르고 created false로 끝나.
+[Max] UI도 넣었어. StylePanel 재학습 버튼 옆에 채널 제목 학습 버튼 하나 더, 같은 run 헬퍼에 channel 태그 추가해서 진행중 라벨이랑 스피너 구분되게. created면 제목 v{version} 초안 생성 (N개 학습) 뜨고 아니면 변경 없음. 활성화는 기존 최신 초안 활성화 그대로 쓰면 돼.
+[Max] 타입체크 돌리니까 auditLog AuditAction enum에 channel_title_relearn_requested 등록이 빠져서 두 줄 추가했어. DB CHECK 제약은 없고 코드 enum만이라 마이그레이션은 안 필요해. YOUTUBE_API_KEY도 .env.example에 이미 있어서 새 변수 아니야.
+[Max] AC 셋 다 통과했어 — typecheck 0, test 651개 0, build 0. 기존 테스트는 안 건드렸고 로직도 코어 호출만 했어. 놓친 거 있으면 말해줘.
+[리드] 맥스 끝났대. AC 나도 직접 돌렸어 — typecheck 0, test 0(651), build 0. 조이, 독립으로 검수 부탁해. git diff 보고 코어 호출만 했는지·@zzanboo 고정·draft만(자동활성화 X)·서버리스 FS 미접근·TRUS 3색 확인해줘.
+[Joy] 오 맥스 step1 받았어 git diff부터 쫙 봤는데 코어 셋 import해서 호출만 하고 로직 재구현 하나도 없네 굿
+[Joy] requestCopyRelearn 미러 정확해 동기 await requireOwner auditLog best-effort ponytail 주석까지 결 똑같이 맞췄어
+[Joy] @zzanboo CHANNEL_TITLE_LEARN_HANDLE 상수 고정이고 입력칸 인자 하나도 없어 그리고 saveTitleStyleDraft만 부르고 activate는 안 건드려 draft만 깔끔
+[Joy] fs import 셋 다 grep 했는데 코어도 액션도 하나도 없어 서버리스 OK 그리고 YOUTUBE_API_KEY 없으면 fetch 전에 명확히 throw 좋아
+[Joy] UI도 TRUS 3색만 bg-trus-yellow text-trus-black 새 색 그림자 그라데이션 없고 useTransition pending busy 채널 태그로 진행표시 구분에 router.refresh owner게이트까지 기존 UX 그대로
+[Joy] AC 셋 다 직접 돌렸어 typecheck 0 test 651 0 build 0 기존 테스트도 안 깨졌어 깔끔하게 통과 🎉
+[Joy] 검수 끝! git diff랑 코어 시그니처 대조했는데 코어 호출만 하고 로직 재구현 0이야. fs import도 셋 다 없어서 서버리스 OK. @zzanboo 상수 고정·draft만(자동 activate 없음)·ponytail 주석까지 결 다 맞췄네. TRUS 3색 그대로고 YOUTUBE_API_KEY 미설정도 명확히 에러 던져. AC 셋 다 직접 돌려서 exit 0, 651 그대로. 반복 실수도 안 보여서 규칙 제안은 패스할게. 통과 🎉
+[리드] 좋아, step1 마감. step0 코어 위에 버튼 한 겹만 얇게 얹었고 학습 정합성은 그대로야. index.json도 completed+summary로 갱신했어. 수고했어 둘 다 👏

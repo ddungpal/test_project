@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
+import { saveCopyAbResults, requestCopyRelearn, requestChannelTitleRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
 import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
 import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow, StructureProfile, StructureProfiles } from "@/lib/dashboard/copyLearnView";
@@ -632,7 +632,7 @@ function DraftCard({ d }: { d: CopyStyleDraft }) {
 function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
   const [error, setError] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
-  const [busy, setBusy] = useState<null | "relearn" | "activate">(null); // 무엇이 진행중인지(라벨 구분)
+  const [busy, setBusy] = useState<null | "relearn" | "channel" | "activate">(null); // 무엇이 진행중인지(라벨 구분)
   const [pending, startTransition] = useTransition();
   const router = useRouter();
 
@@ -644,7 +644,7 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
 
   // 재학습은 styleRelearnSweep 를 동기로 await 하므로 pending 이 학습 끝까지 유지된다(진행중 표시 정확).
   //   완료되면 router.refresh()로 새 draft 가 반영(자동 새로고침). 실패/no-op 도 메시지로 구분.
-  function run(tag: "relearn" | "activate", fn: () => Promise<string>) {
+  function run(tag: "relearn" | "channel" | "activate", fn: () => Promise<string>) {
     setError(null);
     setOk(null);
     setBusy(tag);
@@ -683,7 +683,21 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
         >
           {busy === "relearn" ? "재학습 진행중… (수십 초~수 분)" : "재학습 실행"}
         </button>
-        {busy === "relearn" && (
+        {/* 채널 제목 학습 — @zzanboo 고정 최근 50개 제목으로 제목 스타일 draft 만 생성(활성화는 아래 '최신 초안 활성화'). */}
+        <button
+          type="button"
+          onClick={() => run("channel", async () => {
+            const r = await requestChannelTitleRelearn();
+            if (!r.created) return "변경 없음(가져온 제목이 없거나 학습 신호 없음).";
+            return `제목 v${r.version} 초안 생성 (${r.titlesCount}개 학습). 아래에서 검토 후 활성화하세요.`;
+          })}
+          disabled={pending}
+          aria-busy={busy === "channel"}
+          className="bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:opacity-50"
+        >
+          {busy === "channel" ? "채널 제목 학습 중…" : "채널 제목 학습"}
+        </button>
+        {(busy === "relearn" || busy === "channel") && (
           <span className="inline-flex items-center gap-2 text-xs text-trus-yellow">
             <span className="inline-block h-3 w-3 animate-spin border-2 border-trus-yellow border-t-transparent" aria-hidden />
             학습 중 — 끝나면 자동 새로고침됩니다. 버튼을 다시 누르지 마세요.
