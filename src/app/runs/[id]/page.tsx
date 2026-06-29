@@ -182,7 +182,7 @@ function ThumbnailStageSection({
       </div>
     );
   } else if (runState === desc.proposedState && sv.proposal) {
-    body = <ThumbnailStudio runId={runId} proposalId={sv.proposal.proposalId} candidates={sv.proposal.candidates} topic={topic} />;
+    body = <ThumbnailStudio runId={runId} candidates={sv.proposal.candidates} topic={topic} />;
   } else if (runState === desc.fromState) {
     body = (
       <div className="flex flex-col gap-2">

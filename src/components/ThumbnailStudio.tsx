@@ -8,17 +8,16 @@ import { extractGenCopy } from "@/components/thumbnailCorrectionGen";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import { CandidateBody } from "@/components/CandidateBody";
 import { CandidateSourceBadge } from "@/components/CandidateSourceBadge";
+import { candidateKey, resolveCompletedSlots, clearSlots } from "@/components/thumbnailRegenQueue";
 import type { CandidateView } from "@/lib/dashboard/proposalTypes";
 import type { CorrectionDiff } from "@/agents/correction_diff/schema";
 
 // 썸네일 스튜디오(§8.1 사람 게이트) — A/B/C 3개를 보고 ① 개별 칸 다시 생성 ② 3개 전체 다시 생성 ③ 3개로 확정.
-//   ★ 완료 감지는 RegenerateButton 패턴 그대로: 재생성은 상태 전이 없이 새 stage_proposals 행만 INSERT(같은
-//     proposedState 유지)라 state 신호가 없다. 대신 새 proposal의 id가 props로 도착하면 = 재생성 완료. 그때 폴링을 끈다.
-//   고정 cutoff을 '완료 판정'으로 쓰지 않는다(opus는 3분+ 걸림). 안전 상한만 5분으로 두고, 진짜 종료는 proposalId로 감지.
-const POLL_LIMIT_MS = 300000; // 5분(안전망). 정상 종료는 proposalId 변경이 담당.
-
-// 어떤 작업이 진행 중인지 — 'all'(전체 재생성) | 슬롯 인덱스 | 'confirm' | null(유휴).
-type Busy = "all" | "confirm" | number | null;
+//   ★ 슬롯 재생성은 '비차단 큐' — 한 칸을 다시 생성하는 동안 다른 칸도 누를 수 있다. 진행 중 슬롯은 pending(idx→스냅샷)에
+//     담고, 폴링으로 새 후보가 도착하면 step0 resolveCompletedSlots(payload 내용 비교)로 '바뀐 슬롯=완료'를 판정해 비운다.
+//     ★ 완료 판정을 candidate id로 하지 않는다 — id는 재생성마다 새로 생겨 보존 슬롯도 '바뀐 것'처럼 보인다(thumbnailRegenQueue.ts).
+//   고정 cutoff을 '완료 판정'으로 쓰지 않는다(opus는 3분+ 걸림). 안전 상한만 5분으로 두고, 진짜 종료는 payload 변경으로 감지.
+const POLL_LIMIT_MS = 300000; // 5분(안전망). 정상 종료는 payload 변경(resolveCompletedSlots)이 담당.
 
 // 카드별 교정 학습 상태 — idx로 키잉. 저장(saveCorrection)→분석(analyzeCorrectionDiff)은 재생성/확정과
 //   완전히 독립이다(상태 전이 없음·proposalId 폴링 무관). 그래서 별도 transition·busy·error로 분리한다.
@@ -42,29 +41,29 @@ const EMPTY_CORRECTION: CorrectionCardState = {
 
 export function ThumbnailStudio({
   runId,
-  proposalId,
   candidates,
   topic,
 }: {
   runId: string;
-  proposalId: string;
   candidates: CandidateView[];
   topic: string;
 }) {
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState<Busy>(null); // 진행 중인 작업(카드별 표시·버튼 disable용)
-  const [startId, setStartId] = useState<string | null>(null); // 재생성 제출 시점 proposalId(null=유휴). 바뀌면 완료.
+  // 슬롯별 비차단 큐 — 진행 중 슬롯idx → 큐 투입 시점 candidateKey 스냅샷. 한 슬롯이 대기 중이어도 다른 슬롯 클릭을 막지 않는다.
+  const [pending, setPending] = useState<Record<number, string>>({});
+  const [confirmBusy, setConfirmBusy] = useState(false); // 확정(상태 전이)만 전체 잠금. 슬롯 큐와는 별도 결.
   const [timedOut, setTimedOut] = useState(false);
   const [allReason, setAllReason] = useState(""); // 전체 다시 생성 공용 사유(선택). 비/공백이면 백엔드에서 미전송.
   const [slotReasons, setSlotReasons] = useState<Record<number, string>>({}); // 카드별 사유(선택). idx→reason.
   const allReasonId = useId();
   const slotReasonBaseId = useId();
-  const [pending, startTransition] = useTransition();
+  // ★ transition pending(isSubmitting)은 표시용이 아니라 서버액션 호출 래핑용일 뿐 — 버튼 disable에 쓰지 않는다(비차단 보존).
+  const [, startTransition] = useTransition();
   const router = useRouter();
-  const submitted = startId !== null;
+  const hasPending = Object.keys(pending).length > 0;
 
-  // ── 교정 학습(독립 경로) — 재생성/확정 transition·busy·startId 폴링과 절대 섞지 않는다.
-  //    교정은 상태 전이 없는 저장+분석일 뿐 → 후보·런 상태를 바꾸지 않고, disabledAll에도 묶이지 않는다.
+  // ── 교정 학습(독립 경로) — 재생성/확정의 pending·confirmBusy 폴링과 절대 섞지 않는다.
+  //    교정은 상태 전이 없는 저장+분석일 뿐 → 후보·런 상태를 바꾸지 않고, 재생성 잠금(disabledGlobal/slotDisabled)에 묶이지 않는다.
   const correctionBaseId = useId();
   const [, startCorrectionTransition] = useTransition();
   const [corrections, setCorrections] = useState<Record<number, CorrectionCardState>>({});
@@ -110,64 +109,87 @@ export function ThumbnailStudio({
     });
   }
 
-  // 완료 감지 — router.refresh 폴링으로 새 proposal이 도착하면 proposalId prop이 startId와 달라진다 → 폴링 종료·busy 해제.
+  // 완료 감지 — 폴링으로 새 후보(candidates)가 도착하면, pending 슬롯 중 payload가 '바뀐' 슬롯만 완료로 보고 비운다(step0).
+  //   ★ candidate id가 아니라 payload 내용 비교(resolveCompletedSlots) — 보존 슬롯(같은 payload)은 완료로 치지 않아 비차단이 안 깨진다.
   useEffect(() => {
-    if (startId !== null && proposalId !== startId) {
-      setStartId(null);
-      setBusy(null);
-      setTimedOut(false);
-      setAllReason(""); // 재생성 완료 → 다음 입력 위해 사유칸 비움(RegenerateButton 패턴)
-      setSlotReasons({});
-    }
-  }, [proposalId, startId]);
+    if (Object.keys(pending).length === 0) return;
+    const completed = resolveCompletedSlots(pending, candidates);
+    if (completed.length === 0) return;
+    setPending((prev) => clearSlots(prev, completed));
+    setTimedOut(false);
+    // 완료된 슬롯의 사유칸만 비운다(다음 입력 준비). 대기 중인 다른 슬롯 사유는 보존.
+    setSlotReasons((prev) => {
+      const next = { ...prev };
+      for (const idx of completed) delete next[idx];
+      return next;
+    });
+  }, [candidates, pending]);
 
-  // 안전 상한 — 워커 실패 등으로 영영 새 후보가 안 오면 폴링을 멈추고 안내만(무한 폴링 방지).
+  // 안전 상한 — 워커 실패·payload 우연 동일로 영영 pending이 안 비면 폴링을 멈추고 안내만(무한 폴링 방지).
   useEffect(() => {
-    if (!submitted) return;
+    if (!hasPending) return;
     const t = setTimeout(() => setTimedOut(true), POLL_LIMIT_MS);
     return () => clearTimeout(t);
-  }, [submitted]);
+  }, [hasPending]);
 
-  // 재생성(전체/개별) 공통 — busy 표시 + 현재 proposalId 기록(새 행 도착해 바뀌면 완료) + 폴링 시작.
-  function runRegen(which: "all" | number, fn: () => Promise<void>) {
+  // 슬롯 재생성 — 해당 슬롯만 pending에 스냅샷(candidateKey)으로 넣고 호출·폴링. ★ 다른 슬롯이 대기 중이어도 막지 않는다(비차단).
+  function runSlotRegen(idx: number) {
     setError(null);
+    const snapshot = candidateKey(candidates[idx]?.payload);
+    setPending((prev) => ({ ...prev, [idx]: snapshot }));
     startTransition(async () => {
       try {
-        await fn();
-        setBusy(which);
-        setStartId(proposalId);
+        await regenerateThumbnailSlot(runId, idx, slotReasons[idx]);
         router.refresh();
       } catch (e) {
-        setBusy(null);
-        setStartId(null);
+        setPending((prev) => clearSlots(prev, [idx])); // 실패 시 그 슬롯만 큐에서 뺀다(다른 대기 슬롯은 유지).
         setError(e instanceof Error ? e.message : "재생성 실패");
       }
     });
   }
 
-  // 확정 — 상태 전이(thumbnails_selected)라 새로고침하면 selected 요약으로 다시 그려진다(proposalId 폴링 불필요).
+  // 전체 재생성 — 3슬롯 전부 candidateKey 스냅샷을 pending에 넣고 호출(전체도 같은 큐 모델로 통일).
+  function runAllRegen(fn: () => Promise<void>) {
+    setError(null);
+    const snapshot: Record<number, string> = {};
+    for (const c of candidates) snapshot[c.idx] = candidateKey(c.payload);
+    setPending(snapshot);
+    startTransition(async () => {
+      try {
+        await fn();
+        router.refresh();
+      } catch (e) {
+        setPending({}); // 전체 호출 실패 → 큐 전체 비움.
+        setError(e instanceof Error ? e.message : "재생성 실패");
+      }
+    });
+  }
+
+  // 확정 — 상태 전이(thumbnails_selected)라 새로고침하면 selected 요약으로 다시 그려진다(slot 폴링 불필요). 전체 잠금(confirmBusy).
   function onConfirm() {
     if (!window.confirm("이 3개 썸네일을 A/B/C 테스트 세트로 확정합니다.")) return;
     setError(null);
-    setBusy("confirm");
+    setConfirmBusy(true);
     startTransition(async () => {
       try {
         await confirmThumbnails(runId);
         router.refresh();
       } catch (e) {
-        setBusy(null);
+        setConfirmBusy(false);
         setError(e instanceof Error ? e.message : "확정 실패");
       }
     });
   }
 
-  const disabledAll = pending || submitted || busy === "confirm";
+  // 전체 액션(전체 재생성 2개·확정·전체 사유) 잠금 — 슬롯 큐가 도는 동안엔 전체 작업을 막는다(정합성). 슬롯 입력은 별도 결.
+  const disabledGlobal = confirmBusy || hasPending;
 
   return (
     <div className="flex flex-col gap-5">
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {candidates.map((c) => {
-          const slotBusy = busy === c.idx;
+          const slotBusy = c.idx in pending; // 이 슬롯이 큐에서 대기 중인가(슬롯별).
+          const slotDisabled = confirmBusy || slotBusy; // 슬롯 입력/버튼 잠금 — 이 카드만. 다른 카드는 계속 누를 수 있다.
           return (
             <div
               key={c.idx}
@@ -199,20 +221,20 @@ export function ThumbnailStudio({
                   type="text"
                   value={slotReasons[c.idx] ?? ""}
                   onChange={(e) => setSlotReasons((prev) => ({ ...prev, [c.idx]: e.target.value }))}
-                  disabled={disabledAll}
+                  disabled={slotDisabled}
                   placeholder="이 칸 왜 다시? (선택)"
                   className="block w-full border border-trus-white/25 bg-transparent px-2 py-1.5 text-xs text-trus-white placeholder:text-trus-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
                 />
                 <button
-                  onClick={() => runRegen(c.idx, () => regenerateThumbnailSlot(runId, c.idx, slotReasons[c.idx]))}
-                  disabled={disabledAll}
+                  onClick={() => runSlotRegen(c.idx)}
+                  disabled={slotDisabled}
                   className="border border-trus-white/30 px-3 py-2 text-xs font-bold text-trus-white/80 hover:border-trus-yellow hover:text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
                 >
                   {slotBusy ? "이 칸 생성 중…" : "이 썸네일만 다시 생성"}
                 </button>
 
                 {/* 교정 학습(독립) — '이 카피가 더 좋았다'는 이상 카피를 적어 교정쌍 저장→차이 분석.
-                    재생성/확정과 무관(런 상태 안 바뀜). disabledAll에 묶지 않는다(재생성 중에도 독립). */}
+                    재생성/확정과 무관(런 상태 안 바뀜). 재생성 잠금에 묶지 않는다(재생성 중에도 독립). */}
                 <CorrectionPanel
                   idLabel={`${correctionBaseId}-${c.idx}`}
                   letter={String.fromCharCode(65 + c.idx)}
@@ -237,7 +259,7 @@ export function ThumbnailStudio({
             id={allReasonId}
             value={allReason}
             onChange={(e) => setAllReason(e.target.value)}
-            disabled={disabledAll}
+            disabled={disabledGlobal}
             rows={2}
             placeholder="왜 다시? (선택) 예: 박스 문구 더 짧게"
             className="block w-full resize-none border border-trus-yellow/40 bg-transparent px-3 py-2 text-sm text-trus-white placeholder:text-trus-white/35 focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
@@ -247,15 +269,15 @@ export function ThumbnailStudio({
           {/* 전체 재생성 두 경로 — '다시 생성($0)'(로컬 우선) vs 'LLM으로 새로 써줘'(forceLlm·비용). 슬롯('이 칸만')은 별도 경로라 미변경. */}
           <div className="flex flex-wrap items-center gap-2">
             <button
-              onClick={() => runRegen("all", () => regenerateThumbnails(runId, allReason))}
-              disabled={disabledAll}
+              onClick={() => runAllRegen(() => regenerateThumbnails(runId, allReason))}
+              disabled={disabledGlobal}
               className="border border-trus-yellow/50 px-5 py-2.5 text-sm font-bold text-trus-yellow hover:border-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
             >
-              {busy === "all" ? "전체 생성 중…" : "다시 생성 ($0)"}
+              {hasPending ? "전체 생성 중…" : "다시 생성 ($0)"}
             </button>
             <button
-              onClick={() => runRegen("all", () => regenerateThumbnails(runId, allReason, true))}
-              disabled={disabledAll}
+              onClick={() => runAllRegen(() => regenerateThumbnails(runId, allReason, true))}
+              disabled={disabledGlobal}
               className="border border-trus-white/30 px-5 py-2.5 text-sm font-bold text-trus-white/80 hover:border-trus-yellow hover:text-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-40"
             >
               LLM으로 새로 써줘
@@ -263,20 +285,20 @@ export function ThumbnailStudio({
           </div>
           <button
             onClick={onConfirm}
-            disabled={disabledAll}
+            disabled={disabledGlobal}
             className="bg-trus-yellow px-6 py-2.5 text-sm font-black text-trus-black focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trus-yellow disabled:opacity-40"
           >
-            {busy === "confirm" ? "확정 중…" : "이 3개로 확정"}
+            {confirmBusy ? "확정 중…" : "이 3개로 확정"}
           </button>
         </div>
       </div>
 
-      {submitted && !timedOut && (
+      {hasPending && !timedOut && (
         <div>
           <LiveRefresh active fallbackMs={3000} />
         </div>
       )}
-      {submitted && timedOut && (
+      {hasPending && timedOut && (
         <p className="text-xs text-trus-white/50">새 썸네일이 위에 반영됐는지 확인하세요.</p>
       )}
       {error && <p className="text-xs font-bold text-trus-yellow">⚠ {error}</p>}
