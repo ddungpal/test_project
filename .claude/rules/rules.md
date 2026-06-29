@@ -1,4 +1,4 @@
-<!-- harness:freshness last_reviewed=2026-06-25 -->
+<!-- harness:freshness last_reviewed=2026-06-29 -->
 # 프로젝트 규칙 (Living Rules)
 
 > CLAUDE.md를 린하게 유지하기 위해, **영역 한정·상세 규칙**은 여기에 둔다.
@@ -12,7 +12,7 @@
 - 새 환경변수는 `.env.example`에도 추가한다 (이유: 운영·협업자 설정 누락 방지).
 - `npm run build`가 `PageNotFoundError`(예 /audit)나 webpack chunk `MODULE_NOT_FOUND`(예 `./323.js`)로 깨지면 stale `.next` 캐시를 먼저 의심한다 — `rm -rf .next` 후 재빌드로 판별한다 (이유: 코드 변경과 무관한 캐시 오류를 실패로 오판 금지).
 - 기존 메트릭 컬럼(예 `ab_variants.ctr_pct`)에 다른 지표를 재사용해 적재할 때는 그 정체를 코드·주석으로 명시한다 (이유: watch_share/views를 ctr_pct 슬롯에 넣는 패턴 — 컬럼명만 보고 CTR로 오해하는 실수 방지).
-- step 산출물 커밋 전 `git status`로 명세에 없는 신규 `fixtures/parity/*`(record 모드 부산물)가 섞였는지 확인하고 범위 외 fixture는 제외한다 (이유: 무관 record fixture가 커밋에 딸려가는 것 방지).
+- step 산출물 커밋 전 `git status`로 명세에 없는 신규 untracked 파일(`fixtures/parity/*` record 부산물뿐 아니라 `docs/*`·빌드 산출물·다이어그램 등)이 섞였는지 확인하고 범위 외는 제외한다 (이유: 하네스 `git add -A`가 무관 부산물을 커밋에 딸려보내는 것 방지 — fixtures·docs/manual.html 154KB 등 실제 사례).
 - 하네스 step 완료 시 코드뿐 아니라 `phases/<phase>/index.json`의 해당 step을 `completed` + `summary`로 갱신한다 (이유: status가 pending으로 남고 output이 stale 브리핑만 담는 실수 방지).
 
 ---
