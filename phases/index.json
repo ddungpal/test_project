@@ -194,6 +194,15 @@
       "dir": "title-channel-learn",
       "status": "completed",
       "completed_at": "2026-06-29T11:20:07+0900"
+    },
+    {
+      "dir": "thumbnail-regen-queue",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (regen-queue-core)",
+      "attempt": 1,
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-06-29T12:24:21+0900"
     }
   ]
 }
