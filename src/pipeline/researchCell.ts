@@ -9,7 +9,7 @@ import { getRun, transitionRun, setProgress, type Supa } from "./runState.js";
 import { isCapError, flushLedger } from "./runGuards.js";
 import { getSelectedStagePayload } from "./context.js";
 import { reconcileFacts, buildAssetRows } from "./researchReconcile.js";
-import { scopeStep } from "../agents/sherlock_lead/step.js";
+import type { ScopeClaim, ScopeConcept } from "../agents/sherlock_lead/schema.js";
 import { verifyClaimStep, degradedVerification, type VerifyClaimResult } from "../agents/fact_verifier/step.js";
 import { numbersStep } from "../agents/numbers/step.js";
 import { analogyStep } from "../agents/analogist/step.js";
@@ -39,7 +39,7 @@ export interface ResearchCellResult {
 export async function runResearchCell(runId: string, deps: ResearchCellDeps): Promise<ResearchCellResult> {
   const { supa, config, costGuard, ledger } = deps;
   const llm = { config, costGuard };
-  const { maxClaims, maxConcepts, koreanOfficialDomains } = config.research;
+  const { koreanOfficialDomains } = config.research;
   const run = await getRun(supa, runId);
 
   // 0) 멱등: 이미 research_ready면 기존 결과 요약 반환.
@@ -51,26 +51,19 @@ export async function runResearchCell(runId: string, deps: ResearchCellDeps): Pr
       return { runId, state: "research_ready", factCount: fc ?? 0, assetCount: ac ?? 0, escalatedCount: ec ?? 0, critic: { missing: [], counter_evidence: [] }, skipped: true };
     }
   }
-  // 진입 가드: 정상 시작(structure_selected) 또는 크래시 후 재개(researching)만 허용(코드리뷰 P0 — 고착 복구).
-  if (run.state !== "structure_selected" && run.state !== "researching") {
-    throw new Error(`research 셀은 'structure_selected'(또는 재개 'researching')에서만(현재 '${run.state}').`);
+  // 진입 가드: 셀은 'researching'에서만 시작(크래시 후 재개 포함). step0이 structure_selected→researching
+  //   직행 전이를 없앴고(scope 게이트 경유), 선택 액션이 research_scoped→researching로 전이시킨 뒤 이벤트를
+  //   재발행하므로 셀 진입 시점엔 항상 researching이다. 옛 structure_selected 진입은 죽은 길(전이 거부) → 제거.
+  if (run.state !== "researching") {
+    throw new Error(`research 셀은 'researching'에서만(현재 '${run.state}'). scope 선택(research_scoped→researching) 후 진입한다.`);
   }
 
-  // 1) researching 진입(이미 researching이면 재개 — 전이 생략).
-  if (run.state === "structure_selected") {
-    await transitionRun(supa, runId, "structure_selected", "researching");
-  }
-
-  // 2) 컨텍스트: 선택된 구성 + 주제·제목.
+  // 1) 컨텍스트: 선택된 구성 + 주제·제목.
   await setProgress(supa, runId, "1/4·검증 범위 설정 (셜록)");
   const structure = await getSelectedStagePayload(supa, runId, "structure");
-  const topic = (await getSelectedStagePayload(supa, runId, "topic") as { title?: string } | null)?.title ?? "";
-  const title = (await getSelectedStagePayload(supa, runId, "title_thumb") as { title?: string } | null)?.title ?? "";
 
-  // 3) scope(셜록) — 검증 대상 분해.
-  const scope = await scopeStep(llm, runId, { topic, title, outline: structure });
-  const claims = scope.claims.slice(0, maxClaims);
-  const concepts = scope.concepts.slice(0, maxConcepts);
+  // 2) scope — 셜록 재호출이 아니라 '사용자가 고른 후보'를 읽는다(블라인드 slice 없음 — 고른 그대로).
+  const { claims, concepts } = await loadSelectedScope(supa, runId);
 
   // 4) 팩트검증가 fan-out(claim별 검색+검증) — 병렬. 비용 캡 에러는 강등 안 하고 전파(그 외만 강등).
   await setProgress(supa, runId, `2/5·팩트 검증 (claim ${claims.length}건 병렬)`);
@@ -135,6 +128,66 @@ export async function runResearchCell(runId: string, deps: ResearchCellDeps): Pr
 
   const escalatedCount = factRows.filter((f) => f.escalated_to_human).length;
   return { runId, state: "research_ready", factCount: factRows.length, assetCount: assetRows.length, escalatedCount, critic, skipped: false };
+}
+
+/** 사용자가 고른 scope 후보만 복원한다(블라인드 slice 없음 — researchScope.selectResearchScope가 기록한 그대로).
+ *  ① 이 run의 최신 stage='research' proposal candidates(claims 0..K-1, concepts K..N-1 전역 idx),
+ *  ② 그 proposal_id의 최신 stage_selections.edited_payload({selectedClaimIdx, selectedConceptIdx})를 읽어
+ *  교집합으로 선택된 candidate만 남기고, payload를 ScopeClaim/ScopeConcept 형태로 복원해 반환한다
+ *  (scopeStep이 주던 것과 동형 → 이후 검증 로직 입력만 교체, 검증 자체는 불변). section 메타 보존. */
+export async function loadSelectedScope(
+  supa: Supa,
+  runId: string,
+): Promise<{ claims: ScopeClaim[]; concepts: ScopeConcept[] }> {
+  // 최신 research proposal(researchScope.runResearchScope의 멱등 읽기 미러).
+  const { data: proposal, error: pe } = await supa
+    .from("stage_proposals")
+    .select("id, candidates")
+    .eq("run_id", runId)
+    .eq("stage", "research")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pe) throw new Error(`research proposal 조회 실패: ${pe.message}`);
+  if (!proposal) throw new Error(`run ${runId}에 검증할 'research' 제안이 없음(scope 단계 미수행).`);
+
+  // 그 proposal의 최신 선택(selectResearchScope가 INSERT한 edited_payload).
+  const { data: selection, error: se } = await supa
+    .from("stage_selections")
+    .select("edited_payload")
+    .eq("proposal_id", proposal.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (se) throw new Error(`research selection 조회 실패: ${se.message}`);
+  if (!selection) throw new Error(`run ${runId}의 research 제안에 scope 선택 기록이 없음.`);
+
+  const picked = (selection.edited_payload as unknown as { selectedClaimIdx?: number[]; selectedConceptIdx?: number[] } | null) ?? {};
+  const claimIdx = new Set(picked.selectedClaimIdx ?? []);
+  const conceptIdx = new Set(picked.selectedConceptIdx ?? []);
+
+  // candidate payload(kind로 구분) → 선택된 전역 idx만 교집합으로 남겨 ScopeClaim/ScopeConcept 복원.
+  type ScopeCandidatePayload =
+    | { kind: "claim"; section?: string; text: string; is_financial: boolean }
+    | { kind: "concept"; section?: string; name: string; needs_number: boolean; needs_analogy: boolean };
+  const candidates = (proposal.candidates as unknown as { idx: number; payload: ScopeCandidatePayload }[]) ?? [];
+
+  const claims: ScopeClaim[] = [];
+  const concepts: ScopeConcept[] = [];
+  for (const c of candidates) {
+    const p = c.payload;
+    if (p.kind === "claim" && claimIdx.has(c.idx)) {
+      claims.push({ text: p.text, is_financial: p.is_financial, ...(p.section !== undefined ? { section: p.section } : {}) });
+    } else if (p.kind === "concept" && conceptIdx.has(c.idx)) {
+      concepts.push({
+        name: p.name,
+        needs_number: p.needs_number,
+        needs_analogy: p.needs_analogy,
+        ...(p.section !== undefined ? { section: p.section } : {}),
+      });
+    }
+  }
+  return { claims, concepts };
 }
 
 /** 병렬 결과에 비용 캡 거부가 있으면 ledger flush·cost 저장 후 전파(runStageGuarded가 일시정지/중단).

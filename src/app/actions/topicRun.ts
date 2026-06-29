@@ -11,6 +11,7 @@ import type { TitlePayload, ThumbnailPayload } from "../../lib/dashboard/proposa
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
+import { selectResearchScope } from "../../pipeline/researchScope.js";
 import { enterScriptReview, approveScript, requestScriptRework } from "../../pipeline/scriptGate.js";
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
@@ -231,6 +232,26 @@ export async function regenerateThumbnailSlot(runId: string, slotIdx: number, re
 export async function requestResearch(runId: string): Promise<void> {
   await requireOwner();
   await inngest.send({ name: "run/research.requested", data: { runId } });
+}
+// 셜록 scope 선택(사람 게이트) — 사용자가 고른 검증 후보만 기록 + research_scoped→researching 전이 후
+//   run/research.requested 재발행. researchStage가 researching 상태로 분기해 선택분만 fan-out 검증한다
+//   (새 이벤트/함수 불필요 — 라우팅 이미 존재). select*Action 패턴 미러(requireOwner·auditLog).
+export async function selectResearchScopeAction(
+  runId: string,
+  proposalId: string,
+  selected: { claims: number[]; concepts: number[] },
+): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await selectResearchScope(supa, runId, proposalId, selected);
+  await inngest.send({ name: "run/research.requested", data: { runId } });
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "stage_selected",
+    targetType: "run",
+    targetId: runId,
+    detail: { stage: "research", claims: selected.claims.length, concepts: selected.concepts.length },
+  });
 }
 export async function openResearchReview(runId: string) {
   await requireOwner();

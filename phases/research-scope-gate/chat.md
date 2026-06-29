@@ -36,3 +36,25 @@
 
 [Joy] AC 셋 다 내 손으로 다시 돌렸어 — typecheck·test(660)·build 전부 exit 0! 블라인드 slice 진짜 사라졌고 budget은 default_selected 마킹만, fan-out 검증 호출 0건 확인. 멱등 가드까지 챙겨놔서 깔끔해. 통과! 🎉
 [리드] 1라운드 PASS. AC 셋 다 exit 0 직접 확인했고 조이 검증도 일치. step1 scope-candidates 완료 — 후보 몰래 안 잘리고 섹션 커버, research_scoped 전이까지. 선택→검증 배선은 step2로 넘긴다.
+
+=== Step 2: scope-select-verify ===
+
+[리드] 맥스, step2야. 이제 선택→검증 배선이야. 사용자가 research_scoped에서 고른 후보만 검증하게 잇는 거. 핵심 세 가지: (1) 선택 기록+전이 함수 selectResearchScope(다중선택 edited_payload, research_scoped→researching, 0개 가드), (2) researchCell이 scopeStep 새로 부르지 말고 '선택된 후보'를 읽어서(loadSelectedScope) 그것만 fan-out — 블라인드 slice 제거, (3) 서버액션+이벤트. step0이 structure_selected→researching 직행을 없앴으니 researchCell의 옛 structure_selected 진입경로(line 60-62 transitionRun)는 이제 죽은 길이야 — 거기 그대로 두면 전이 트리거가 거부해. 진입은 researching만. 그리고 researchStage가 이미 state로 분기하니 선택 후 run/research.requested 재발행이면 자동으로 셀로 가 — 새 Inngest 함수 필요 없어. 자세한 메모 보낼게.
+
+[Max] step2 시작. 기존 코드(gate.ts selectProposal/confirmThumbnailSet, researchCell, researchScope) 다 읽었어. 선택 기록은 confirmThumbnailSet 패턴 그대로 미러할게.
+
+[Max] 선택 기록(selectResearchScope) 0개 가드랑 없는 idx 가드까지 넣었어. confirmThumbnailSet 그대로 미러했고.
+[Max] 셀은 scope 재호출 빼고 loadSelectedScope로 사용자가 고른 후보만 교집합으로 읽게 바꿨어. 블라인드 slice는 완전히 없앴고.
+[Max] structure_selected 진입 가드는 죽은 길이라 뺐어. step0이 그 직행 전이를 없앴거든.
+[Max] 서버액션은 run/research.requested 재발행만 — 새 이벤트/함수 안 만들었어. 라우팅 이미 있어서.
+[Max] typecheck/test(668)/build 다 통과. 새 테스트도 같이. …내가 짠 건데도 한 번에 그린이라 좀 의심스럽긴 해.
+
+[Joy] 자 step2 검수 시작할게! 맥스 빠르다~ git diff 보고 AC 셋 다 내 손으로 돌려볼게. 타입체크 테스트 빌드 백그라운드로 던져놓고 코드부터 읽는다
+
+[Joy] 다 봤다! 핵심 다 통과야. selectResearchScope 진입가드 research_scoped-only에 0개 가드(claims+concepts==0 throw)·없는 idx throw·proposal 스코프검증까지 confirmThumbnailSet 패턴 그대로 미러했고, 0개 가드가 DB 조회보다 먼저라 깔끔해
+[Joy] loadSelectedScope가 candidates 교집합으로 선택분만 복원하고 블라인드 slice(.slice(0,maxClaims)) 진짜 사라졌어. verifyClaimStep 병렬·reconcile·셈이/유이·critic·저장 스키마는 diff에서 손도 안 댔고 분량 입력만 교체됐어 굿
+[Joy] enums 전이표도 structure_selected→["research_scoped"]로 직행 차단됐고 researchStageFn이 두 경로 분기·functions 배열 등록 확인. 새 이벤트 안 만들고 run/research.requested 재사용한 것도 좋아
+[Joy] AC 셋 다 내 손으로 돌렸어 typecheck exit0 / test 668 exit0 / build exit0. 통과! 🎉
+[Joy] 딱 하나 사소한거 docs/manual.html(154KB untracked)이 워킹트리에 떠있는데 step2 명세랑 무관해. 커밋할 때 이건 빼줘! 코드엔 영향 없으니 통과는 통과야
+
+[리드] 1라운드 PASS. AC 셋 다 exit 0 내가 직접 확인했고(test 668) 조이 그라운드트루스도 일치. step2 scope-select-verify 완료 — 선택 기록+0개가드, 선택분만 검증(블라인드 slice 제거), 검증로직 불변, 이벤트 재사용. UI 게이트는 step3로 넘긴다. docs/manual.html은 무관 untracked라 커밋 제외 대상.

@@ -1,0 +1,1 @@
+- 제안: step 산출물 커밋 전 `git status`의 untracked에 명세에 없는 신규 파일(예 docs/manual.html 등 빌드·문서 부산물)이 섞였는지 확인하고 범위 외는 제외한다 (근거: step2 워킹트리에 명세 무관 docs/manual.html 154KB가 떠있던 사례 — 기존 fixtures/parity 규칙을 docs·빌드 부산물까지 일반화). 관련: phases/research-scope-gate/step2

@@ -120,3 +120,62 @@ export async function runResearchScope(runId: string, deps: ResearchScopeDeps): 
     await setProgress(supa, runId, null);
   }
 }
+
+// 사람 게이트(§8.1) — 사용자가 고른 scope 후보(claims/concepts) idx 집합을 기록 + research_scoped→researching 전이.
+//   gate.ts selectProposal/confirmThumbnailSet 미러(새 방식 발명 금지):
+//   - research_scoped에서만(아니면 throw), proposal이 이 run·stage='research'에 속하는지 스코프검증.
+//   - 0개 가드: 전부 빼면 검증할 게 없음 → 명확히 throw(조용히 통과 금지).
+//   - 선택 idx가 실제 candidate idx에 존재하는지 검증(없는 idx 섞이면 throw — 교차 오염·오타 차단).
+//   - 다중 선택이라 chosen_idx는 0 센티넬(confirmThumbnailSet 패턴), 선택 집합은 edited_payload에 기록.
+//   ★ 이벤트는 여기서 발사하지 않는다(이 모듈은 inngest 미import) — 검증 트리거는 서버액션 몫.
+export async function selectResearchScope(
+  supa: Supa,
+  runId: string,
+  proposalId: string,
+  selected: { claims: number[]; concepts: number[] },
+): Promise<void> {
+  const run = await getRun(supa, runId);
+  if (run.state !== "research_scoped") {
+    throw new Error(`research scope 선택은 'research_scoped'에서만 가능(현재 '${run.state}').`);
+  }
+
+  // 0개 가드 — 최소 1개. 전부 빼면 리서치할 대상이 0건이라 검증 단계가 무의미.
+  if (selected.claims.length + selected.concepts.length === 0) {
+    throw new Error("최소 1개 이상의 검증 후보(claim/concept)를 선택해야 합니다.");
+  }
+
+  // proposal이 이 run·"research"에 속하는지(selectProposal 스코프검증 미러) + candidates 로드.
+  const { data: proposal, error: pe } = await supa
+    .from("stage_proposals")
+    .select("id, candidates")
+    .eq("id", proposalId)
+    .eq("run_id", runId)
+    .eq("stage", "research")
+    .maybeSingle();
+  if (pe) throw new Error(`research proposal 조회 실패: ${pe.message}`);
+  if (!proposal) throw new Error(`proposal ${proposalId}는 run ${runId}의 'research' 단계에 속하지 않음.`);
+
+  // 선택 idx가 실제 candidate idx에 존재하는지 검증(없는 idx 섞이면 throw).
+  //   candidate.idx는 전역(claims 0..K-1, concepts K..N-1) — 종류별 분리 없이 한 집합으로 검증.
+  const candidates = (proposal.candidates as unknown as { idx: number }[]) ?? [];
+  const validIdx = new Set(candidates.map((c) => c.idx));
+  const allSelected = [...selected.claims, ...selected.concepts];
+  const missing = allSelected.filter((i) => !validIdx.has(i));
+  if (missing.length > 0) {
+    throw new Error(`선택 idx [${missing.join(", ")}]가 후보에 없음(후보 ${candidates.length}개).`);
+  }
+
+  // 다중 선택이라 chosen_idx=0 센티넬(confirmThumbnailSet 패턴), 선택 집합은 edited_payload에.
+  const editedPayload = {
+    selectedClaimIdx: selected.claims,
+    selectedConceptIdx: selected.concepts,
+  } as unknown as Json;
+  const { error: se } = await supa
+    .from("stage_selections")
+    .insert({ proposal_id: proposalId, chosen_idx: 0, edited_payload: editedPayload })
+    .select("id")
+    .single();
+  if (se) throw new Error(`stage_selections insert 실패: ${se.message}`);
+
+  await transitionRun(supa, runId, "research_scoped", "researching");
+}
