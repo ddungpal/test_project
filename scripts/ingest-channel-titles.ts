@@ -11,13 +11,11 @@
 import { writeFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
 import {
-  parseUploadsPlaylistId,
-  parseRecentTitles,
+  fetchChannelTitles,
   resolveChannelQuery,
   type ChannelTitle,
 } from "../src/ingest/channelTitles.js";
 
-const YT_API = "https://www.googleapis.com/youtube/v3";
 const OUT_DIR = "corpus/titles";
 const OUT_FILE = "channel-recent.json";
 const COMMIT = process.argv.includes("--commit");
@@ -43,26 +41,8 @@ async function main() {
   const query = resolveChannelQuery(channelInput);
   const queryLabel = "forHandle" in query ? `@${query.forHandle}` : query.id;
 
-  // 1) channels.list(part=contentDetails) — 핸들은 forHandle, 채널ID는 id 파라미터.
-  const cp = new URLSearchParams({ part: "contentDetails", key: apiKey });
-  if ("forHandle" in query) cp.set("forHandle", query.forHandle);
-  else cp.set("id", query.id);
-  const cRes = await fetch(`${YT_API}/channels?${cp}`);
-  if (!cRes.ok) throw new Error(`channels.list ${cRes.status}: ${await cRes.text().catch(() => "")}`);
-  const cData: unknown = await cRes.json();
-  const uploadsPlaylistId = parseUploadsPlaylistId(cData);
-
-  // 2) playlistItems.list(part=snippet, maxResults=50) — 최근 업로드.
-  const pp = new URLSearchParams({
-    part: "snippet",
-    playlistId: uploadsPlaylistId,
-    maxResults: "50",
-    key: apiKey,
-  });
-  const pRes = await fetch(`${YT_API}/playlistItems?${pp}`);
-  if (!pRes.ok) throw new Error(`playlistItems.list ${pRes.status}: ${await pRes.text().catch(() => "")}`);
-  const pData: unknown = await pRes.json();
-  const titles: ChannelTitle[] = parseRecentTitles(pData).slice(0, 50);
+  // 네트워크 fetch(채널 → 업로드 재생목록 → 최근 50개 제목)는 공유 코어로 위임. 파일 쓰기·출력은 CLI에 유지.
+  const titles: ChannelTitle[] = await fetchChannelTitles(channelInput, apiKey);
 
   console.log(`\n📥 채널 제목 ingest — ${queryLabel} | 가져온 제목 ${titles.length}개`);
   for (const t of titles.slice(0, 5)) {

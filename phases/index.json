@@ -199,6 +199,16 @@
       "dir": "thumbnail-regen-queue",
       "status": "completed",
       "completed_at": "2026-06-29T12:32:57+0900"
+    },
+    {
+      "dir": "channel-title-learn-button",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (channel-learn-core)",
+      "attempt": 1,
+      "elapsed_seconds": 900,
+      "heartbeat_at": "2026-06-29T14:23:42+0900",
+      "team_round": "2/3 PASS"
     }
   ]
 }

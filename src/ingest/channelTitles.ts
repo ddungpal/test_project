@@ -1,5 +1,8 @@
-// 채널 제목 ingest — 순수 파서(네트워크 없음). scripts/ingest-channel-titles.ts가 사용.
-//   YouTube Data API v3 응답 형태만 다룬다. 호출 자체는 스크립트 래퍼가 담당(ingest-youtube 패턴).
+// 채널 제목 ingest — 순수 파서 + 네트워크 fetch. scripts/ingest-channel-titles.ts와 서버 액션이 공유.
+//   YouTube Data API v3 응답 형태를 다룬다. fetchChannelTitles는 파일 I/O 없이 메모리로만 흐른다(서버리스 호환).
+
+// YouTube Data API v3 base — ingest-youtube/ingest-channel-titles와 단일 출처.
+export const YT_API = "https://www.googleapis.com/youtube/v3";
 
 // channels.list(part=contentDetails) 응답 → 업로드 재생목록 ID. 없으면 throw(상위에서 명확 실패).
 export function parseUploadsPlaylistId(channelsResponse: unknown): string {
@@ -56,4 +59,28 @@ export function resolveChannelQuery(input: string): { forHandle: string } | { id
   const stripped = raw.replace(/^https?:\/\//, "").replace(/^(www\.)?youtube\.com\/?/, "");
   const last = stripped.split(/[/?#]/).filter(Boolean).pop() ?? stripped;
   return { forHandle: last.replace(/^@/, "") };
+}
+
+// 채널 핸들/URL → 최근 50개 제목(네트워크). 파일 쓰기 없음. statistics(조회수) 안 부름 — 제목만.
+//   resolveChannelQuery → channels.list(part=contentDetails) → parseUploadsPlaylistId
+//   → playlistItems.list(part=snippet, maxResults=50) → parseRecentTitles → slice(0,50).
+//   서버 액션·CLI 공유 경로(단일 출처). FS 미접근(Vercel 서버리스 호환).
+export async function fetchChannelTitles(channelInput: string, apiKey: string): Promise<ChannelTitle[]> {
+  const query = resolveChannelQuery(channelInput);
+
+  // 1) channels.list(part=contentDetails) — 핸들은 forHandle, 채널ID는 id 파라미터.
+  const cp = new URLSearchParams({ part: "contentDetails", key: apiKey });
+  if ("forHandle" in query) cp.set("forHandle", query.forHandle);
+  else cp.set("id", query.id);
+  const cRes = await fetch(`${YT_API}/channels?${cp}`);
+  if (!cRes.ok) throw new Error(`channels.list ${cRes.status}: ${await cRes.text().catch(() => "")}`);
+  const cData: unknown = await cRes.json();
+  const uploadsPlaylistId = parseUploadsPlaylistId(cData);
+
+  // 2) playlistItems.list(part=snippet, maxResults=50) — 최근 업로드.
+  const pp = new URLSearchParams({ part: "snippet", playlistId: uploadsPlaylistId, maxResults: "50", key: apiKey });
+  const pRes = await fetch(`${YT_API}/playlistItems?${pp}`);
+  if (!pRes.ok) throw new Error(`playlistItems.list ${pRes.status}: ${await pRes.text().catch(() => "")}`);
+  const pData: unknown = await pRes.json();
+  return parseRecentTitles(pData).slice(0, 50);
 }
