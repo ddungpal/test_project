@@ -97,6 +97,25 @@ export function pickSpreadYoutube(items: ExternalItem[], n: number, floorSubs: n
   return out;
 }
 
+// 롱폼 최소 길이 — 이 이하면 숏폼/짧은 클립으로 보고 제외. (5분 = Shorts 상한 + 짧은 클립까지 컷)
+export const SHORTS_MAX_SEC = 300;
+
+// ISO 8601 duration(PT#H#M#S) → 초. 못 파싱하면 null(길이 미상 → 통과). 순수(throw 0).
+//   YouTube contentDetails.duration 형식. 시·분·초 각 선택적이라도 최소 1개 토큰은 있어야 유효.
+export function parseISODurationSec(iso: string | undefined | null): number | null {
+  if (iso == null) return null;
+  const m = /^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(iso);
+  if (!m) return null;
+  const [, h, min, s] = m;
+  if (h == null && min == null && s == null) return null; // "PT"만 → 미상
+  return (h ? Number(h) * 3600 : 0) + (min ? Number(min) * 60 : 0) + (s ? Number(s) : 0);
+}
+
+// 롱폼 여부 — 길이 미상(null)은 통과시킨다(stats가 quota 실패로 비면 전부 null → 드롭 시 풀 전멸).
+export function isLongform(durationSec: number | null): boolean {
+  return durationSec == null || durationSec > SHORTS_MAX_SEC;
+}
+
 // 반응도율 = (좋아요+댓글) / 조회수. 조회수 데이터 부족(null·비유한·≤0)이면 null.
 //   likes·comments가 둘 다 null이면 반응도 미상 → null. 하나라도 있으면 있는 것만 합산
 //   ((likes ?? 0) + (comments ?? 0)). likeCount/commentCount는 비공개 가능 → null 허용.
@@ -159,6 +178,7 @@ export interface VideoStats {
   views: number | null; // 비공개·없으면 null
   likes: number | null; // 좋아요 비공개 가능 → null
   comments: number | null; // 댓글수 비공개 가능 → null
+  durationSec: number | null; // 영상 길이(초). 미상이면 null(롱폼 필터에서 통과 처리).
 }
 
 // statistics 필드 안전 파싱: 값 없거나 숫자 아니면 null.
@@ -168,16 +188,20 @@ function numOrNull(v: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-/** videos.list(part=statistics) — videoId → {views,likes,comments}. best-effort(실패 시 빈 맵).
- *  likeCount/commentCount는 비공개 가능 → 필드 없으면 null. */
+/** videos.list(part=statistics,contentDetails) — videoId → {views,likes,comments,durationSec}. best-effort(실패 시 빈 맵).
+ *  likeCount/commentCount는 비공개 가능 → 필드 없으면 null. durationSec은 contentDetails.duration(ISO 8601) 파싱(미상 시 null). */
 async function fetchVideoStats(ids: string[], key: string): Promise<Map<string, VideoStats>> {
   const out = new Map<string, VideoStats>();
   if (!ids.length) return out;
-  const p = new URLSearchParams({ part: "statistics", id: ids.join(","), key });
+  const p = new URLSearchParams({ part: "statistics,contentDetails", id: ids.join(","), key });
   const res = await fetch(`${YT_API}/videos?${p.toString()}`);
   if (!res.ok) return out;
   const data = (await res.json()) as {
-    items?: { id?: string; statistics?: { viewCount?: string; likeCount?: string; commentCount?: string } }[];
+    items?: {
+      id?: string;
+      statistics?: { viewCount?: string; likeCount?: string; commentCount?: string };
+      contentDetails?: { duration?: string };
+    }[];
   };
   for (const it of data.items ?? []) {
     if (!it.id) continue;
@@ -185,6 +209,7 @@ async function fetchVideoStats(ids: string[], key: string): Promise<Map<string, 
       views: numOrNull(it.statistics?.viewCount),
       likes: numOrNull(it.statistics?.likeCount),
       comments: numOrNull(it.statistics?.commentCount),
+      durationSec: parseISODurationSec(it.contentDetails?.duration),
     });
   }
   return out;
@@ -248,7 +273,10 @@ async function searchYouTube(query: string, max: number): Promise<Omit<ExternalI
   const channelIds = [...new Set(items.map((it) => it.snippet?.channelId).filter((c): c is string => !!c))];
   const [stats, subs] = await Promise.all([fetchVideoStats(videoIds, key), fetchChannelSubs(channelIds, key)]);
 
-  return items.map((it) => {
+  // 롱폼 필터 — 김짠부는 롱폼만 찾는다. 길이 미상(stats 비거나 contentDetails 누락)은 통과(풀 전멸 방지).
+  const longform = items.filter((it) => isLongform(stats.get(it.id!.videoId!)?.durationSec ?? null));
+
+  return longform.map((it) => {
     const st = stats.get(it.id!.videoId!);
     return {
       source: "youtube" as const,
