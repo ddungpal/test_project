@@ -1,4 +1,4 @@
-<!-- harness:freshness last_reviewed=2026-06-29 -->
+<!-- harness:freshness last_reviewed=2026-06-30 -->
 # 프로젝트 규칙 (Living Rules)
 
 > CLAUDE.md를 린하게 유지하기 위해, **영역 한정·상세 규칙**은 여기에 둔다.
@@ -14,6 +14,8 @@
 - 기존 메트릭 컬럼(예 `ab_variants.ctr_pct`)에 다른 지표를 재사용해 적재할 때는 그 정체를 코드·주석으로 명시한다 (이유: watch_share/views를 ctr_pct 슬롯에 넣는 패턴 — 컬럼명만 보고 CTR로 오해하는 실수 방지).
 - step 산출물 커밋 전 `git status`로 명세에 없는 신규 untracked 파일(`fixtures/parity/*` record 부산물뿐 아니라 `docs/*`·빌드 산출물·다이어그램 등)이 섞였는지 확인하고 범위 외는 제외한다 (이유: 하네스 `git add -A`가 무관 부산물을 커밋에 딸려보내는 것 방지 — fixtures·docs/manual.html 154KB 등 실제 사례).
 - 하네스 step 완료 시 코드뿐 아니라 `phases/<phase>/index.json`의 해당 step을 `completed` + `summary`로 갱신한다 (이유: status가 pending으로 남고 output이 stale 브리핑만 담는 실수 방지).
+- enum/CHECK 제약을 넓히는 마이그레이션을 추가하면 같은 커밋에서 `src/lib/supabase/database.types.ts`의 해당 Row 유니온 타입도 함께 넓힌다 (이유: 스키마-타입 드리프트는 소비 step의 `.eq(col, newVal)`이 타입 좁힘으로 다음 step에서 typecheck를 깨뜨린다 — 마이그 25/30/31 실제 사례).
+- `'use server'`/모듈 간 헬퍼를 추출·이동하면 원본 파일에 그 헬퍼만 쓰던 import(특히 `type X`)가 죽은 채 남지 않았는지 확인한다 (이유: tsconfig에 `noUnusedLocals`가 없어 죽은 import를 typecheck가 안 잡는 사각지대 — contentLifecycle.ts 추출 시 topicRun.ts에 죽은 `type Supa`가 남은 사례).
 
 ---
 
