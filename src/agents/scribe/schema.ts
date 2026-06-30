@@ -25,12 +25,17 @@ export const SCRIBE_SCHEMA: JsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
+        // required엔 kind/payload 미포함(하위호환) — prose-only 출력도 그대로 통과.
         required: ["ord", "text", "used_fact_idxs", "used_asset_idxs"],
         properties: {
           ord: { type: "integer", minimum: 0 },
           text: { type: "string", minLength: 1 },
           used_fact_idxs: { type: "array", items: { type: "integer", minimum: 0 } },
           used_asset_idxs: { type: "array", items: { type: "integer", minimum: 0 } },
+          // P2: 형식 블록 신호(선택). 형태 정제는 런타임 normalizeSegmentPayload가 담당.
+          kind: { type: "string", enum: ["prose", "table", "case", "visual"] },
+          // loose object — 내부 additionalProperties를 막지 않는다(claude-p stray 필드로 결정적 검증이 깨지지 않게).
+          payload: { type: "object" },
         },
       },
     },
@@ -49,4 +54,16 @@ export const SCRIBE_SYSTEM = [
   "  단정하지 말고 '정확한 수치는 확인이 필요하다'는 식으로 신중히 다루거나, 일반 원리로만 설명한다. 근거로 쓴 fact는 used_fact_idxs에 링크.",
   "■ 표절 금지: 과거 영상 문장을 그대로 베끼지 말고, tone은 따르되 문장은 새로 쓴다.",
   "■ 출력: 대본을 의미 단위 segment들로 나눠 순서(ord)대로. 각 segment는 한국어 구어체 대본 텍스트.",
+  "",
+  "■ 형식 블록(outline의 format 신호 따르기): outline 각 섹션에 format이 있으면 그 형식으로 emit한다.",
+  "  - format:\"table\" → 그 섹션을 kind:\"table\" segment로 emit. payload={ columns: string[], rows: string[][], caption?: string }.",
+  "    · columns=비교 축(헤더), rows=각 비교 대상의 값(행). 표 안의 수치/사실은 facts·assets 근거에 충실하게 채운다.",
+  "    · 표 앞뒤의 도입·정리 설명은 별도의 prose(kind 생략) segment로 둘 수 있다.",
+  "  - format:\"case\" → 그 섹션을 kind:\"case\" segment로 emit. payload={ intro?: string, branches: { condition: string, outcome: string }[] }.",
+  "    · 각 branch=시청자 상황(condition)→권장(outcome). intro는 분기 도입 한 줄(선택).",
+  "  - format:\"explain\" 또는 format 없음 → 기존처럼 prose(kind 생략 또는 kind:\"prose\"). 형식 블록을 만들지 않는다.",
+  "■ money-safety(필수): verification_status가 'verified'가 아닌 fact의 수치는 표/케이스 칸에도 단정으로 넣지 마라.",
+  "  - 미검증 수치를 표 칸에 박지 말고, 그 칸은 비우거나 '확인 필요'로 두거나 해당 부분은 prose로 신중히 설명한다.",
+  "■ 억지 금지: format이 table이어도 비교 데이터가 부족하면 표를 만들지 말고 prose로 풀어라. case도 마찬가지로 분기 데이터가 없으면 prose.",
+  "■ kind/payload는 형식 섹션에서만 채운다. prose segment는 위의 말투·쉬운 설명·lineage(used_fact_idxs/used_asset_idxs) 규칙을 그대로 따른다.",
 ].join("\n");
