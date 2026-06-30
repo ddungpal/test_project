@@ -239,6 +239,11 @@
       "dir": "visual-cues",
       "status": "completed",
       "completed_at": "2026-06-30T15:18:15+0900"
+    },
+    {
+      "dir": "outlier-refs",
+      "status": "completed",
+      "completed_at": "2026-06-30T16:56:25+0900"
     }
   ]
 }

@@ -1,0 +1,44 @@
+{
+  "project": "produce script",
+  "phase": "outlier-refs",
+  "steps": [
+    {
+      "step": 0,
+      "name": "multiplier-core",
+      "status": "completed",
+      "started_at": "2026-06-30T16:20:10+0900",
+      "team_round": "1/3 PASS",
+      "summary": "externalSignals.ts에 순수 헬퍼 viewsPerSubscriber(views/subs, null·비유한·≤0·floorSubs 미만 컷) 추가. ExternalItem·YtSearchItem snippet에 thumbnailUrl(high?.url ?? medium ?? default ?? null) additive 추가, searchYouTube·webRaw가 채움. tests/viewsMultiplier.test.ts 8케이스. 정렬(pickTopExternalTitles·discovery)·LLM 프롬프트 불변. AC 전부 통과(typecheck/test 823/build, .next stale 캐시 1회 정리).",
+      "completed_at": "2026-06-30T16:28:04+0900"
+    },
+    {
+      "step": 1,
+      "name": "title-topic-multiplier",
+      "status": "completed",
+      "started_at": "2026-06-30T16:28:04+0900",
+      "team_round": "1/3 PASS",
+      "summary": "조회수 절대값 → 배수(아웃라이어) 우선 재정렬. (1) externalRefs.ts: pickTopExternalTitles 정렬을 배수 desc(null 후순위·null끼리 조회수 보조·tie id asc)로 교체, ExternalTitleRef에 multiplier·subscriberCount 추가, FLOOR_SUBS(1000) 상수 신설. viewsPerSubscriber는 step0 import만(재구현 없음). (2) discovery.ts: 경쟁영상 signal_score를 competitorSignalScore 순수함수로 추출 — log10(views+1)*(1+log10(mult+1)) 가중·배수 null이면 log10 폴백, evidence.multiplier·rationale '구독대비 N배' 추가, FLOOR_SUBS는 externalRefs에서 import 공유(드리프트 방지). 댓글 candidate·SYSTEM·스키마 불변. 테스트: hookMakerExternalRefs +5케이스(배수 desc·null 후순위·FLOOR_SUBS 컷·둘다null 폴백·매핑형태), discovery +5케이스(폴백·가중 단조·아웃라이어 우선·FLOOR_SUBS·조회null). AC 전부 통과(typecheck/test 832/build).",
+      "completed_at": "2026-06-30T16:37:02+0900"
+    },
+    {
+      "step": 2,
+      "name": "thumbnail-outlier-gather",
+      "status": "completed",
+      "started_at": "2026-06-30T16:37:02+0900",
+      "team_round": "1/3 PASS",
+      "summary": "외부 아웃라이어 영상 썸네일을 김짠부 시각 레퍼런스로 수집하는 데이터 레이어(렌더는 step3). (1) externalRefs.ts: 순수 가공부 pickTopOutlierThumbnails(youtube & thumbnailUrl!=null & viewCount!=null & 자기채널 아님 → 배수 desc(null 후순위·null끼리 조회수 desc·tie id asc) → url 디덥 → 상위 n)와 best-effort gatherOutlierThumbnails(topic,n) 추가. 게이트는 titleReferencesEnabled() 재사용(새 env 없음). viewsPerSubscriber·gatherExternalSignals·FLOOR_SUBS는 import만(재구현 없음). 김짠부 자기채널 제외는 KIMZZANBU_CHANNEL=['김짠부','zzanboo'] publisher 포함 휴리스틱(채널ID 미확정). (2) outlierThumbnailsView.ts 신설: 'server-only' getOutlierThumbnailRefs(runId) — getSelectedStagePayload(...,'topic').title로 주제 읽어 gatherOutlierThumbnails(topic,6) 반환, 주제 없거나 게이트 off면 []. ponytail 비용천장 주석. (3) page.tsx: thumbnails_proposed 상태에서만 read 호출 → ThumbnailStudio에 outlierRefs prop 전달(StageSection·ThumbnailStageSection 경유). ThumbnailStudio는 prop 타입(outlierRefs?: OutlierThumbnailRef[])만 추가·렌더 마크업 불변. 외부 이미지/URL은 LLM 입력에 안 들어감(promptHash 불변). 테스트 outlierThumbnails.test.ts 12케이스. AC 전부 통과(typecheck/test 844/build).",
+      "completed_at": "2026-06-30T16:47:55+0900"
+    },
+    {
+      "step": 3,
+      "name": "outlier-refs-ui",
+      "status": "completed",
+      "started_at": "2026-06-30T16:47:55+0900",
+      "team_round": "1/3 PASS",
+      "summary": "outlier-refs UI 레이어(순수 프론트엔드 2파일). (1) ThumbnailStudio.tsx: outlierRefs(기본 [])로 외부 아웃라이어 썸네일 레퍼런스 패널 추가 — 메인 그리드와 하단 액션 사이 보조 영역에 OutlierRefsPanel/OutlierRefCard 신설(같은 파일 내). 빈 배열이면 패널 통째 null(게이트 off 회귀 0). 카드=순수 <img>(loading=lazy·alt=title·16:9 aspect-video·onError로 깨진 이미지만 숨김), 제목 line-clamp-2, 배수 배지 '구독대비 ×{round(multiplier)}'(null이면 생략·trus-yellow 한 톤), 조회/구독 보조, 영상 링크 outlierHref(http/https 가드)·target=_blank rel=noopener. A/B/C 생성·재생성·확정·교정 마크업/핸들러 완전 불변(순수 additive·삭제 0). (2) SourceLinks.tsx: youtube 출처에 view·sub 둘 다 있고 sub>0이면 '구독대비 ×K' 즉석 계산 표시(ProposalSource에 multiplier 필드 없음·표시용 계산만), 기존 '구독 N·조회 M'·<details> 토글·기존 🔗 이모지 불변. 백엔드/서버 read/externalSignals/LLM/proposalTypes 변경 0, 외부 썸네일 LLM 입력 경로 없음(promptHash 불변). 새 의존성 0(img+Tailwind). AC 전부 통과(typecheck exit0/test 844/build exit0).",
+      "completed_at": "2026-06-30T16:56:25+0900"
+    }
+  ],
+  "created_at": "2026-06-30T16:20:10+0900",
+  "completed_at": "2026-06-30T16:56:25+0900"
+}

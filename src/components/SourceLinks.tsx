@@ -58,6 +58,15 @@ export function SourceLinks({ sources }: { sources: ProposalSource[] }) {
                     {")"}
                   </span>
                 )}
+                {/* 구독대비 배수 — view/sub 둘 다 있고 sub>0일 때만 즉석 계산(ProposalSource엔 multiplier 필드 없음). 표시 전용. */}
+                {s.source === "youtube" &&
+                  s.viewCount != null &&
+                  s.subscriberCount != null &&
+                  s.subscriberCount > 0 && (
+                    <span className="ml-1 font-bold text-trus-yellow">
+                      구독대비 ×{Math.round(s.viewCount / s.subscriberCount)}
+                    </span>
+                  )}
                 <span className="ml-1 font-mono text-[10px] text-trus-white/25">{s.id}</span>
               </span>
             </li>

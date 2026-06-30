@@ -4,7 +4,7 @@ import { describe, it, expect, afterEach } from "vitest";
 import { pickTopExternalTitles, gatherTitleReferences } from "../src/agents/hook_maker/externalRefs.js";
 import type { ExternalItem } from "../src/agents/topic_scout/externalSignals.js";
 
-function yt(id: string, title: string, viewCount: number | null): ExternalItem {
+function yt(id: string, title: string, viewCount: number | null, subscriberCount: number | null = null): ExternalItem {
   return {
     id,
     source: "youtube",
@@ -14,7 +14,8 @@ function yt(id: string, title: string, viewCount: number | null): ExternalItem {
     published_at: null,
     snippet: "",
     viewCount,
-    subscriberCount: null,
+    subscriberCount,
+    thumbnailUrl: null,
   };
 }
 function web(id: string, title: string): ExternalItem {
@@ -28,6 +29,7 @@ function web(id: string, title: string): ExternalItem {
     snippet: "",
     viewCount: 999999, // web은 viewCount가 있어도 제외되어야 함
     subscriberCount: null,
+    thumbnailUrl: null,
   };
 }
 
@@ -85,15 +87,61 @@ describe("pickTopExternalTitles (순수함수)", () => {
     expect(out.map((r) => r.id)).toEqual(["aaa", "mmm", "zzz"]);
   });
 
-  it("ExternalTitleRef 형태(id·title·viewCount·url·publisher)를 그대로 매핑", () => {
-    const out = pickTopExternalTitles([yt("a", "제목", 77)], 1);
+  it("ExternalTitleRef 형태(id·title·viewCount·url·publisher·multiplier·subscriberCount)를 그대로 매핑", () => {
+    const out = pickTopExternalTitles([yt("a", "제목", 100000, 5000)], 1);
     expect(out[0]).toEqual({
       id: "a",
       title: "제목",
-      viewCount: 77,
+      viewCount: 100000,
       url: "https://www.youtube.com/watch?v=a",
       publisher: "어떤채널",
+      multiplier: 20, // 100000 / 5000
+      subscriberCount: 5000,
     });
+  });
+
+  it("⑥ 배수 desc 우선 — 조회수 낮아도 구독 대비 배수 큰 영상이 앞", () => {
+    const items: ExternalItem[] = [
+      // 조회 100만·구독 100만 → 배수 1
+      yt("big", "대형채널 100만 조회", 1_000_000, 1_000_000),
+      // 조회 20만·구독 5천 → 배수 40 (아웃라이어)
+      yt("outlier", "소형채널 아웃라이어", 200_000, 5_000),
+    ];
+    const out = pickTopExternalTitles(items, 2);
+    expect(out.map((r) => r.title)).toEqual(["소형채널 아웃라이어", "대형채널 100만 조회"]);
+    expect(out.map((r) => r.multiplier)).toEqual([40, 1]);
+  });
+
+  it("⑦ 배수 null(구독 비공개) 항목은 배수 있는 항목보다 뒤로", () => {
+    const items: ExternalItem[] = [
+      yt("hidden", "구독 비공개·고조회", 5_000_000, null), // 배수 null
+      yt("mult", "배수 있음·저조회", 50_000, 5_000), // 배수 10
+    ];
+    const out = pickTopExternalTitles(items, 2);
+    expect(out.map((r) => r.title)).toEqual(["배수 있음·저조회", "구독 비공개·고조회"]);
+    expect(out.map((r) => r.multiplier)).toEqual([10, null]);
+  });
+
+  it("⑧ FLOOR_SUBS 미만 채널은 배수 null 취급 → 후순위", () => {
+    const items: ExternalItem[] = [
+      // 구독 10명·조회 1만 = 1000배지만 FLOOR_SUBS(1000) 미만 → 배수 null
+      yt("tiny", "초소형 과장배수", 10_000, 10),
+      // 구독 2천·조회 1만 = 5배 (정상 랭킹)
+      yt("normal", "정상 배수 5배", 10_000, 2_000),
+    ];
+    const out = pickTopExternalTitles(items, 2);
+    expect(out.map((r) => r.title)).toEqual(["정상 배수 5배", "초소형 과장배수"]);
+    expect(out.map((r) => r.multiplier)).toEqual([5, null]);
+  });
+
+  it("⑨ 배수 둘 다 null이면 조회수 desc 보조 정렬(기존 동작 보존)", () => {
+    const items: ExternalItem[] = [
+      yt("a", "저조회", 100, null),
+      yt("b", "고조회", 500, null),
+    ];
+    const out = pickTopExternalTitles(items, 2);
+    expect(out.map((r) => r.title)).toEqual(["고조회", "저조회"]);
+    expect(out.map((r) => r.multiplier)).toEqual([null, null]);
   });
 });
 

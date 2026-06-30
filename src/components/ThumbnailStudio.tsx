@@ -11,6 +11,7 @@ import { CandidateSourceBadge } from "@/components/CandidateSourceBadge";
 import { candidateKey, resolveCompletedSlots, clearSlots } from "@/components/thumbnailRegenQueue";
 import type { CandidateView } from "@/lib/dashboard/proposalTypes";
 import type { CorrectionDiff } from "@/agents/correction_diff/schema";
+import type { OutlierThumbnailRef } from "@/agents/hook_maker/externalRefs";
 
 // 썸네일 스튜디오(§8.1 사람 게이트) — A/B/C 3개를 보고 ① 개별 칸 다시 생성 ② 3개 전체 다시 생성 ③ 3개로 확정.
 //   ★ 슬롯 재생성은 '비차단 큐' — 한 칸을 다시 생성하는 동안 다른 칸도 누를 수 있다. 진행 중 슬롯은 pending(idx→스냅샷)에
@@ -43,10 +44,13 @@ export function ThumbnailStudio({
   runId,
   candidates,
   topic,
+  outlierRefs = [],
 }: {
   runId: string;
   candidates: CandidateView[];
   topic: string;
+  // step3: 외부 아웃라이어 영상 썸네일 시각 레퍼런스(기본 []). 빈 배열이면 패널 미표시(게이트 off·수집 0 → 회귀 0).
+  outlierRefs?: OutlierThumbnailRef[];
 }) {
   const [error, setError] = useState<string | null>(null);
   // 슬롯별 비차단 큐 — 진행 중 슬롯idx → 큐 투입 시점 candidateKey 스냅샷. 한 슬롯이 대기 중이어도 다른 슬롯 클릭을 막지 않는다.
@@ -248,6 +252,10 @@ export function ThumbnailStudio({
         })}
       </div>
 
+      {/* 외부 아웃라이어 썸네일 레퍼런스(보조 영역·표시 전용) — 구독 대비 조회수가 터진 외부 영상의 썸네일을 시각 참고로만.
+          ★ A/B/C 편집·확정·교정과 완전 분리(상태·로직 없음). 빈 배열이면 컴포넌트가 null을 반환해 아예 안 그린다(회귀 0). */}
+      <OutlierRefsPanel refs={outlierRefs} />
+
       {/* 하단 액션 — 보조(전체 다시 생성, outline)와 주 액션(확정, 노란 채움)을 좌우로 갈라 위계를 분명히. */}
       <div className="flex flex-col gap-3 border-t-2 border-trus-white/20 pt-4">
         {/* 전체 공용 사유(선택) — 3개 전체 다시 생성 시 함께 전달. 비/공백이면 미전송(기존 동작). */}
@@ -303,6 +311,86 @@ export function ThumbnailStudio({
       )}
       {error && <p className="text-xs font-bold text-trus-yellow">⚠ {error}</p>}
     </div>
+  );
+}
+
+// ── 외부 아웃라이어 썸네일 레퍼런스 (step3) ────────────────────────────────────
+//   구독 대비 조회수가 터진 외부 영상의 '썸네일 이미지'를 김짠부 시각 레퍼런스로만 노출(표시 전용).
+//   ★ LLM 입력에 절대 안 들어간다(시각 참고 전용). A/B/C 생성·확정·교정과 상태/로직 분리.
+
+// url은 http/https만 링크(스킴 XSS 차단 — SourceLinks safeHref 패턴 인라인 미러).
+function outlierHref(u: string): string | null {
+  try {
+    const p = new URL(u).protocol;
+    return p === "http:" || p === "https:" ? u : null;
+  } catch {
+    return null;
+  }
+}
+
+// 한국형 축약(SourceLinks fmtCount는 export 안 됨 → 인라인 간소판). non-null만 들어온다(viewCount).
+function fmtOutlierCount(n: number): string {
+  if (n >= 1e8) return `${(n / 1e8).toFixed(1).replace(/\.0$/, "")}억`;
+  if (n >= 1e4) return `${(n / 1e4).toFixed(1).replace(/\.0$/, "")}만`;
+  if (n >= 1e3) return `${(n / 1e3).toFixed(1).replace(/\.0$/, "")}천`;
+  return String(n);
+}
+
+// 패널 — 빈 배열이면 null(게이트 off·수집 0 → 회귀 0). 가로 스크롤로 N개 카드 나열.
+function OutlierRefsPanel({ refs }: { refs: OutlierThumbnailRef[] }) {
+  if (refs.length === 0) return null;
+  return (
+    <section className="border-t-2 border-trus-white/20 pt-4" aria-label="외부 아웃라이어 썸네일 레퍼런스">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-trus-white/40">참고 (표시 전용)</p>
+      <p className="mb-3 text-xs text-trus-white/55">이 주제로 구독자 대비 조회수가 터진 외부 영상이에요.</p>
+      <ul className="flex gap-3 overflow-x-auto pb-1">
+        {refs.map((r) => (
+          <OutlierRefCard key={r.id} r={r} />
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function OutlierRefCard({ r }: { r: OutlierThumbnailRef }) {
+  // 썸네일 로드 실패 시 이미지만 숨기고 카드(제목·배지·링크)는 유지 — 상태 훅 하나로 간단히(과설계 금지).
+  const [imgBroken, setImgBroken] = useState(false);
+  const href = outlierHref(r.url);
+  return (
+    <li className="flex w-44 shrink-0 flex-col gap-1.5">
+      <div className="aspect-video w-full overflow-hidden border border-trus-white/20 bg-trus-white/5">
+        {!imgBroken && (
+          // 시각 레퍼런스 전용 순수 img — LLM 입력 아님. onError로 깨진 이미지 방어.
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={r.thumbnailUrl}
+            alt={r.title}
+            loading="lazy"
+            onError={() => setImgBroken(true)}
+            className="h-full w-full object-cover"
+          />
+        )}
+      </div>
+      {/* 배수 배지 — multiplier 있을 때만(null이면 생략). trus-yellow 한 톤. */}
+      {r.multiplier != null && (
+        <span className="self-start bg-trus-yellow px-1.5 py-0.5 text-[10px] font-black text-trus-black">
+          구독대비 ×{Math.round(r.multiplier)}
+        </span>
+      )}
+      <p className="line-clamp-2 text-xs text-trus-white/80">
+        {href ? (
+          <a href={href} target="_blank" rel="noopener noreferrer" className="underline hover:text-trus-yellow">
+            {r.title}
+          </a>
+        ) : (
+          r.title
+        )}
+      </p>
+      <p className="text-[10px] text-trus-white/35">
+        {r.publisher && <span>{r.publisher} · </span>}
+        조회 {fmtOutlierCount(r.viewCount)}
+      </p>
+    </li>
   );
 }
 

@@ -6,7 +6,8 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { TablesInsert, Json } from "../../lib/supabase/database.types.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
-import { gatherExternalSignals } from "./externalSignals.js";
+import { gatherExternalSignals, viewsPerSubscriber } from "./externalSignals.js";
+import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 
 export interface DiscoveryResult {
   comment: number;
@@ -16,6 +17,18 @@ export interface DiscoveryResult {
 }
 
 type CandidateRow = TablesInsert<"topic_candidates">;
+
+/** 경쟁(youtube) 영상 후보의 signal_score — 조회수 로그 스케일에 배수(아웃라이어) 가중.
+ *  배수 있으면 log10(views+1) * (1 + log10(mult+1)): views 단조증가 × 배수 단조증가, 결정적.
+ *  배수 null(비공개·노이즈 컷·FLOOR_SUBS 미만)이면 기존 log10(views+1) 폴백(회귀 최소).
+ *  순수함수. 소수 둘째 자리 반올림(폭발 방지·결정성). */
+export function competitorSignalScore(viewCount: number | null, subscriberCount: number | null): number {
+  if (viewCount == null) return 1; // 조회수 없으면 presence 기본점(기존 폴백과 동일).
+  const base = Math.log10(viewCount + 1);
+  const mult = viewsPerSubscriber(viewCount, subscriberCount, FLOOR_SUBS);
+  const score = mult == null ? base : base * (1 + Math.log10(mult + 1));
+  return Math.round(score * 100) / 100;
+}
 
 /** 댓글 용어 정규화 — dedup_key 안정화(공백 압축·소문자·NFC). */
 function termKey(term: string): string {
@@ -78,14 +91,16 @@ export async function refreshTopicCandidates(
   for (const e of external) {
     if (!e.url) continue;
     const isYt = e.source === "youtube";
+    // 경쟁 영상: 구독 대비 조회수 배수(아웃라이어). null=비공개·노이즈 컷·FLOOR_SUBS 미만 → score는 조회수 폴백.
+    const mult = isYt ? viewsPerSubscriber(e.viewCount, e.subscriberCount, FLOOR_SUBS) : null;
     put({
       source: isYt ? "competitor" : "trend",
       title: e.title || e.url,
       rationale: isYt
-        ? `경쟁 영상${e.viewCount != null ? ` · 조회 ${e.viewCount.toLocaleString()}` : ""}${e.publisher ? ` · ${e.publisher}` : ""}`
+        ? `경쟁 영상${e.viewCount != null ? ` · 조회 ${e.viewCount.toLocaleString()}` : ""}${mult != null ? ` · 구독대비 ${Math.round(mult)}배` : ""}${e.publisher ? ` · ${e.publisher}` : ""}`
         : `웹 트렌드${e.publisher ? ` · ${e.publisher}` : ""}`,
-      // 경쟁: 조회수 로그 스케일(폭발 방지) / 트렌드: presence 기본점.
-      signal_score: isYt && e.viewCount != null ? Math.round(Math.log10(e.viewCount + 1) * 100) / 100 : 1,
+      // 경쟁: 조회수 로그 스케일에 배수 가중(아웃라이어 우선·폭발 방지) / 트렌드: presence 기본점.
+      signal_score: isYt ? competitorSignalScore(e.viewCount, e.subscriberCount) : 1,
       evidence: {
         kind: isYt ? "competitor_video" : "web_trend",
         url: e.url,
@@ -93,6 +108,7 @@ export async function refreshTopicCandidates(
         published_at: e.published_at,
         view_count: e.viewCount,
         subscriber_count: e.subscriberCount,
+        multiplier: mult,
       } as Json,
       dedup_key: `${isYt ? "competitor" : "trend"}:${e.url}`,
       last_seen_at: nowIso,

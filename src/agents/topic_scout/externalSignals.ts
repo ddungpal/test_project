@@ -15,6 +15,21 @@ export interface ExternalItem {
   snippet: string;
   viewCount: number | null; // YouTube 해당 영상 조회수
   subscriberCount: number | null; // YouTube 채널 구독자수(비공개면 null)
+  thumbnailUrl: string | null; // YouTube 썸네일 이미지 URL(웹·없으면 null). evidence/UI용 — LLM 프롬프트엔 안 들어감.
+}
+
+// 구독자 대비 조회수 배수(아웃라이어 판별용). 데이터 부족(조회수/구독자 null·비유한·≤0) 또는
+//   구독자가 노이즈 바닥(floorSubs) 미만이면 null.
+//   floorSubs: 초소형 채널의 과장 배수(예: 구독 10명·조회 1만=1000배) 노이즈 컷. 순수 함수(throw 0).
+export function viewsPerSubscriber(
+  viewCount: number | null | undefined,
+  subscriberCount: number | null | undefined,
+  floorSubs?: number,
+): number | null {
+  if (viewCount == null || !Number.isFinite(viewCount) || viewCount <= 0) return null;
+  if (subscriberCount == null || !Number.isFinite(subscriberCount) || subscriberCount <= 0) return null;
+  if (floorSubs != null && subscriberCount < floorSubs) return null;
+  return viewCount / subscriberCount;
 }
 
 // YouTube 제목/설명의 HTML 엔티티 디코드(&quot; &amp; &#39; 등).
@@ -29,7 +44,18 @@ function decodeEntities(s: string): string {
 
 interface YtSearchItem {
   id?: { videoId?: string };
-  snippet?: { title?: string; description?: string; channelTitle?: string; channelId?: string; publishedAt?: string };
+  snippet?: {
+    title?: string;
+    description?: string;
+    channelTitle?: string;
+    channelId?: string;
+    publishedAt?: string;
+    thumbnails?: {
+      default?: { url?: string };
+      medium?: { url?: string };
+      high?: { url?: string };
+    };
+  };
 }
 
 const YT_API = "https://www.googleapis.com/youtube/v3";
@@ -92,6 +118,11 @@ async function searchYouTube(query: string, max: number): Promise<Omit<ExternalI
     snippet: decodeEntities(it.snippet?.description ?? "").slice(0, 280),
     viewCount: views.get(it.id!.videoId!) ?? null,
     subscriberCount: it.snippet?.channelId ? (subs.get(it.snippet.channelId) ?? null) : null,
+    thumbnailUrl:
+      it.snippet?.thumbnails?.high?.url ??
+      it.snippet?.thumbnails?.medium?.url ??
+      it.snippet?.thumbnails?.default?.url ??
+      null,
   }));
 }
 
@@ -115,7 +146,7 @@ export async function gatherExternalSignals(opts: {
           source: "web", title: res.title, url: res.url,
           publisher: res.publisher, published_at: res.published_at,
           snippet: (res.content ?? "").slice(0, 280),
-          viewCount: null, subscriberCount: null,
+          viewCount: null, subscriberCount: null, thumbnailUrl: null,
         });
       }
     } catch (e) {

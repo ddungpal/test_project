@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { getRunDetail, type StageView } from "@/lib/dashboard/runDetail";
 import { getResearchView, getResearchScopeView, type ResearchView, type ScopeGateView } from "@/lib/dashboard/researchView";
 import { getScriptView, getCostView, type SegmentView, type CostView } from "@/lib/dashboard/scriptView";
+import { getOutlierThumbnailRefs } from "@/lib/dashboard/outlierThumbnailsView";
+import type { OutlierThumbnailRef } from "@/agents/hook_maker/externalRefs";
 import { STAGE_DESCRIPTORS, type StageDescriptor } from "@/pipeline/stages";
 import { STATE_LABEL, runTone } from "@/lib/dashboard/labels";
 import { PROPOSAL_STAGES, STAGE_TITLE, type ProposalStage } from "@/lib/dashboard/proposalTypes";
@@ -67,13 +69,13 @@ const REGEN_STAGE: Partial<Record<ProposalStage, "topic" | "titles" | "structure
 
 // 단계 박스 — 선택됨(요약) | 활성(선택기) | 시작 버튼 | 대기.
 //   topic 은 썸네일 교정 패널(ThumbnailStudio)이 교정쌍 컨텍스트로 쓴다 — 빈 문자열 폴백(라벨 아님).
-function StageSection({ runId, sv, runState, topic }: { runId: string; sv: StageView; runState: RunState; topic: string }) {
+function StageSection({ runId, sv, runState, topic, outlierRefs }: { runId: string; sv: StageView; runState: RunState; topic: string; outlierRefs: OutlierThumbnailRef[] }) {
   const stage = sv.stage as ProposalStage;
   const desc = STAGE_DESCRIPTORS[stage];
 
   // 썸네일 단계는 전용 UI(ThumbnailStudio·confirmThumbnails) — 제네릭 ProposalSelector/RegenerateButton 경로를 안 탄다.
   if (stage === "thumbnail") {
-    return <ThumbnailStageSection runId={runId} sv={sv} runState={runState} desc={desc} topic={topic} />;
+    return <ThumbnailStageSection runId={runId} sv={sv} runState={runState} desc={desc} topic={topic} outlierRefs={outlierRefs} />;
   }
 
   let body: React.ReactNode;
@@ -155,12 +157,14 @@ function ThumbnailStageSection({
   runState,
   desc,
   topic,
+  outlierRefs,
 }: {
   runId: string;
   sv: StageView;
   runState: RunState;
   desc: StageDescriptor;
   topic: string;
+  outlierRefs: OutlierThumbnailRef[];
 }) {
   let body: React.ReactNode;
   if (sv.selection) {
@@ -189,7 +193,7 @@ function ThumbnailStageSection({
       </div>
     );
   } else if (runState === desc.proposedState && sv.proposal) {
-    body = <ThumbnailStudio runId={runId} candidates={sv.proposal.candidates} topic={topic} />;
+    body = <ThumbnailStudio runId={runId} candidates={sv.proposal.candidates} topic={topic} outlierRefs={outlierRefs} />;
   } else if (runState === desc.fromState) {
     body = (
       <div className="flex flex-col gap-2">
@@ -450,11 +454,13 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   const heading = content.title || content.topic || "(주제 미정)";
 
   // 상태에 따라 필요한 추가 조회(병렬). 비용은 항상.
-  const [rv, scope, segments, cost] = await Promise.all([
+  //   outlierRefs는 썸네일 제안 단계(thumbnails_proposed)에서만 — 게이트 off면 read가 즉시 []. 그 외 상태는 호출 안 함.
+  const [rv, scope, segments, cost, outlierRefs] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
     run.state === "research_scoped" ? getResearchScopeView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
+    run.state === "thumbnails_proposed" ? getOutlierThumbnailRefs(run.id) : Promise.resolve([]),
   ]);
 
   return (
@@ -513,7 +519,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       {PROPOSAL_STAGES.map((stage) => (
-        <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} />
+        <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} outlierRefs={outlierRefs} />
       ))}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} scope={scope} progressNote={run.progressNote} />
