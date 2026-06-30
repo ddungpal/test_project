@@ -292,7 +292,12 @@
     },
     {
       "dir": "research-gate-removal",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (script-review-landing)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-07-01T02:29:07+0900"
     }
   ]
 }
