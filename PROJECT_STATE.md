@@ -6,6 +6,12 @@
 
 _Last updated: 2026-06-30(낮5 — **🎉 스크립트 품질 5-phase 로드맵 P0~P5 전부 완료**(P1 형식레일·P2 outline-format·P3 비교표·P4 케이스분기·P5 시각큐). P5 `visual-cues`(짠펜 visual 큐·`0ecbd9b`). test 815·typecheck 0·build 0·**P1~P4 push 완료·P5 push 진행 중**·**마이그29·30·31 전부 ✅적용**) · 단계: **▶▶▶ 다음(재개점) = 로드맵 라이브 일괄 검증**(아래 "🔬 라이브 검증 체크리스트"). dev/inngest 재기동 → 구성 런(table·case·visual format 섹션 포함)→리서치 런(비교가·분기가·댓글집계)→스크립트 런으로 표·케이스·시각큐가 검수화면+대본에 실제로 뜨는지 + structurer/scribe/comparator/case_miner fixture 자동 재기록 확인. 그 외 검증 대기: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선)·검토대기 rules-proposals 3건 병합.**_
 
+> ## ✅ `topic-ref-multiplier` 완료 (2026-06-30 낮7 — 하네스 1 step·버그픽스, main, test 870→879)
+> **라이브 발견: 키워드 모드 주제 런이 플롭(73만 구독·3.9만 조회=0.05배)을 레퍼런스로 노출.** 원인=배수·반응도·품질 개선이 `discovery.ts`(발굴 Cron)·제목·썸네일엔 붙었으나 **per-run `topic_scout/prepare.ts`엔 누락** — youtube를 배수 랭킹 없이 `slice(0,6)`만 함.
+> - **step0 `prepare-youtube-rank`**: 순수 `rankExternalByMultiplier(items,n,floorSubs)`(externalSignals.ts·배수 desc·null 후순위·null끼리 viewCount desc·tie id asc·입력 비변형·`viewsPerSubscriber` 재사용) + prepare.ts youtube slice 교체(web/sources/overlap/input 나머지 불변). **하드 임계 드롭 없음**(정렬+slice로 충분·작은 풀 고갈 방지). 배수 null 비폐기(누락 방지). test 9.
+> - **랜딩**: 코드만 main checkout, 라이브 fixture 1개 별도 chore. promptHash(topic_scout) 변경→다음 라이브 런 자동 재기록. 마이그레이션 0·규칙제안 0.
+> - **▶ 라이브: 새 주제 런으로 플롭이 밀려나고 고배수 레퍼런스가 앞에 오는지 확인.**
+>
 > ## ✅ `search-pool-engagement` 완료 (2026-06-30 낮6 — 하네스 2 step, main, test 844→870)
 > **라이브 검증 중 발견: 주제발굴 레퍼런스 영상이 매력적이지 않음. 근본원인=점수가 아니라 후보 풀 검색.** A(풀)+B(반응도)+D(품질바닥) 처리.
 > - **진단**: `searchYouTube`가 `order:relevance`+maxResults 4~5 → 고조회·바이럴이 풀에 안 들어옴(점수 잘 매겨도 좁은 풀 안에서만 정렬). `fetchVideoViews`가 viewCount만 읽어 반응도(좋아요·댓글) 신호 0.
