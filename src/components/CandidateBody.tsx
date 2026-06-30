@@ -29,7 +29,7 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
   }
   if (stage === "title_thumb") {
     // title_thumb = 현재 '제목 전용'(썸네일은 분리된 thumbnail 단계가 담당). 제목 + ref/style 칩만 렌더.
-    const p = (payload ?? {}) as Partial<TitlePayload>;
+    const p = (payload ?? {}) as Partial<TitlePayload> & { signature_missing?: { missing?: boolean } };
     // 레퍼런스 유사도 임계 이상이면 '거의 베낌' 의심 → 경고 칩. 임계값은 referenceGuard에서 단일 출처.
     const refFlagged = p.ref_similarity != null && p.ref_similarity >= REFERENCE_SIMILARITY_FLAG;
 
@@ -37,6 +37,8 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
     //   표시 전용 — banned여도 후보는 그대로 보이고 선택 가능(김짠부 '선택만' 철학).
     const bannedHits = p.style_conformance?.banned_hits ?? [];
     const bannedFlagged = bannedHits.length >= STYLE_CONFORMANCE_BANNED_FLAG;
+    // 김짠부 시그니처(고정 어구·시그니처 단어) 미사용 소프트 경고(표시 전용). missing===true일 때만 ⚠ 칩. 차단·자동 거부 없음.
+    const sigMissing = p.signature_missing?.missing === true;
 
     const title = (p.title ?? "").trim();
     const labelCls = "shrink-0 text-trus-white/50";
@@ -56,6 +58,14 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
               className="ml-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow"
             >
               ⚠ A/B 패배 패턴
+            </span>
+          )}
+          {sigMissing && (
+            <span
+              title="김짠부 시그니처(고정 어구·시그니처 단어)를 쓰지 않음"
+              className="ml-1 inline-block border border-trus-yellow px-1.5 py-0.5 text-[10px] font-bold text-trus-yellow"
+            >
+              ⚠ 김짠부 시그니처 약함
             </span>
           )}
         </div>

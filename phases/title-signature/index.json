@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "title-signature",
+  "steps": [
+    {
+      "step": 0,
+      "name": "title-style-mandate",
+      "status": "completed",
+      "started_at": "2026-06-30T21:55:50+0900",
+      "team_round": "1/3 PASS",
+      "summary": "appendTitleStyle 강화: skeletons.title을 강제 템플릿 블록(슬롯 노출+'최소 1~2개' 강제 문구)으로, signature_words/banned를 가독 강조 블록으로 렌더하고 3키를 JSON 덤프에서 제외(replacer 미러). 3키 없던 프로필은 바이트 동일(해시 보존), hasUsablePatterns 가드 유지. CTR 과장 문구 정정(raw 채널 제목 기반). HOOK_MAKER_SYSTEM에 위계 명문화(김짠부 말투·골격·시그니처 MUST 최우선, 외부 reference_titles_external은 각도·소재 영감만, 앵글 차별화가 시그니처 희생 금지). tests/styleProfile.test.ts에 강화 검증 케이스 추가. typecheck/test(902)/build 통과.",
+      "completed_at": "2026-06-30T22:05:10+0900"
+    },
+    {
+      "step": 1,
+      "name": "title-signature-check",
+      "status": "completed",
+      "started_at": "2026-06-30T22:05:10+0900",
+      "team_round": "1/3 PASS",
+      "summary": "제목 시그니처 소프트 경고(#3): detectTopicMissing 미러 — 신규 순수함수 detectTitleSignatureMissing(hook_maker/titleSignature.ts)이 patterns.signature_words + skeletons.title[].template의 슬롯({...}) 제외 리터럴 토큰을 시그니처 후보로 모아, 제목에 하나도 없으면 missing:true(데이터 없으면 중립·크래시0·표시전용). stage.ts hookToCandidates가 input.style_profile.patterns로 signature_missing 부착(생성/promptHash 불변). proposalTypes TitlePayload에 옵셔널 타입. CandidateBody title_thumb 분기에 ⚠ '김짠부 시그니처 약함' 칩(missing===true만·TRUS 3색·차단없음). tests/titleSignature.test.ts 12케이스. typecheck/test(914)/build 통과.",
+      "completed_at": "2026-06-30T22:15:15+0900"
+    }
+  ],
+  "created_at": "2026-06-30T21:55:50+0900",
+  "completed_at": "2026-06-30T22:15:16+0900"
+}

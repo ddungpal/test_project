@@ -36,6 +36,7 @@ export interface TitlePayload {
   thumbnail_copy?: string; // 파생/레거시(메인+박스 join 또는 과거 단일 문자열) — 옵셔널
   ref_similarity?: number; // 제목이 레퍼런스를 베낀 정도(0~1)
   style_conformance?: { banned_hits: string[]; winning_score: number }; // A/B 학습 스타일 부합도(banned 위반·winning 점수) — 휴리스틱
+  signature_missing?: { missing: boolean }; // 제목에 김짠부 시그니처 고정어구 누락 소프트 경고(휴리스틱·표시 전용) — 옵셔널 주석
 }
 // 썸네일 단계(신규) 산출물 — 정확히 3개(A/B/C 변형)를 확정하는 단계. 제목 단계와 분리.
 export interface ThumbnailPayload {

@@ -75,18 +75,78 @@ export async function loadActiveTitleStyle(supa: Supa): Promise<ActiveTitleStyle
   return { id: `style:${data.id}`, version: data.version ?? 0, patterns: data.patterns };
 }
 
+/** 제목 스켈레톤 1개를 사람이 읽는 한 줄로 렌더. template 비-문자열/공백이면 null(폐기).
+ *   slots(있으면)는 괄호로 덧붙여 LLM이 무엇을 채우는지 보이게 한다(배열 아님/비면 생략). */
+function renderTitleSkeleton(entry: unknown): string | null {
+  if (typeof entry !== "object" || entry === null || Array.isArray(entry)) return null;
+  const e = entry as Record<string, unknown>;
+  const template = typeof e.template === "string" ? e.template.trim() : "";
+  if (template.length === 0) return null;
+  const slots = Array.isArray(e.slots) ? e.slots.filter((s): s is string => typeof s === "string" && s.trim().length > 0) : [];
+  return slots.length > 0 ? `${template}   (슬롯: ${slots.join(", ")})` : template;
+}
+
+/** skeletons.title(unknown)을 강제 템플릿 블록으로. 유효 항목만 입력 순서대로. 유효 0개면 null(블록 생략). */
+function renderTitleSkeletons(skeletons: unknown): string | null {
+  if (typeof skeletons !== "object" || skeletons === null || Array.isArray(skeletons)) return null;
+  const title = (skeletons as Record<string, unknown>).title;
+  if (!Array.isArray(title) || title.length === 0) return null;
+  const lines = title.map(renderTitleSkeleton).filter((l): l is string => l !== null);
+  if (lines.length === 0) return null;
+  return [
+    "── 김짠부 제목 골격(슬롯을 채워 실제로 써라) ──",
+    "아래는 김짠부 제목의 실제 골격이다. 슬롯({number}·{target}·{keyword}·{topic} 등)을 이 주제에 맞게 채워 제목을 만든다.",
+    "★ 후보 3개 중 최소 1~2개는 이 골격을 실제로 채워 쓴다(주제에 안 맞는 골격은 억지로 쓰지 말 것).",
+    ...lines.map((l) => ` - ${l}`),
+  ].join("\n");
+}
+
+/** signature_words(unknown)를 가독 한 줄로. 문자열 배열 중 비지 않은 것만. 유효 0개면 null. */
+function renderSignatureWords(words: unknown): string | null {
+  if (!Array.isArray(words)) return null;
+  const valid = words.filter((w): w is string => typeof w === "string" && w.trim().length > 0).map((w) => w.trim());
+  if (valid.length === 0) return null;
+  return [
+    "── 김짠부 시그니처 워딩 ──",
+    `다음 표현을 적극 활용해 김짠부다운 제목을 만든다: ${valid.join(", ")}`,
+  ].join("\n");
+}
+
+/** banned(unknown)를 가독 한 줄로. 문자열 배열 중 비지 않은 것만. 유효 0개면 null. */
+function renderBannedWords(words: unknown): string | null {
+  if (!Array.isArray(words)) return null;
+  const valid = words.filter((w): w is string => typeof w === "string" && w.trim().length > 0).map((w) => w.trim());
+  if (valid.length === 0) return null;
+  return `── 피하라(김짠부가 안 쓰는 표현) ──\n다음은 피한다: ${valid.join(", ")}`;
+}
+
 /** 시스템 프롬프트에 제목 스타일 지시 섹션을 덧붙인다(순수). 프로필 null/빈 patterns면 원본 그대로(해시 불변). */
 export function appendTitleStyle(system: string, profile: ActiveTitleStyle | null): string {
   if (!profile || !hasUsablePatterns(profile.patterns)) return system;
-  const patternsJson = JSON.stringify(profile.patterns, null, 2);
+  // ★ 중복 노출 방지: skeletons·signature_words·banned 3키는 아래 가독 블록으로만 렌더하고 JSON 덤프에선 제외한다.
+  //   replacer 로 그 키만 건너뛰므로 이 3키가 없던 기존 프로필은 덤프 결과가 바이트 동일하다(해시 보존).
+  const stripped = new Set(["skeletons", "signature_words", "banned"]);
+  const patternsJson = JSON.stringify(
+    profile.patterns,
+    (key, value) => (stripped.has(key) ? undefined : value),
+    2,
+  );
+  const p = profile.patterns as Record<string, unknown>;
+  const skeletonsBlock = renderTitleSkeletons(p.skeletons);
+  const signatureBlock = renderSignatureWords(p.signature_words);
+  const bannedBlock = renderBannedWords(p.banned);
   return [
     system,
     "",
     "── 김짠부 제목 스타일 사양(반드시 따라 쓰기) ──",
-    "CTR(클릭률)로 성과가 검증된 제목들을 분석해 추출한 '따라 쓸 수 있는 제목 스타일 사양'이다.",
-    "제목 후보를 아래 copy 패턴(후킹·강조어·길이)에 맞춰 제안하고, banned 항목은 피하라. 낚시·과장은 금지(CTR 이 높았던 정직한 표현만).",
+    "김짠부 채널 제목들에서 추출한 '따라 쓸 수 있는 제목 스타일 사양'이다.",
+    "제목 후보를 아래 패턴(후킹·강조어·길이)에 맞춰 제안하라. 낚시·과장은 금지(김짠부의 직설·정직한 표현만).",
     `이 사양을 따른 후보는 evidence_ids에 그 id(${profile.id})를 포함하라.`,
     patternsJson,
+    // 강조 블록 — skeletons·signature_words·banned 가 유효하면 가독 렌더로 덧붙인다. 없으면 생략(바이트 불변).
+    ...(skeletonsBlock ? ["", skeletonsBlock] : []),
+    ...(signatureBlock ? ["", signatureBlock] : []),
+    ...(bannedBlock ? ["", bannedBlock] : []),
   ].join("\n");
 }
 

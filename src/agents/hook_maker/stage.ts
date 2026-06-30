@@ -4,6 +4,7 @@ import type { ProposalStageSpec, Candidate } from "../../pipeline/stageContract.
 import type { Supa } from "../../pipeline/runState.js";
 import { prepareHookMaker, type HookMakerInput } from "./prepare.js";
 import { maxReferenceSimilarity } from "./referenceGuard.js";
+import { detectTitleSignatureMissing } from "./titleSignature.js";
 import type { HookMakerOutput } from "./schema.js";
 import { loadActiveTitleStyle } from "../shared/styleProfile.js";
 import { buildLocalGenContext, fillTitleSkeletons } from "../shared/localCopyGen.js";
@@ -13,12 +14,18 @@ import type { ThumbnailStylePatterns } from "../style_extractor/schema.js";
 function hookToCandidates(out: HookMakerOutput, input?: unknown): Candidate[] {
   // prepare가 만든 reference_titles(있을 때만) — 유사도 가드용. input 없이 호출돼도 안전(빈 배열).
   const references = ((input as HookMakerInput | undefined)?.reference_titles ?? []).map((r) => r.text);
+  // PhaseA active 제목 스타일 패턴(있을 때만) — signature_words·skeleton 고정어구로 사후 시그니처 누락 검사.
+  //   prepare가 loadActiveTitleStyle로 로드해 input.style_profile.patterns로 전달. 없으면 undefined → 중립.
+  const stylePatterns = (input as HookMakerInput | undefined)?.style_profile?.patterns;
   return out.candidates.map((c, idx) => ({
     idx,
     payload: {
       title: c.title,
       // 제목도 레퍼런스를 통째로 베끼면 안 됨 — ref_similarity 유지(LLM/로컬 생성 후 변환 → promptHash 무관).
       ref_similarity: maxReferenceSimilarity(c.title, references),
+      // signature_missing(옵셔널 주석): 제목이 김짠부 시그니처 고정어구를 하나도 안 쓰면 ⚠ 표면화. ref_similarity와
+      //   동일하게 생성 후 부착 → promptHash 무관. 표시 전용·강제 거부 아님(시그니처 데이터 없으면 중립).
+      signature_missing: detectTitleSignatureMissing(c.title, stylePatterns),
     },
     reason: c.reason,
     evidence_ids: c.evidence_ids,

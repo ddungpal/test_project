@@ -63,6 +63,112 @@ describe("appendTitleStyle (순수) — 썸네일 미러", () => {
     expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: null })).toBe(BASE);
     expect(appendTitleStyle(BASE, { id: "style:x", version: 1, patterns: ["a"] })).toBe(BASE);
   });
+
+  it("CTR 과장 문구를 제거하고 raw 채널 제목 기반으로 정정한다", () => {
+    const out = appendTitleStyle(BASE, PROFILE);
+    expect(out).not.toContain("CTR"); // v3는 raw 채널 제목 기반 → CTR 언급 없음
+    expect(out).toContain("김짠부 채널 제목들에서 추출한");
+  });
+});
+
+// title 시그니처 강제 렌더(title-style-mandate step0).
+const TITLE_PROFILE_V3: ActiveThumbnailStyle = {
+  id: "style:title-v3",
+  version: 3,
+  patterns: {
+    signature_words: ["짠테크", "월급쟁이", "지금 당장"],
+    banned: ["~로 부자되는 법", "사색"],
+    skeletons: {
+      title: [
+        { template: "{target}이 {keyword} 시작하는 법", slots: ["target", "keyword"] },
+        { template: "월급 {number}으로 1억 모으기", slots: ["number"] },
+      ],
+    },
+    length_notes: "짧고 직설적으로",
+  },
+};
+
+describe("appendTitleStyle — 시그니처 강제 렌더(skeletons·signature_words·banned)", () => {
+  it("skeletons.title을 강제 템플릿 블록으로 렌더하고 '최소 1~2개' 강제 문구를 넣는다", () => {
+    const out = appendTitleStyle(BASE, TITLE_PROFILE_V3);
+    expect(out).toContain("김짠부 제목 골격");
+    expect(out).toContain("{target}이 {keyword} 시작하는 법"); // 템플릿 그대로 노출
+    expect(out).toContain("월급 {number}으로 1억 모으기");
+    expect(out).toContain("최소 1~2개"); // 강제 채움 지시
+    expect(out).toContain("(슬롯: target, keyword)"); // slots 가독 노출
+  });
+
+  it("signature_words를 별도 강조 블록으로 노출하고 적극 활용을 지시한다", () => {
+    const out = appendTitleStyle(BASE, TITLE_PROFILE_V3);
+    expect(out).toContain("김짠부 시그니처 워딩");
+    expect(out).toContain("짠테크");
+    expect(out).toContain("월급쟁이");
+    expect(out).toContain("적극 활용");
+  });
+
+  it("banned를 가독 블록으로 노출하고 피하라고 지시한다", () => {
+    const out = appendTitleStyle(BASE, TITLE_PROFILE_V3);
+    expect(out).toContain("피하라");
+    expect(out).toContain("~로 부자되는 법");
+  });
+
+  it("강조 3키(skeletons·signature_words·banned)는 JSON 덤프 키로 들어가지 않는다(중복 노출 방지)", () => {
+    const out = appendTitleStyle(BASE, TITLE_PROFILE_V3);
+    expect(out).not.toContain('"skeletons"');
+    expect(out).not.toContain('"signature_words"');
+    expect(out).not.toContain('"banned"');
+    // 나머지 패턴은 여전히 JSON 덤프로 들어간다.
+    expect(out).toContain('"length_notes"');
+  });
+
+  it("결정적이다(두 번 호출 바이트 동일)", () => {
+    expect(appendTitleStyle(BASE, TITLE_PROFILE_V3)).toBe(appendTitleStyle(BASE, TITLE_PROFILE_V3));
+  });
+
+  it("3키가 없는 프로필(PROFILE)은 강조 블록을 추가하지 않는다(기존 동작 보존)", () => {
+    const out = appendTitleStyle(BASE, PROFILE);
+    expect(out).not.toContain("김짠부 제목 골격");
+    expect(out).not.toContain("김짠부 시그니처 워딩");
+    expect(out).toContain("김짠부 제목 스타일 사양"); // 집계 패턴 블록은 그대로
+  });
+
+  it("깨진 3키(배열 아님·template 비-문자열 등)는 크래시 없이 블록 생략", () => {
+    const profile: ActiveThumbnailStyle = {
+      id: "style:title-bad",
+      version: 1,
+      patterns: {
+        signature_words: "깨짐", // 배열 아님 → 생략
+        banned: [123, ""], // 유효 문자열 0개 → 생략
+        skeletons: { title: "깨짐" }, // title이 배열 아님 → 생략
+        length_notes: "짧게",
+      },
+    };
+    const out = appendTitleStyle(BASE, profile);
+    expect(out).not.toContain("김짠부 제목 골격");
+    expect(out).not.toContain("김짠부 시그니처 워딩");
+    expect(out).not.toContain("피하라");
+    expect(out).toContain("김짠부 제목 스타일 사양"); // 베이스 블록은 유지
+  });
+
+  it("skeletons.title 항목 중 깨진 것(template 없음)은 폐기하고 유효 항목만 렌더", () => {
+    const profile: ActiveThumbnailStyle = {
+      id: "style:title-mixed",
+      version: 1,
+      patterns: {
+        skeletons: {
+          title: [
+            { slots: ["number"] }, // template 없음 → 폐기
+            { template: "", slots: [] }, // 빈 template → 폐기
+            { template: "정상 골격 {keyword}", slots: ["keyword"] }, // 유효
+            "문자열항목", // 폐기
+          ],
+        },
+      },
+    };
+    const out = appendTitleStyle(BASE, profile);
+    expect(out).toContain("김짠부 제목 골격");
+    expect(out).toContain("정상 골격 {keyword}");
+  });
 });
 
 const STRUCTURE_PROFILE: ActiveThumbnailStyle = {

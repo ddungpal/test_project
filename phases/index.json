@@ -264,6 +264,11 @@
       "dir": "topic-keyword-spread",
       "status": "completed",
       "completed_at": "2026-06-30T21:16:42+0900"
+    },
+    {
+      "dir": "title-signature",
+      "status": "completed",
+      "completed_at": "2026-06-30T22:15:16+0900"
     }
   ]
 }
