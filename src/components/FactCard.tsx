@@ -5,7 +5,8 @@ import { VERIFICATION_LABEL, SOURCE_TIER_LABEL, FRESHNESS_LABEL } from "@/lib/da
 //   control 슬롯: 트리아지 승인/반려 토글 등(ResearchReview에서 주입).
 
 // 출처 URL은 검색결과/LLM 유래(비신뢰) — http/https만 링크로 허용(javascript: 등 스킴 XSS 차단).
-function safeHref(u: string | null): string | null {
+//   ScriptReview 인라인 칩도 같은 가드를 재사용 — export(중복 로직 금지).
+export function safeHref(u: string | null): string | null {
   if (!u) return null;
   try {
     const p = new URL(u).protocol;

@@ -405,10 +405,10 @@ function ScriptSection({
       </div>
     );
   } else if (runState === "script_review") {
+    // ScriptReview가 본문(SegmentBody)을 직접 그린다 → 별도 SegmentList 중복 제거.
     body = (
       <div className="flex flex-col gap-4">
-        <ScriptReview runId={runId} />
-        {segments && <SegmentList segments={segments} />}
+        <ScriptReview runId={runId} segments={segments ?? []} />
       </div>
     );
   } else if ((runState === "approved" || runState === "published") && segments) {

@@ -22,7 +22,8 @@ export function SegmentList({ segments }: { segments: SegmentView[] }) {
 }
 
 // kind 스위치 — payload가 비면(null) 어떤 kind든 prose 폴백.
-function SegmentBody({ segment }: { segment: SegmentView }) {
+//   ScriptReview(인라인 최종검수)가 본문 마크업 중복 없이 재사용 — export.
+export function SegmentBody({ segment }: { segment: SegmentView }) {
   const { kind, payload, text } = segment;
   if (payload !== null) {
     switch (kind) {
