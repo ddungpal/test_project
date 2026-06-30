@@ -2,7 +2,8 @@
 import { describe, it, expect } from "vitest";
 import { ttlSecondsFor } from "../src/search/search.js";
 import { aggregateCommentSignals } from "../src/agents/topic_scout/commentSignals.js";
-import { competitorSignalScore, passesQualityFloor } from "../src/agents/topic_scout/discovery.js";
+import { competitorSignalScore, passesQualityFloor, buildCompetitorCandidate } from "../src/agents/topic_scout/discovery.js";
+import type { ExternalItem } from "../src/agents/topic_scout/externalSignals.js";
 
 const TTL = {
   defaultTtlSeconds: 86_400,
@@ -143,5 +144,55 @@ describe("품질 바닥 필터(passesQualityFloor) — D", () => {
 
   it("now를 Date로 줘도 동작", () => {
     expect(passesQualityFloor(1_000_000, "2024-06-30T00:00:00Z", { minViews: 10_000, maxAgeYears: 3, now: new Date(now) })).toBe(true);
+  });
+});
+
+describe("후보 빌드 youtube-only 필터(buildCompetitorCandidate) — 옵션 A", () => {
+  const nowIso = "2026-06-30T00:00:00.000Z";
+  const opts = { minViews: 10_000, maxAgeYears: 3, nowIso };
+
+  const base = (over: Partial<ExternalItem>): ExternalItem => ({
+    id: "x:0",
+    source: "youtube",
+    title: "테스트 영상",
+    url: "https://www.youtube.com/watch?v=abc",
+    publisher: "어떤채널",
+    published_at: "2026-01-01T00:00:00Z",
+    snippet: "",
+    viewCount: 1_000_000,
+    likeCount: 1000,
+    commentCount: 100,
+    subscriberCount: 20_000,
+    thumbnailUrl: null,
+    ...over,
+  });
+
+  it("web(트렌드 기사) 신호는 null — 주제 후보로 안 만든다", () => {
+    const web = base({ source: "web", url: "https://example.com/article", viewCount: null, subscriberCount: null });
+    expect(buildCompetitorCandidate(web, opts)).toBeNull();
+  });
+
+  it("youtube 경쟁영상은 competitor 후보가 된다", () => {
+    const row = buildCompetitorCandidate(base({}), opts);
+    expect(row).not.toBeNull();
+    expect(row!.source).toBe("competitor");
+    expect(row!.dedup_key).toBe("competitor:https://www.youtube.com/watch?v=abc");
+    // 'trend' source는 절대 만들지 않는다.
+    expect(row!.source).not.toBe("trend");
+  });
+
+  it("url 없는 youtube 항목은 null", () => {
+    expect(buildCompetitorCandidate(base({ url: "" }), opts)).toBeNull();
+  });
+
+  it("품질 바닥 미통과(저조회) youtube 항목은 null", () => {
+    expect(buildCompetitorCandidate(base({ viewCount: 9_999 }), opts)).toBeNull();
+  });
+
+  it("signal_score는 competitorSignalScore와 일치(재구현 아님)", () => {
+    const e = base({});
+    const row = buildCompetitorCandidate(e, opts)!;
+    // engagement = (1000+100)/1000000, score는 동일 헬퍼로 계산되어야 함.
+    expect(row.signal_score).toBe(competitorSignalScore(e.viewCount, e.subscriberCount, (1000 + 100) / 1_000_000));
   });
 });

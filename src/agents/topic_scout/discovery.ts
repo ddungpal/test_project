@@ -6,7 +6,7 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { TablesInsert, Json } from "../../lib/supabase/database.types.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
-import { gatherExternalSignals, viewsPerSubscriber, engagementRate } from "./externalSignals.js";
+import { gatherExternalSignals, viewsPerSubscriber, engagementRate, type ExternalItem } from "./externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 
 // 품질 바닥(D) 상수 — youtube 경쟁영상 후보 컷. 댓글·웹 트렌드엔 적용 안 함(viewCount 없음).
@@ -73,10 +73,50 @@ function termKey(term: string): string {
   return term.normalize("NFC").trim().toLowerCase().replace(/\s+/g, " ");
 }
 
+/** 외부 신호 1건 → 경쟁(competitor) 후보 행. 순수·결정적(refreshTopicCandidates 루프에서 추출).
+ *  주제 발굴 유튜브 only(옵션 A): source!=='youtube'(웹 트렌드 등)는 null(후보 미생성 — 'trend' 후보 안 만듦).
+ *  url 없음·품질 바닥(저조회·노후) 미통과도 null. youtube 경쟁영상만 competitor 후보가 된다. */
+export function buildCompetitorCandidate(
+  e: ExternalItem,
+  opts: { minViews: number; maxAgeYears: number; nowIso: string },
+): CandidateRow | null {
+  if (e.source !== "youtube") return null; // 유튜브 only — 웹 트렌드는 주제 후보 아님(방어).
+  if (!e.url) return null;
+  // D) 품질 바닥: youtube 경쟁영상 컷(저조회·노후).
+  if (!passesQualityFloor(e.viewCount, e.published_at, { minViews: opts.minViews, maxAgeYears: opts.maxAgeYears, now: opts.nowIso })) {
+    return null;
+  }
+  // 경쟁 영상: 구독 대비 조회수 배수(아웃라이어). null=비공개·노이즈 컷·FLOOR_SUBS 미만 → score는 조회수 폴백.
+  const mult = viewsPerSubscriber(e.viewCount, e.subscriberCount, FLOOR_SUBS);
+  // B) 반응도(좋아요+댓글)/조회수 — externalSignals.engagementRate 재사용(재구현 금지). null이면 score 회귀 0.
+  const eng = engagementRate(e.viewCount, e.likeCount, e.commentCount);
+  return {
+    source: "competitor",
+    title: e.title || e.url,
+    rationale: `경쟁 영상${e.viewCount != null ? ` · 조회 ${e.viewCount.toLocaleString()}` : ""}${mult != null ? ` · 구독대비 ${Math.round(mult)}배` : ""}${eng != null ? ` · 반응도 ${(eng * 100).toFixed(1)}%` : ""}${e.publisher ? ` · ${e.publisher}` : ""}`,
+    // 경쟁: 조회수 로그 스케일에 배수·반응도 가중(아웃라이어 우선·폭발 방지).
+    signal_score: competitorSignalScore(e.viewCount, e.subscriberCount, eng),
+    evidence: {
+      kind: "competitor_video",
+      url: e.url,
+      publisher: e.publisher,
+      published_at: e.published_at,
+      view_count: e.viewCount,
+      subscriber_count: e.subscriberCount,
+      multiplier: mult,
+      like_count: e.likeCount,
+      comment_count: e.commentCount,
+      engagement_rate: eng,
+    } as Json,
+    dedup_key: `competitor:${e.url}`,
+    last_seen_at: opts.nowIso,
+  };
+}
+
 /**
  * 전역 발굴 1회. supa = service-role(admin) 클라이언트. asOfYear = 트렌드 쿼리 연도(테스트 주입용).
  *   - 댓글: 광역 키워드 신호 top → source='comment'
- *   - 웹 트렌드: source='trend' / YouTube 경쟁영상: source='competitor'
+ *   - YouTube 경쟁영상: source='competitor' (주제 발굴 유튜브 only — web 트렌드 후보 미생성, trend는 항상 0)
  *   - upsert: status 미포함(승격/반려 보존), last_seen_at·signal_score·evidence 갱신.
  */
 export async function refreshTopicCandidates(
@@ -97,15 +137,10 @@ export async function refreshTopicCandidates(
   const { keyword_signals } = aggregateCommentSignals(comments ?? []);
   const topComment = keyword_signals.slice(0, 10);
 
-  // 2) 외부 트렌드/경쟁(댓글 비의존 신규 테마). 트렌드 앵커는 댓글 top 1개만 곁들임.
-  const webQueries = [
-    ...(topComment[0] ? [`${topComment[0].term} 재테크`] : []),
-    `${asOfYear} 재테크 트렌드`,
-    `${asOfYear} 재테크 신규 제도·정책`,
-    "요즘 뜨는 재테크 이슈",
-  ];
+  // 2) 외부 경쟁영상(YouTube only). 주제 발굴은 유튜브 영상 기준 — 웹 트렌드 기사(Tavily)는 제거.
+  //   ytQuery: 댓글 top1을 앵커로, 없으면 연도 재테크 광역.
   const external = await gatherExternalSignals({
-    webQueries,
+    webQueries: [], // 웹 트렌드 검색 안 함(주제 발굴 유튜브 only).
     ytQuery: topComment[0]?.term ?? `${asOfYear} 재테크`,
     maxPerQuery: 5,
     volatility: "fast",
@@ -127,39 +162,9 @@ export async function refreshTopicCandidates(
     });
   }
   for (const e of external) {
-    if (!e.url) continue;
-    const isYt = e.source === "youtube";
-    // D) 품질 바닥: youtube 경쟁영상만 컷(저조회·노후). 댓글·트렌드는 대상 아님(viewCount 없음 → 적용 시 전멸).
-    if (isYt && !passesQualityFloor(e.viewCount, e.published_at, { minViews: FLOOR_MIN_VIEWS, maxAgeYears: FLOOR_MAX_AGE_YEARS, now: nowIso })) {
-      continue; // 후보 만들지 않음.
-    }
-    // 경쟁 영상: 구독 대비 조회수 배수(아웃라이어). null=비공개·노이즈 컷·FLOOR_SUBS 미만 → score는 조회수 폴백.
-    const mult = isYt ? viewsPerSubscriber(e.viewCount, e.subscriberCount, FLOOR_SUBS) : null;
-    // B) 반응도(좋아요+댓글)/조회수 — externalSignals.engagementRate 재사용(재구현 금지). null이면 score 회귀 0.
-    const eng = isYt ? engagementRate(e.viewCount, e.likeCount, e.commentCount) : null;
-    put({
-      source: isYt ? "competitor" : "trend",
-      title: e.title || e.url,
-      rationale: isYt
-        ? `경쟁 영상${e.viewCount != null ? ` · 조회 ${e.viewCount.toLocaleString()}` : ""}${mult != null ? ` · 구독대비 ${Math.round(mult)}배` : ""}${eng != null ? ` · 반응도 ${(eng * 100).toFixed(1)}%` : ""}${e.publisher ? ` · ${e.publisher}` : ""}`
-        : `웹 트렌드${e.publisher ? ` · ${e.publisher}` : ""}`,
-      // 경쟁: 조회수 로그 스케일에 배수·반응도 가중(아웃라이어 우선·폭발 방지) / 트렌드: presence 기본점.
-      signal_score: isYt ? competitorSignalScore(e.viewCount, e.subscriberCount, eng) : 1,
-      evidence: {
-        kind: isYt ? "competitor_video" : "web_trend",
-        url: e.url,
-        publisher: e.publisher,
-        published_at: e.published_at,
-        view_count: e.viewCount,
-        subscriber_count: e.subscriberCount,
-        multiplier: mult,
-        like_count: e.likeCount,
-        comment_count: e.commentCount,
-        engagement_rate: eng,
-      } as Json,
-      dedup_key: `${isYt ? "competitor" : "trend"}:${e.url}`,
-      last_seen_at: nowIso,
-    });
+    // 유튜브 only(옵션 A): web 트렌드는 주제 후보로 안 만든다(헬퍼가 null 반환 — webQueries=[]라 안 들어오지만 방어).
+    const row = buildCompetitorCandidate(e, { minViews: FLOOR_MIN_VIEWS, maxAgeYears: FLOOR_MAX_AGE_YEARS, nowIso });
+    if (row) put(row);
   }
 
   const rows = [...byKey.values()];

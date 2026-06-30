@@ -19,14 +19,14 @@ export interface TopicScoutInput {
   comment_count: number;
   question_comment_count: number; // 질문성 댓글 수(주제 수요 신호)
   keyword_signals: { id: string; term: string; count: number }[];
-  external_items: ExternalItem[]; // 외부 검색(웹·YouTube) 트렌드·경쟁 신호
+  external_items: ExternalItem[]; // 외부 검색(YouTube 경쟁영상) 신호 — 주제 경로는 유튜브 only
   overlap_terms: string[]; // 댓글 ∩ 외부 교집합(우선순위 신호)
   existing_candidates: { id: string; title: string | null; status: string }[];
   learned_insights?: LearnedInsight[]; // 환류(슬라이스 4): 승인된 'topic' 학습 규칙 — 있을 때만(픽스처 해시 보존)
 }
 
 /**
- * 댓글(원문 비전송) 집계 + 외부 검색(웹·YouTube) → 융합 → 촉이 입력(§8.1 결정적 prep).
+ * 댓글(원문 비전송) 집계 + 외부 검색(YouTube 경쟁영상 only) → 융합 → 촉이 입력(§8.1 결정적 prep).
  *   - content.topic 있으면 '키워드 발굴'(그 키워드 댓글 군집 + 키워드 검색), 없으면 '광역 발굴'.
  *   - 거버넌스 C: 외부엔 집계 키워드 쿼리만 나감(댓글 원문 아님).
  */
@@ -56,32 +56,23 @@ export async function prepareTopicScout(
   if (ce) throw new Error(`comments_raw 조회 실패: ${ce.message}`);
   const { comment_count, question_comment_count, keyword_signals } = aggregateCommentSignals(comments ?? [], { keyword });
 
-  // 2) 외부 검색 신호(웹 Tavily + YouTube 경쟁영상).
-  //   키워드 모드: 그 키워드 집중. 발굴 모드: 댓글 앵커 1 + ★댓글 비의존 트렌드 쿼리(신규 제도·트렌드·시의성)
-  //   → 댓글이 그대로여도 새 테마가 들어온다(시청자 수요를 앞서가는 발굴).
+  // 2) 외부 검색 신호(YouTube 경쟁영상 only). 주제 선정은 유튜브 영상 기준 — 웹 기사(Tavily)는
+  //   주제 경로에서 제거(기사는 리서치 단계용). ytQuery는 유지: 키워드 모드는 그 키워드, 발굴 모드는 댓글 top1.
   const topTerms = keyword_signals.slice(0, 3).map((s) => s.term);
-  const webQueries = keyword
-    ? [keyword, `${keyword} 재테크`]
-    : [
-        ...(topTerms[0] ? [`${topTerms[0]} 재테크`] : []), // 댓글 앵커(시청자 관련성)
-        `${asOfYear} 재테크 트렌드`, // 트렌드(댓글 비의존)
-        `${asOfYear} 재테크 신규 제도·정책`, // 신규 제도/정책
-        "요즘 뜨는 재테크 이슈", // 시의성 이슈
-      ];
-  await setProgress(supa, runId, "2/3·외부 검색 (웹·YouTube)");
-  // 발굴 모드 트렌드 쿼리는 fast(매일 갱신), 키워드 모드는 slow(특정 키워드·덜 시변).
+  await setProgress(supa, runId, "2/3·외부 검색 (YouTube)");
+  // 발굴 모드는 fast(매일 갱신), 키워드 모드는 slow(특정 키워드·덜 시변).
   const gathered = await gatherExternalSignals({
-    webQueries,
+    webQueries: [], // 웹 Tavily 호출 안 함(주제 경로 유튜브 only).
     ytQuery: keyword ?? topTerms[0],
     maxPerQuery: keyword ? 5 : 4,
     volatility: keyword ? "slow" : "fast",
   });
-  // LLM 입력 토큰 캡 — 소스별로 잘라 YouTube 신호가 web에 묻히지 않게(웹12·유튜브6).
-  //   youtube는 그냥 slice가 아니라 구독 대비 조회수 배수 desc 정렬 후 상위 6 — 플롭(저배수 언더퍼포머) 레퍼런스 노출 방지.
-  const external_items = [
-    ...gathered.filter((e) => e.source === "web").slice(0, 12),
-    ...rankExternalByMultiplier(gathered.filter((e) => e.source === "youtube"), 6, FLOOR_SUBS),
-  ];
+  // LLM 입력 토큰 캡 — YouTube만. 구독 대비 조회수 배수 desc 정렬 후 상위 6(플롭 언더퍼포머 노출 방지).
+  const external_items = rankExternalByMultiplier(
+    gathered.filter((e) => e.source === "youtube"),
+    6,
+    FLOOR_SUBS,
+  );
 
   // 3) 융합 — 댓글 키워드가 외부 결과(제목·스니펫)에도 등장 = 교집합(시청자 수요 ∩ 외부 트렌드).
   const extText = external_items.map((e) => `${e.title} ${e.snippet}`).join(" ").normalize("NFC");
@@ -106,7 +97,7 @@ export async function prepareTopicScout(
     overlap_terms,
     existing_candidates: (tcs ?? []).map((t) => ({ id: `tc:${t.id}`, title: t.title, status: t.status })),
   };
-  // 검색 출처(웹·YouTube) — 제안에 저장해 토글로 원문 확인(출처명시).
+  // 검색 출처(YouTube) — 제안에 저장해 토글로 원문 확인(출처명시).
   const sources: ProposalSource[] = external_items.map((e) => ({
     id: e.id,
     source: e.source,

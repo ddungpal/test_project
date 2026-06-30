@@ -257,7 +257,8 @@
     },
     {
       "dir": "topic-youtube-only",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-06-30T19:15:23+0900"
     }
   ]
 }
