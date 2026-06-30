@@ -12,6 +12,7 @@ import { parseAxStages, resolveToneInjection } from "./axFlag.js";
 import { scribeStep } from "../agents/scribe/step.js";
 import { normalizeSegmentPayload } from "./segmentBlock.js";
 import { isAssetUsable, buildAssetsInput, type AssetRowForScribe } from "./comparisonAsset.js";
+import { isFactUsableForScript } from "./scriptFactEligibility.js";
 import type { Json } from "../lib/supabase/database.types.js";
 
 export interface ScriptStageDeps {
@@ -53,13 +54,15 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
   const structure = await getSelectedStagePayload(supa, runId, "structure");
   const tone = await getToneProfile(supa);
 
-  // 사용 가능 fact = 사람 승인됨 OR 자동통과(verified·비에스컬레이션).
+  // 사용 가능 fact = 명시 반려(human_approved=false)만 배제(= true·null 허용).
+  //   ★ autoflow(§B·§D): 고위험 fact는 중간 검수 없이 human_approved=null(보류)로 운반되어 본문에 들어가야
+  //     Phase 2 최종검수가 채워진다. 적격성 술어는 scriptFactEligibility의 순수함수로 추출(단위테스트·Phase 2 재사용).
   const { data: factRows, error: fe } = await supa
     .from("research_facts")
     .select("id, claim, verification_status, is_financial, freshness, quote_excerpt, recheck_after, human_approved, escalated_to_human")
     .eq("run_id", runId);
   if (fe) throw new Error(`research_facts 조회 실패: ${fe.message}`);
-  const usable = (factRows ?? []).filter((f) => f.human_approved === true || (f.escalated_to_human === false && f.verification_status === "verified"));
+  const usable = (factRows ?? []).filter((f) => isFactUsableForScript(f));
 
   // 1b) freshness 게이트(§12) — 사용할 fact 중 stale이 있으면 rework(needs_research).
   const stale = usable.filter((f) => f.freshness === "stale" || (f.recheck_after && new Date(f.recheck_after).getTime() < Date.now()));
