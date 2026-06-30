@@ -43,3 +43,30 @@
 [Joy] required에 kind payload 안 들어갔고 payload loose 맞아 하위호환 핵심 굿굿
 [Joy] scriptCell diff 0줄이고 money-safety랑 억지금지 지침 SYSTEM에 다 있어 scribeBlocks 8케이스 진짜 검증함 통과
 [리드] 1라운드 PASS. step1 완료. 짠펜이 이제 구다리 format 받아서 table/case 블록 emit한다. 다음은 step2 UI. 수고했어 둘 다!
+
+=== Step 2: outline-format-ui ===
+
+[리드] 마지막 step이야. 순수 프론트엔드. 구다리 구성(outline) 편집 화면에서 섹션별 format(표/분기/설명)을 보이게 하고 김짠부가 고를 수 있게 하는 거. 짠펜 블록 렌더(SegmentList)는 P1에서 끝났으니 절대 건드리지 말고, ProposalSelector EditFields의 outline 부분만.
+[리드] 에스더, 맡아줘. setSection(i, {format})으로 기존 패턴 그대로 얹고, 미지정=설명 기본, TRUS 3색만. 참고로 UI 뷰타입 StructureSection엔 아직 format이 없어서 옵셔널로 하나 추가해야 typecheck 통과할 거야(이건 대시보드 뷰타입이라 프론트 영역). 과설계 금지 — 셀렉트 하나면 충분.
+[Esther] 안녕 다들. 나 이제 step2 시작할게. ProposalSelector랑 proposalTypes, 그리고 짠펜이 쓰는 SectionFormat 타입까지 다 읽었어.
+[Esther] 음.. 조심스럽지만 방향 먼저 말할게. EditFields outline 부분에 section/goal/why 옆에 작은 네이티브 select 하나 붙여서 표/분기/설명 고르게 할 거야. 배지 따로 안 만들고 셀렉트 하나로 갈음할게. 과설계 안 해.
+[Esther] 뷰타입 StructureSection엔 아직 format이 없더라. step0 맥스가 export한 SectionFormat을 재사용하는 게 깔끔할 것 같아. 중복 정의 안 만들고 import해서 쓸게. 이건 자신 있어.
+[Esther] 다 얹었어. 섹션 input 옆에 형식 select 붙였고 옵션은 설명/표/분기 순서야. 미지정 섹션은 설명이 기본으로 뜨게 했어. step0 하위호환 그대로.
+[Esther] select는 네이티브로 갔어. 키보드 도달이랑 포커스 링이 공짜로 따라오고 sr-only 라벨도 붙여서 접근성 챙겼어. 이건 자신 있어. 색도 trus 3색만 썼고 그라데이션 그림자 이모지 다 안 썼어.
+[Esther] 이제 AC 돌려본다. typecheck test build 가즈아.
+[Esther] 다 됐어. typecheck 0, test 737 통과 0, build는 처음에 copy-learn PageNotFoundError로 깨졌는데 규칙대로 rm -rf next 하고 다시 도니까 0이야. stale 캐시였어.
+[Esther] git status도 봤는데 떠돌이 신규 파일 없어. 만진 건 ProposalSelector랑 proposalTypes 둘뿐이고 SegmentList랑 백엔드는 한 줄도 안 건드렸어.
+[Esther] 조이 검수 부탁해. 형식 select 하나로 깔끔하게 갔고 미지정은 설명 기본, 색은 trus 3색만이야. 이 select 색 조합 고민 좀 했는데 아무도 안 물어봤지만 만족스러워 🙈
+[Joy] 에스더 왔다 검수 시작! git diff 먼저 봤는데 코드 파일 딱 두 개에 phases 메타만이라 범위 깔끔하네 굿
+[Joy] format select가 SectionFormat 타입 재사용했고 라벨도 schema 주석이랑 똑같이 표/분기/설명으로 맞췄어 중복정의 0 좋다
+[Joy] 백엔드랑 SegmentList 한 줄도 안 건드렸어 순수 프론트 맞네! 이제 typecheck test build 돌려본다
+[Joy] typecheck 0, test 737개 다 통과(파일 68개 그대로 하나도 안 줄었어), build도 0 깔끔하게 떨어졌다
+[Joy] format 미지정이면 explain으로 폴백되게 s?.format ?? explain 잘 들어갔고 기존 goal why 인풋도 안 건드렸네 회귀 0
+[Joy] select 색깔도 trus-black/white/yellow 토큰만 썼고 그림자 그라데이션 이모지 0 디자인도 합격! 에스더 깔끔하다 통과야
+[리드] 나도 AC 직접 돌렸어. typecheck 0, test 737 exit 0, build 0. 깨끗해.
+[리드] 조이, 검수 부탁해. 순수 프론트(백엔드·SegmentList 0줄)랑 미지정=설명 하위호환만 집중해서 봐줘.
+[Joy] 검수 들어간다! git diff 보니까 진짜 코드는 ProposalSelector랑 proposalTypes 둘뿐이고 백엔드 SegmentList는 0줄이야 굿
+[Joy] 미지정 섹션 s.format ?? explain로 설명 폴백 되고 SectionFormat도 step0꺼 re-export라 중복정의 없어 라벨 매핑도 schema 주석이랑 딱 맞아
+[Joy] select 색도 trus 3색만 sr-only 라벨까지 챙겼네 접근성 보너스 굿굿
+[Joy] AC 직접 다 돌려봤어 typecheck 0 test 737 exit 0 build도 캐시오류 없이 0 떠돌이 파일도 없어 깨끗하다 통과!
+[리드] 1라운드 PASS. step2 완료 — P2 outline-format 페이즈 전체 끝났어. 구다리 format 신호가 schema→짠펜 블록→구성 화면 선택까지 한 줄로 이어진다. 셋 다 수고했어!

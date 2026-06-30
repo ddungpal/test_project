@@ -1,4 +1,14 @@
 import type { Stage } from "../../domain/enums.js";
+import type { SectionFormat } from "../../agents/structurer/schema.js";
+
+// 섹션 권장 형식(표/분기/설명) — step0 schema.ts의 SectionFormat 재사용(중복 정의 금지).
+export { type SectionFormat } from "../../agents/structurer/schema.js";
+export const SECTION_FORMATS = ["explain", "table", "case"] as const;
+export const SECTION_FORMAT_LABEL: Record<SectionFormat, string> = {
+  explain: "설명",
+  table: "표",
+  case: "분기",
+};
 
 // 제안 후보 payload 타입 — 각 단계 stage.ts의 toCandidates와 1:1(서버·클라 공용·순수).
 //   topic: { title, audience_level?, audience_need? } · title_thumb: { title, thumbnail_layout, thumbnail_copy } · structure: { approach, outline[] }
@@ -38,6 +48,7 @@ export interface StructureSection {
   section: string;
   goal: string;
   why: string;
+  format?: SectionFormat; // P2: 섹션 권장 형식(없으면 explain=설명, 하위호환)
 }
 export interface StructurePayload {
   approach: string;

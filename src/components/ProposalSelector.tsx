@@ -11,7 +11,10 @@ import {
   type TitlePayload,
   type StructurePayload,
   type StructureSection,
+  type SectionFormat,
   type ProposalSource,
+  SECTION_FORMATS,
+  SECTION_FORMAT_LABEL,
 } from "@/lib/dashboard/proposalTypes";
 import { CandidateBody } from "./CandidateBody";
 import { CandidateSourceBadge } from "./CandidateSourceBadge";
@@ -216,7 +219,22 @@ function EditFields({
       />
       {outline.map((s, i) => (
         <div key={i} className="flex flex-col gap-1 border-l border-trus-white/15 pl-2">
-          <input value={s?.section ?? ""} onChange={(e) => setSection(i, { section: e.target.value })} placeholder="섹션" className={inputCls} />
+          <div className="flex items-center gap-2">
+            <input value={s?.section ?? ""} onChange={(e) => setSection(i, { section: e.target.value })} placeholder="섹션" className={`flex-1 ${inputCls}`} />
+            <label className="sr-only" htmlFor={`section-format-${i}`}>{`섹션 ${i + 1} 형식`}</label>
+            <select
+              id={`section-format-${i}`}
+              value={s?.format ?? "explain"}
+              onChange={(e) => setSection(i, { format: e.target.value as SectionFormat })}
+              className="shrink-0 border border-trus-white/30 bg-trus-black px-2 py-1 text-sm text-trus-white focus:border-trus-yellow focus:outline-none"
+            >
+              {SECTION_FORMATS.map((f) => (
+                <option key={f} value={f}>
+                  {SECTION_FORMAT_LABEL[f]}
+                </option>
+              ))}
+            </select>
+          </div>
           <input value={s?.goal ?? ""} onChange={(e) => setSection(i, { goal: e.target.value })} placeholder="목표" className={inputCls} />
           <textarea value={s?.why ?? ""} onChange={(e) => setSection(i, { why: e.target.value })} placeholder="왜 이 순서" rows={2} className={inputCls} />
         </div>
