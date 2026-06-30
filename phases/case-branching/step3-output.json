@@ -1,0 +1,7 @@
+{
+  "step": 3,
+  "name": "case-ui",
+  "exitCode": 1,
+  "stdout": "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"api_error_status\":429,\"duration_ms\":443,\"duration_api_ms\":0,\"num_turns\":1,\"result\":\"You've hit your session limit · resets 2:50pm (Asia/Seoul)\",\"stop_reason\":\"stop_sequence\",\"session_id\":\"4b7174ac-d87d-45c2-9058-9931190e83f1\",\"total_cost_usd\":0,\"usage\":{\"input_tokens\":0,\"cache_creation_input_tokens\":0,\"cache_read_input_tokens\":0,\"output_tokens\":0,\"server_tool_use\":{\"web_search_requests\":0,\"web_fetch_requests\":0},\"service_tier\":\"standard\",\"cache_creation\":{\"ephemeral_1h_input_tokens\":0,\"ephemeral_5m_input_tokens\":0},\"inference_geo\":\"\",\"iterations\":[],\"speed\":\"standard\"},\"modelUsage\":{},\"permission_denials\":[],\"terminal_reason\":\"completed\",\"fast_mode_state\":\"off\",\"uuid\":\"6acac3ea-8454-4c70-b634-1b32c611e4d0\"}\n",
+  "stderr": ""
+}
