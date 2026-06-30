@@ -7,6 +7,8 @@ export interface ScriptSegmentOut {
   text: string; // 김짠부 말투의 대본 한 덩어리(구어체)
   used_fact_idxs: number[]; // 입력 facts 인덱스 중 이 segment가 근거로 쓴 것
   used_asset_idxs: number[]; // 입력 explanation_assets 인덱스 중 쓴 것(숫자/비유)
+  kind?: string; // P1 추가: 레일(짠펜은 아직 미emit, 기본 prose). 적재 시 normalizeSegmentPayload로 정규화.
+  payload?: unknown; // P1 추가: 블록 데이터. 마찬가지로 미emit.
 }
 export interface ScribeOutput {
   segments: ScriptSegmentOut[];

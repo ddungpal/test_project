@@ -10,6 +10,8 @@ import { getSelectedStagePayload, getToneProfile } from "./context.js";
 import { buildCorpusShingles, containment, PLAGIARISM_THRESHOLD, PLAGIARISM_BLOCK_THRESHOLD } from "./scriptGuards.js";
 import { parseAxStages, resolveToneInjection } from "./axFlag.js";
 import { scribeStep } from "../agents/scribe/step.js";
+import { normalizeSegmentPayload } from "./segmentBlock.js";
+import type { Json } from "../lib/supabase/database.types.js";
 
 export interface ScriptStageDeps {
   supa: Supa;
@@ -117,7 +119,11 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
 
   // 4) 저장(재개 멱등: 기존 segments/lineage 제거 후 재삽입). lineage cascade로 함께 삭제됨.
   await supa.from("script_segments").delete().eq("run_id", runId);
-  const segRows = segments.map((s, i) => ({ content_id: contentId, run_id: runId, ord: i, text: s.text }));
+  const segRows = segments.map((s, i) => {
+    const { kind, payload } = normalizeSegmentPayload(s.kind, s.payload);
+    // payload는 명시 필드만 가진 정규화 결과(table/case/visual) — jsonb 컬럼에 그대로 적재(Json 단언).
+    return { content_id: contentId, run_id: runId, ord: i, text: s.text, kind, payload: payload as Json | null };
+  });
   const { data: inserted, error: se } = await supa.from("script_segments").insert(segRows).select("id, ord");
   if (se) throw new Error(`script_segments insert 실패: ${se.message}`);
   const idByOrd = new Map((inserted ?? []).map((r) => [r.ord, r.id]));

@@ -1,5 +1,12 @@
 import "server-only";
 import { createAdminClient } from "../supabase/admin.js";
+import {
+  normalizeSegmentPayload,
+  type SegmentKind,
+  type TablePayload,
+  type CasePayload,
+  type VisualPayload,
+} from "../../pipeline/segmentBlock.js";
 
 // 짠펜 대본 + lineage + 비용 읽기(Phase 3.4) — 서버 컴포넌트 전용. admin(읽기전용).
 
@@ -7,6 +14,8 @@ export interface SegmentView {
   id: string;
   ord: number;
   text: string;
+  kind: SegmentKind;
+  payload: TablePayload | CasePayload | VisualPayload | null;
   facts: { id: string; claim: string }[];
   assets: { id: string; concept: string; kind: "number" | "analogy" }[];
 }
@@ -16,7 +25,7 @@ export async function getScriptView(runId: string): Promise<SegmentView[]> {
 
   const { data: segs, error: se } = await supa
     .from("script_segments")
-    .select("id, ord, text")
+    .select("id, ord, text, kind, payload")
     .eq("run_id", runId)
     .order("ord", { ascending: true });
   if (se) throw new Error(`script_segments 조회 실패: ${se.message}`);
@@ -80,13 +89,19 @@ export async function getScriptView(runId: string): Promise<SegmentView[]> {
     assetsBySeg.set(l.segment_id, arr);
   }
 
-  return segs.map((s) => ({
-    id: s.id,
-    ord: s.ord,
-    text: s.text,
-    facts: factsBySeg.get(s.id) ?? [],
-    assets: assetsBySeg.get(s.id) ?? [],
-  }));
+  return segs.map((s) => {
+    // DB에서 온 값도 단일 출처(normalizeSegmentPayload)로 한 번 더 통과 — 깨진 데모시드 방어.
+    const { kind, payload } = normalizeSegmentPayload(s.kind, s.payload);
+    return {
+      id: s.id,
+      ord: s.ord,
+      text: s.text,
+      kind,
+      payload,
+      facts: factsBySeg.get(s.id) ?? [],
+      assets: assetsBySeg.get(s.id) ?? [],
+    };
+  });
 }
 
 // ── 비용 뷰 ──
