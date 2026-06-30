@@ -4,7 +4,16 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-30(낮 — **P1 `script-format-model` 완료**(형식 블록 레일·옵션 A). main tip=`e1620ab`·test 725·typecheck 0·build 0·**origin push 안 함**·**마이그레이션 29 미적용**) · 단계: **스크립트 품질 5-phase 로드맵 진행 중. ▶▶▶ 다음(재개점) = (a)마이그29 적용 + (b)P2 `outline-format` 설계·실행**(구다리 outline에 format 지정→짠펜이 kind 블록 emit. 이게 P1 레일에 첫 실데이터를 흘림). 그 외: P1 라이브 검증(데모시드 또는 P2 후 실런 표), 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+_Last updated: 2026-06-30(낮2 — **P1 + P2 완료**. P1 `script-format-model`(형식 레일·옵션 A, 마이그29 ✅적용·`e1620ab`) + P2 `outline-format`(구다리 format→짠펜 블록 emit, `04a2a82`). test 737·typecheck 0·build 0·**P1·P2 origin push 완료**) · 단계: **스크립트 품질 5-phase 로드맵 진행 중(P0·P1·P2 완료). ▶▶▶ 다음(재개점) = (a)라이브 검증**(구성 런→스크립트 런: structurer/scribe fixture 자동 재기록 + 비교 섹션에 거친 표 처음 뜨는지 확인) **+ (b)P3 `comparison-table`**(셜록이 비교 차원[가입조건·금리·혜택·중도해지…] 데이터 채워 표 품질 깊게. 청년도약계좌 vs 청년미래적금). 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+
+> ## ✅ P2 `outline-format` 완료 (2026-06-30 낮2 — 하네스 3 step·전부 1라운드 PASS, main `04a2a82`, test 725→737)
+> **구다리가 섹션별 형식(format)을 지정 → 짠펜이 그 형식대로 표/케이스 블록 emit → P1 레일이 자동 적재·렌더.** 전부 하위호환(format/kind/payload optional·required 미포함).
+> - **step0 `outline-format-field`**: 구다리 `OutlineSection`에 optional `format`(table|case|explain)+`SectionFormat` export, `STRUCTURER_SCHEMA` enum(required 미포함), `STRUCTURER_SYSTEM` 형식 지정 지침(억지 금지·생략=explain). 테스트 4. prepare 무변경(outline=출력).
+> - **step1 `scribe-emit-blocks`**: `SCRIBE_SCHEMA` segment에 optional kind(enum)/payload(loose=내부 additionalProperties 미설정·stray 내성), `SCRIBE_SYSTEM` format별 emit 지침(table→columns/rows, case→branches) + **money-safety(미검증 fact 표/케이스 칸 단정 금지)** + 억지 금지(데이터 부족시 prose). 테스트 8(블록 통과·prose 하위호환·normalize end-to-end). **scriptCell.ts 0줄 변경**(P1 normalize 레일 재사용=옵션 A 보상).
+> - **step2 `outline-format-ui`**: `ProposalSelector` outline 섹션에 format `<select>`(설명/표/분기, 기존 setSection 패턴·미지정=explain), `proposalTypes.ts` StructureSection에 optional format + step0 schema에서 SectionFormat re-export. TRUS 3색·백엔드/SegmentList 0줄.
+> - **fixture**: structurer·scribe promptHash 변경 → 기존 fixture는 **다음 라이브 런에서 자동 재기록**(claude-p $0). **AC 무관**(eval은 fixture 파일 읽기·form-agnostic). 손대지 않음.
+> - **정리**: 이번엔 **떠돌이 0** — ff-머지·push·feat 삭제 깔끔. 규칙 제안 없음. ⚠️ **검토 대기 rules-proposals 3건**(copy-learn-manage-videos·standalone-stages·structure-style-learning) 여전히 미병합.
+> - **▶ 다음 = 라이브 검증**(구성→스크립트 런으로 거친 표 확인) **+ P3 `comparison-table`**(셜록 비교 데이터로 표 품질 깊게).
 
 > ## ✅ P1 `script-format-model` 완료 (2026-06-30 낮 — 하네스 3 step·전부 1라운드 PASS, main `e1620ab`, test 710→725)
 > **옵션 A(레일만) 채택**: 짠펜은 **여전히 prose만 emit**, DB/적재/읽기/UI 레일만 깔았다. 실제 표/케이스는 P2부터 흐른다.
