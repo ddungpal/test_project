@@ -279,6 +279,11 @@
       "dir": "copy-question-register",
       "status": "completed",
       "completed_at": "2026-06-30T23:35:51+0900"
+    },
+    {
+      "dir": "research-autoflow-pipeline",
+      "status": "completed",
+      "completed_at": "2026-07-01T01:06:45+0900"
     }
   ]
 }

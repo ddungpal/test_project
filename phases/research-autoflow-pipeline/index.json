@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "research-autoflow-pipeline",
+  "steps": [
+    {
+      "step": 0,
+      "name": "auto-bridge",
+      "status": "completed",
+      "started_at": "2026-07-01T00:44:03+0900",
+      "completed_at": "2026-07-01T00:58:30+0900",
+      "team_round": "1/3 PASS (Joy IMPROVE는 리드 소관 index.json 갱신뿐 — 코드 불변식 8개·AC 3종 전부 통과)",
+      "summary": "리서치 무중단 자동화. 진입점=researchStageFn에서 cameFromScope(s1.state==='research_scoped', fresh-start 신호)일 때만 inline durable 체인 s2~s4 진행: s2 research-autoselect-cell(autoAdvanceResearchScope로 정책(나) 자동 scope 선택+research_scoped→researching, 그 뒤 runResearchCell을 withStageRuntime/costGuard 안에서) → s3 research-auto-approve(autoPassResearchReview: research_ready→research_review→research_approved 전이만) → s4 script-dispatch(inngest.send 'run/script.requested'). 재진입(reverify/examples, state=researching→research_ready)은 cameFromScope=false라 자동흐름 안 탐. ★보류 규약: 에스컬레이션 fact의 human_approved는 절대 안 건드려 null 유지(사람 최종확인=Phase2 스크립트 검수). approveResearch(human_approved=true) 미사용. 신규 autoSelectScope(claim.is_financial || concept.needs_number/needs_analogy만 선택, 깨진입력 방어, src/pipeline/researchScope.ts)·autoAdvanceResearchScope(researchScope.ts)·autoPassResearchReview(researchGate.ts). 멱등(전진한 state 재호출 시 no-op). 새 Inngest 이벤트/함수 0·마이그레이션 0·시작버튼/재진입 액션 무변경·프롬프트 무변경. tests/autoSelectScope.test.ts 신규(10). AC: typecheck/test(941)/build 전부 exit 0."
+    },
+    {
+      "step": 1,
+      "name": "script-fact-eligibility",
+      "status": "completed",
+      "started_at": "2026-07-01T00:58:31+0900",
+      "completed_at": "2026-07-01T01:06:45+0900",
+      "team_round": "1/3 PASS (Joy 불변식 5개·AC 3종 전부 exit 0)",
+      "summary": "짠펜 fact 적격성 완화 — 에스컬레이션 보류 fact를 본문까지 운반. 신규 순수함수 모듈 src/pipeline/scriptFactEligibility.ts: (1) isFactUsableForScript(f) = f.human_approved !== false (true·null 허용, false=명시 반려만 배제) — scriptCell.ts:65의 usable 필터를 이걸로 교체(기존 'human_approved===true || (escalated===false && verified)'에서 완화). (2) isFactPending(f) = f.escalated_to_human === true && f.human_approved === null (= '확인 필요'/보류 판별). ★Phase 2 인라인 칩 그리는 법: script_segment_facts(보류 fact도 동일하게 조인됨) → research_facts 조인 후 isFactPending로 '확인 필요' 표시. 보류 여부는 research_facts.escalated_to_human + human_approved 컬럼에서 파생(새 DB 컬럼/마이그 0). getResearchView의 FactView가 이미 escalatedToHuman/humanApproved 노출. ★promptHash 불변: 짠펜 LLM 입력 factsInput(scriptCell.ts ~92-98줄, idx/claim/verification_status/is_financial/caution만)은 한 글자도 안 바뀜 — 보류 플래그는 프롬프트가 아닌 데이터/조인 레이어에만. scriptCell은 isFactPending을 import조차 안 함(Phase2 재사용용 export). 기존 script 픽스처/parity 그대로 통과. 신규 tests/scriptFactEligibility.test.ts(8: 두 술어의 true/false/null×escalated 4분면). step0 자동전이/human_approved=null 규약 무변경(소비측만). AC: typecheck/test(949, +8)/build 전부 exit 0."
+    }
+  ],
+  "created_at": "2026-07-01T00:44:03+0900",
+  "completed_at": "2026-07-01T01:06:45+0900"
+}
