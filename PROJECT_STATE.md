@@ -6,6 +6,15 @@
 
 _Last updated: 2026-06-30(낮5 — **🎉 스크립트 품질 5-phase 로드맵 P0~P5 전부 완료**(P1 형식레일·P2 outline-format·P3 비교표·P4 케이스분기·P5 시각큐). P5 `visual-cues`(짠펜 visual 큐·`0ecbd9b`). test 815·typecheck 0·build 0·**P1~P4 push 완료·P5 push 진행 중**·**마이그29·30·31 전부 ✅적용**) · 단계: **▶▶▶ 다음(재개점) = 로드맵 라이브 일괄 검증**(아래 "🔬 라이브 검증 체크리스트"). dev/inngest 재기동 → 구성 런(table·case·visual format 섹션 포함)→리서치 런(비교가·분기가·댓글집계)→스크립트 런으로 표·케이스·시각큐가 검수화면+대본에 실제로 뜨는지 + structurer/scribe/comparator/case_miner fixture 자동 재기록 확인. 그 외 검증 대기: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선)·검토대기 rules-proposals 3건 병합.**_
 
+> ## ✅ `outlier-refs` 완료 (2026-06-30 낮5 — 하네스 4 step, main, test 815→844)
+> **구독자 대비 조회수 배수(아웃라이어) 레퍼런스.** 제목·주제발굴을 조회수 절대값→배수 우선으로, 썸네일에 외부 고배수 영상 썸네일 시각 레퍼런스 추가.
+> - **step0 `multiplier-core`**: 순수 `viewsPerSubscriber`(externalSignals.ts·null/≤0/floorSubs<1000 컷) + `ExternalItem.thumbnailUrl`(YT snippet.thumbnails). LLM 입력 불변.
+> - **step1 `title-topic-multiplier`**: `pickTopExternalTitles` 배수 desc(null 후순위·조회수 보조)·`ExternalTitleRef`에 multiplier/subscriberCount + discovery `competitorSignalScore`(log10(views)*(1+log10(mult))·null 폴백). ⚠️ title refs는 hook_maker·thumbnail_maker 입력 → promptHash 변경(다음 라이브 런 자동 재기록).
+> - **step2 `thumbnail-outlier-gather`**: `gatherOutlierThumbnails`/`pickTopOutlierThumbnails`(youtube·thumbnailUrl·자기채널 제외·배수 desc·디덥) + `getOutlierThumbnailRefs` 서버 read(게이트 `TITLE_REFERENCES=youtube` 재사용·best-effort). **LLM 불변**(썸네일메이커는 이미지 못 읽음 → 이미지는 UI 시각 레퍼런스 전용·외부 제목 텍스트는 step1이 이미 썸네일메이커에 반영).
+> - **step3 `outlier-refs-ui`**: ThumbnailStudio 외부 아웃라이어 썸네일 패널(순수 `<img>`·배수 배지·onError 방어·빈배열이면 미표시) + SourceLinks 배수 노출. TRUS 3색.
+> - **랜딩**: 코드는 정당파일만 main에 checkout(라이브 thumbnail_maker fixture 3개 stray는 별도 fixtures chore로 분리 커밋). 떠돌이 0·NUL 0.
+> - ⚠️ **마이그레이션 없음**(순수 코드). 운영 시 `TITLE_REFERENCES=youtube`+`YOUTUBE_API_KEY` 있어야 외부 수집 동작(dev는 fixture $0).
+>
 > ## 🔬 라이브 검증 체크리스트 (로드맵 완료 후 — 다음 세션 주작업)
 > dev 기동: `./node_modules/.bin/next dev -p 3000` + `npx inngest-cli dev -u http://localhost:3000/api/inngest` + `npm run preflight`. `.env` `LLM_BACKEND=claude-p`($0)·`SEARCH_BACKEND=tavily`(실리서치).
 > 1. **구성(구다리)**: outline 섹션에 format(표/분기/설명) 배지가 뜨고 고를 수 있나(P2 ProposalSelector). 비교형 섹션=table, 분기형=case로 구다리가 지정하나.
