@@ -27,7 +27,7 @@ export interface FactView {
 export interface AssetView {
   id: string;
   concept: string;
-  kind: "number" | "analogy";
+  kind: "number" | "analogy" | "comparison"; // migration 30: comparison 자산(표시/payload 연결은 step3 comparison-ui)
   numericExample: string | null;
   analogy: string | null;
   sourceFactId: string | null;

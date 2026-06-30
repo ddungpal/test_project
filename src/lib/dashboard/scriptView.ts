@@ -17,7 +17,7 @@ export interface SegmentView {
   kind: SegmentKind;
   payload: TablePayload | CasePayload | VisualPayload | null;
   facts: { id: string; claim: string }[];
-  assets: { id: string; concept: string; kind: "number" | "analogy" }[];
+  assets: { id: string; concept: string; kind: "number" | "analogy" | "comparison" }[];
 }
 
 export async function getScriptView(runId: string): Promise<SegmentView[]> {
@@ -65,7 +65,7 @@ export async function getScriptView(runId: string): Promise<SegmentView[]> {
     if (error) throw new Error(`fact 조회 실패: ${error.message}`);
     for (const f of data ?? []) factById.set(f.id, { id: f.id, claim: f.claim });
   }
-  const assetById = new Map<string, { id: string; concept: string; kind: "number" | "analogy" }>();
+  const assetById = new Map<string, { id: string; concept: string; kind: "number" | "analogy" | "comparison" }>();
   if (assetIds.length) {
     const { data, error } = assetsRes ?? { data: null, error: null };
     if (error) throw new Error(`asset 조회 실패: ${error.message}`);
@@ -80,7 +80,7 @@ export async function getScriptView(runId: string): Promise<SegmentView[]> {
     arr.push(f);
     factsBySeg.set(l.segment_id, arr);
   }
-  const assetsBySeg = new Map<string, { id: string; concept: string; kind: "number" | "analogy" }[]>();
+  const assetsBySeg = new Map<string, { id: string; concept: string; kind: "number" | "analogy" | "comparison" }[]>();
   for (const l of saLinks ?? []) {
     const a = assetById.get(l.asset_id);
     if (!a) continue;

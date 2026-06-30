@@ -61,7 +61,7 @@ type ResearchFacts = {
   volatility: Volatility | null; freshness: Freshness | null; recheck_after: string | null;
   escalated_to_human: boolean; human_approved: boolean | null; created_at: string;
 };
-type ExplanationAssets = { id: string; run_id: string; concept: string; kind: "number" | "analogy"; numeric_example: string | null; analogy: string | null; created_by: string | null; source_fact_id: string | null; math_verified: boolean | null; distortion_checked: boolean | null; used_in_script: boolean; landed_score: number | null; created_at: string };
+type ExplanationAssets = { id: string; run_id: string; concept: string; kind: "number" | "analogy" | "comparison"; numeric_example: string | null; analogy: string | null; created_by: string | null; source_fact_id: string | null; math_verified: boolean | null; distortion_checked: boolean | null; used_in_script: boolean; landed_score: number | null; payload: Json | null; created_at: string }; // migration 30: +kind('comparison')/payload(jsonb nullable) 비교 자산
 type ScriptSegments = { id: string; content_id: string; run_id: string; ord: number; text: string; kind: string; payload: Json | null; prompt_run_ref: string | null; created_at: string }; // migration 29: +kind('prose' default)/payload(jsonb nullable) 형식 블록 레일
 type ScriptSegmentFacts = { segment_id: string; fact_id: string };
 type ScriptSegmentExplanationAssets = { segment_id: string; asset_id: string };

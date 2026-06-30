@@ -224,6 +224,15 @@
       "dir": "outline-format",
       "status": "completed",
       "completed_at": "2026-06-30T11:15:03+0900"
+    },
+    {
+      "dir": "comparison-table",
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (comparison-asset-schema)",
+      "attempt": 1,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-06-30T11:33:23+0900"
     }
   ]
 }
