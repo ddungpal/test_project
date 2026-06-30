@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "scribe-emit-blocks",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-30T10:59:30+0900",
+      "summary": "짠펜 SCRIBE_SCHEMA segment item properties에 optional kind(enum prose|table|case|visual)/payload(loose object, 내부 additionalProperties 미설정) 추가. required엔 미포함→하위호환(prose-only 출력 그대로 통과). SCRIBE_SYSTEM에 형식 emit 지침(table→columns/rows, case→branches), money-safety(미검증 fact 수치 표/케이스 칸 단정 금지), 억지 금지(데이터 부족시 prose) 덧붙임. 신규 tests/scribeBlocks.test.ts 8케이스(table/case 블록 통과·prose 하위호환·loose stray 통과·잘못된 kind/payload 거부·normalizeSegmentPayload end-to-end 정상 추출·깨진 payload prose 폴백). AC: typecheck 0, test 737 passed(729+8), build 0. scriptCell.ts/UI 미변경, fixture 손대지 않음(다음 라이브 런 자동 재기록).",
+      "completed_at": "2026-06-30T11:07:40+0900"
     },
     {
       "step": 2,
