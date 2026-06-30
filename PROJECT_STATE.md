@@ -4,7 +4,16 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-29(낮6 — **리서치 게이트 라이브 검증 + UX픽스 + 스크립트 품질 로드맵 확정**. main tip=`f027c84`·test 710·typecheck 0·**origin push 완료**·마이그레이션 27·28 ✅적용됨) · 단계: **실사용 검증 중 → 스크립트 품질 개선(형식 도입)이 다음 큰 과제. ▶▶▶ 다음(재개점) = 스크립트 품질 5-phase 로드맵 착수**(아래 "🎯 스크립트 품질 로드맵" 섹션 참조): (0)tavily 켜기 → **(1) `script-format-model` 하네스 phase 설계·실행부터**(형식 토대 — 이게 없으면 표·케이스·시각 못 얹음) → P2 outline-format → P3 비교표 → P4 케이스+댓글 → P5 시각큐. 그 외 검증 대기: 리서치 재진입(마28 적용됨)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+_Last updated: 2026-06-30(낮 — **P1 `script-format-model` 완료**(형식 블록 레일·옵션 A). main tip=`e1620ab`·test 725·typecheck 0·build 0·**origin push 안 함**·**마이그레이션 29 미적용**) · 단계: **스크립트 품질 5-phase 로드맵 진행 중. ▶▶▶ 다음(재개점) = (a)마이그29 적용 + (b)P2 `outline-format` 설계·실행**(구다리 outline에 format 지정→짠펜이 kind 블록 emit. 이게 P1 레일에 첫 실데이터를 흘림). 그 외: P1 라이브 검증(데모시드 또는 P2 후 실런 표), 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+
+> ## ✅ P1 `script-format-model` 완료 (2026-06-30 낮 — 하네스 3 step·전부 1라운드 PASS, main `e1620ab`, test 710→725)
+> **옵션 A(레일만) 채택**: 짠펜은 **여전히 prose만 emit**, DB/적재/읽기/UI 레일만 깔았다. 실제 표/케이스는 P2부터 흐른다.
+> - **원안 대비 개선**: scribe JSON 스키마(`SCRIBE_SCHEMA`)·SYSTEM **무변경** → promptHash 불변 → **scribe fixture 재기록 불필요**(원안은 재기록 필요였음). scribe엔 TS optional `kind?`/`payload?`만 추가.
+> - **step0 `segment-kind-schema`**: 마이그29 `20260630120029_script_segment_kind.sql`(`script_segments.kind text default 'prose' check(prose|table|case|visual)` + `payload jsonb`, additive·**미적용**) + 순수 `src/pipeline/segmentBlock.ts` `normalizeSegmentPayload(kind,payload)`(table/case/visual 검증, 깨지면 **prose 폴백·throw 0**=money-safety, stray 흡수) + 테스트 11.
+> - **step1 `segment-persist-read`**: `scriptCell.ts` segRows가 normalize 통과분만 적재(검증·lineage·money 게이트 **불변**, diff=import+segRows 한정) + `scriptView.ts` `SegmentView`에 kind/payload(읽기도 재정규화=깨진 시드 방어) + `database.types.ts` ScriptSegments kind/payload + round-trip 테스트 4.
+> - **step2 `segment-render-ui`**: `SegmentList.tsx`만 변경(서버·액션 무변경). kind 스위치 — prose 현행 불변(회귀 0)/table=순수 `<table>`/case='조건→결과' 분기/visual='화면' 배지(이모지 금지). A3=LineageFooter 모든 kind 공통+'근거' 칩 라벨. TRUS 3색·새 의존성 0.
+> - **정리**: 하네스 git add -A가 떠돌이(docs/manual.html·fixtures/parity 14·tavily 4·PROJECT_STATE)를 feat에 쓸어담음 → ff-머지 대신 **P1 정당 파일만 main에 checkout**해 격리 커밋(rules.md 떠돌이 규칙 적용). feat 삭제. **규칙 제안 없음**. ⚠️ **검토 대기 rules-proposals 3건**(copy-learn-manage-videos·standalone-stages·structure-style-learning) 여전히 미병합.
+> - **▶ 다음 = 마이그29 적용 + (P2 또는 데모시드로 표 라이브 확인)**.
 
 > ## 🎯 스크립트 품질 로드맵 (2026-06-29 확정 — 다음 세션 주작업)
 > **문제(라이브 검증으로 발견)**: 짠펜 스크립트가 **형식 없는 짧은 단락 나열** — 김짠부 특유의 ①비교표 ②케이스 분기 ③시각요소(자막/캡처)가 전무. + 리서치 살이 얇음(mock). **근본**: 짠펜 출력 스키마가 `{ord,text,used_fact_idxs,used_asset_idxs}` **프로즈 전용**(src/agents/scribe/schema.ts) — 표/케이스/시각을 담을 자리가 없음. 구성(구다리)도 섹션에 '형식' 미지정. (구다리는 케이스분기·비유정의 패턴을 *학습은 했는데* 출력에 형식 표현이 없어 뭉개짐.)
