@@ -28,7 +28,7 @@ export interface FactView {
 export interface AssetView {
   id: string;
   concept: string;
-  kind: "number" | "analogy" | "comparison"; // migration 30: comparison 자산(표시/payload 연결은 step3 comparison-ui)
+  kind: "number" | "analogy" | "comparison" | "case"; // migration 30: comparison; migration 31: case(표시/연결은 후속 step)
   numericExample: string | null;
   analogy: string | null;
   // comparison 자산일 때만 채워짐(normalizeComparison으로 정규화 — 깨진 payload는 null=표시 제외). number/analogy는 항상 null.

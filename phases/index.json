@@ -229,6 +229,15 @@
       "dir": "comparison-table",
       "status": "completed",
       "completed_at": "2026-06-30T12:03:43+0900"
+    },
+    {
+      "dir": "case-branching",
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (case-asset-schema)",
+      "attempt": 1,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-06-30T12:24:36+0900"
     }
   ]
 }
