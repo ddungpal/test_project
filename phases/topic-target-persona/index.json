@@ -2,9 +2,30 @@
   "project": "produce script",
   "phase": "topic-target-persona",
   "steps": [
-    { "step": 0, "name": "persona-generate", "status": "pending" },
-    { "step": 1, "name": "structurer-persona", "status": "pending" },
-    { "step": 2, "name": "scribe-persona", "status": "pending" },
-    { "step": 3, "name": "persona-ui", "status": "pending" }
-  ]
+    {
+      "step": 0,
+      "name": "persona-generate",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-01T03:35:12+0900",
+      "summary": "촉이(topic_scout)가 후보마다 target_persona(누구+상황+막막함 한 줄)를 생성·payload 보존. schema.ts: TopicCandidateOut에 target_persona 추가 + TOPIC_SCOUT_SCHEMA candidate required/properties(minLength 1) + TOPIC_SCOUT_SYSTEM 생성 지시·예시 2개·audience_need와 차이 명시. stage.ts: toCandidates payload에 target_persona 배선. tests/topicTargetPersona.test.ts 5개 추가. typecheck/test(963)/build 통과. audience_level·need 병존, 마이그 0.",
+      "completed_at": "2026-07-01T03:42:42+0900"
+    },
+    {
+      "step": 1,
+      "name": "structurer-persona",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "scribe-persona",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "persona-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-07-01T03:35:12+0900"
 }
