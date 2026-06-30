@@ -23,7 +23,11 @@
     {
       "step": 2,
       "name": "scribe-table-from-comparison",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-30T11:46:11+0900",
+      "summary": "짠펜이 format='table' 섹션에서 즉흥 표 생성 대신 step1의 검증된 comparison 자산(explanation_assets[kind='comparison'])을 받아 그 entities/dimensions/cells로 정확한 표를 emit. comparisonAsset.ts에 순수 헬퍼 2개 추가: isAssetUsable(money 게이트 — number→math_verified, analogy→distortion_checked, comparison→normalizeComparison 유효, 그 외 false) + buildAssetsInput(게이트 통과분만, comparison엔 정규화 payload 포함·number/analogy는 기존 모양 그대로 payload 키 없음, idx=통과순서로 lineage 인덱스 일치). scriptCell: explanation_assets select에 payload 추가, 자산 필터를 isAssetUsable로 교체, assetsInput을 buildAssetsInput으로 교체(comparison 분기만 — freshness 게이트·표절 가드·전이·cost flush·lineage 매핑 전부 불변). SCRIBE_SYSTEM의 table 지침에 comparison 우선 보강(자산 있으면 즉흥금지·검증데이터 그대로 옮김·cell.verified=false 칸은 '확인 필요'·used_asset_idxs 링크·자산 없으면 기존 동작). tests/scribeComparison.test.ts 11개(게이트 분기·payload 포함/미포함·드랍 인덱스 재부여·end-to-end normalizeSegmentPayload 적재). number/analogy-only 런 assetsInput 바이트 불변. SCRIBE_SYSTEM 변경→scribe promptHash 변경(다음 라이브 런 자동 재기록·$0·AC 무관). AC: typecheck exit 0/test 774 pass exit 0/build exit 0(stale .next 1회 rm 후).",
+      "completed_at": "2026-06-30T11:55:35+0900"
     },
     {
       "step": 3,
