@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "outline-format",
+  "steps": [
+    {
+      "step": 0,
+      "name": "outline-format-field",
+      "status": "completed",
+      "started_at": "2026-06-30T10:53:34+0900",
+      "team_round": "1/3 PASS",
+      "summary": "구다리 OutlineSection에 optional format(table|case|explain) 추가. SectionFormat 타입 export, STRUCTURER_SCHEMA properties에 enum 추가(required엔 미포함→하위호환), STRUCTURER_SYSTEM에 형식 지정 지침 덧붙임(억지 금지·생략=explain). 신규 tests/structureFormat.test.ts 4케이스(format 유효·미지정 통과·잘못된 값 거부·타입 export). AC 통과: typecheck 0, test 729 passed, build 0. prepare/scribe/UI 미변경, fixture 손대지 않음.",
+      "completed_at": "2026-06-30T10:59:30+0900"
+    },
+    {
+      "step": 1,
+      "name": "scribe-emit-blocks",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "outline-format-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-30T10:53:34+0900"
+}
