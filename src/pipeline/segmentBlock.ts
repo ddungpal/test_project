@@ -17,9 +17,16 @@ export interface CasePayload {
   intro?: string;
   branches: { condition: string; outcome: string }[];
 }
+export type VisualCueType = "subtitle" | "capture" | "chart" | "table";
 export interface VisualPayload {
   cue: string;
   note?: string;
+  cueType?: VisualCueType; // P5: 자막/화면캡처/그래프/표 — UI가 종류별 배지. 없으면 일반 '화면'.
+}
+
+const VISUAL_CUE_TYPES: readonly VisualCueType[] = ["subtitle", "capture", "chart", "table"];
+function isVisualCueType(v: unknown): v is VisualCueType {
+  return typeof v === "string" && (VISUAL_CUE_TYPES as readonly string[]).includes(v);
 }
 
 const PROSE: { kind: SegmentKind; payload: null } = { kind: "prose", payload: null };
@@ -56,13 +63,14 @@ function normalizeCase(payload: unknown): { kind: SegmentKind; payload: CasePayl
   return { kind: "case", payload: out };
 }
 
-// visual: string cue 없으면 폴백. note는 string일 때만 흡수.
+// visual: string cue 없으면 폴백. note는 string일 때만 흡수. cueType은 4개 enum일 때만 흡수(아니면 stray 드랍).
 function normalizeVisual(payload: unknown): { kind: SegmentKind; payload: VisualPayload } | null {
   if (typeof payload !== "object" || payload === null) return null;
   const p = payload as Record<string, unknown>;
   if (typeof p.cue !== "string" || p.cue.length === 0) return null;
   const out: VisualPayload = { cue: p.cue };
   if (typeof p.note === "string") out.note = p.note;
+  if (isVisualCueType(p.cueType)) out.cueType = p.cueType; // P5 additive: 잘못된 값은 무시(stray 드랍).
   return { kind: "visual", payload: out };
 }
 

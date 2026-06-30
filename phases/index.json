@@ -232,8 +232,17 @@
     },
     {
       "dir": "case-branching",
-      "status": "error",
-      "failed_at": "2026-06-30T12:48:50+0900"
+      "status": "completed",
+      "completed_at": "2026-06-30T15:00:00+0900"
+    },
+    {
+      "dir": "visual-cues",
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (scribe-visual-cues)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-06-30T15:11:43+0900"
     }
   ]
 }
