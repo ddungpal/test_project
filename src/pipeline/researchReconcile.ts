@@ -5,6 +5,9 @@ import type { FactVerifierOutput } from "../agents/fact_verifier/schema.js";
 import type { VerifyClaimResult } from "../agents/fact_verifier/step.js";
 import type { NumbersOutput } from "../agents/numbers/schema.js";
 import type { AnalogistOutput } from "../agents/analogist/schema.js";
+import type { ComparatorOutput } from "../agents/comparator/schema.js";
+import { normalizeComparison } from "./comparisonAsset.js";
+import type { Json } from "../lib/supabase/database.types.js";
 
 /** "a * b = c" 형태 검산. 안전 문자만 매칭 후 평가. 통과=true/실패=false/판별불가=null. */
 export function checkArithmetic(calc: string): boolean | null {
@@ -86,20 +89,23 @@ export function reconcileFacts(runId: string, facts: VerifyClaimResult[], asOfDa
 export interface AssetRow {
   run_id: string;
   concept: string;
-  kind: "number" | "analogy";
+  kind: "number" | "analogy" | "comparison";
   numeric_example?: string;
   analogy?: string;
+  payload?: Json; // 비교 자산(kind='comparison') — normalizeComparison 통과한 ComparisonPayload. step0이 DB payload(jsonb) 컬럼 추가.
   created_by: string;
   math_verified?: boolean | null;
   distortion_checked?: boolean;
   used_in_script: boolean;
 }
 
-/** 셈이·유이 자산 → explanation_assets 행. 숫자는 코드 검산, 비유는 왜곡노트 유무로 검증 플래그. */
+/** 셈이·유이·비교가 자산 → explanation_assets 행. 숫자는 코드 검산, 비유는 왜곡노트 유무, 비교는 normalizeComparison으로 검증.
+ *  comparisonAssets는 optional(기본 []) — 기존 호출부(examples 재진입)는 안 넘겨도 동작 불변(number/analogy 빌드 불변). */
 export function buildAssetRows(
   runId: string,
   numberAssets: NumbersOutput["assets"],
   analogyAssets: AnalogistOutput["assets"],
+  comparisonAssets: ComparatorOutput["assets"] = [],
 ): AssetRow[] {
   return [
     ...numberAssets.map((a) => ({
@@ -110,5 +116,20 @@ export function buildAssetRows(
       run_id: runId, concept: a.concept, kind: "analogy" as const, analogy: a.analogy,
       created_by: "analogist", distortion_checked: a.distortion_note.trim().length > 0, used_in_script: false,
     })),
+    // ★ comparator는 cell에 grounded를 주는데 normalizeComparison은 verified를 기대 → grounded→verified 매핑.
+    //   normalizeComparison이 null(깨졌거나 entities<2·빈 표)이면 그 자산은 드랍(row 미생성 — money-safety).
+    ...comparisonAssets.flatMap((a) => {
+      const payload = normalizeComparison({
+        entities: a.entities,
+        dimensions: a.dimensions,
+        cells: a.cells.map((c) => ({ dimension: c.dimension, entity: c.entity, value: c.value, verified: c.grounded })),
+      });
+      if (!payload) return [];
+      // ComparisonPayload는 런타임상 Json 호환(중첩 string/boolean/배열)이나 인덱스 시그니처가 없어 캐스팅.
+      return [{
+        run_id: runId, concept: a.concept, kind: "comparison" as const, payload: payload as unknown as Json,
+        created_by: "comparator", used_in_script: false,
+      }];
+    }),
   ];
 }

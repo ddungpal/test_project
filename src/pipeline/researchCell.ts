@@ -14,8 +14,11 @@ import { verifyClaimStep, degradedVerification, type VerifyClaimResult } from ".
 import { numbersStep } from "../agents/numbers/step.js";
 import { analogyStep } from "../agents/analogist/step.js";
 import { criticStep } from "../agents/critic/step.js";
+import { comparatorStep } from "../agents/comparator/step.js";
+import { tableSectionsOf } from "./comparisonAsset.js";
 import type { NumbersOutput } from "../agents/numbers/schema.js";
 import type { AnalogistOutput } from "../agents/analogist/schema.js";
+import type { ComparatorOutput } from "../agents/comparator/schema.js";
 import type { CriticOutput } from "../agents/critic/schema.js";
 import type { ResearchFactContext } from "../agents/numbers/step.js";
 import type { LlmBackendDriver } from "../llm/types.js";
@@ -120,11 +123,19 @@ export async function runResearchCell(
     concepts.some((c) => c.needs_analogy)
       ? analogyStep(llm, runId, { concepts: concepts.filter((c) => c.needs_analogy), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as AnalogistOutput["assets"]; })
       : Promise.resolve([] as AnalogistOutput["assets"]);
-  const [numSettled, anaSettled] = await Promise.all([Promise.allSettled([numPs]), Promise.allSettled([anaPs])]);
-  await throwIfCapRejected([...numSettled, ...anaSettled], supa, runId, run.cost_usd, ledger);
+  // 비교가 — outline에 format='table' 섹션이 있을 때만 셈이·유이와 병렬로 실행. table 0개면 호출 자체를 안 함
+  //   → 기존 런 동작·비용·promptHash 영향 0(조건부 추가). 검증된 사실'만' 받아 비교표 구조화(새 사실 생성 X).
+  const tableSections = tableSectionsOf(structure);
+  const cmpPs: Promise<ComparatorOutput["assets"]> =
+    tableSections.length > 0
+      ? comparatorStep(llm, runId, { sections: tableSections, facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as ComparatorOutput["assets"]; })
+      : Promise.resolve([] as ComparatorOutput["assets"]);
+  const [numSettled, anaSettled, cmpSettled] = await Promise.all([Promise.allSettled([numPs]), Promise.allSettled([anaPs]), Promise.allSettled([cmpPs])]);
+  await throwIfCapRejected([...numSettled, ...anaSettled, ...cmpSettled], supa, runId, run.cost_usd, ledger);
   const numberAssets = numSettled[0]!.status === "fulfilled" ? numSettled[0]!.value : [];
   const analogyAssets = anaSettled[0]!.status === "fulfilled" ? anaSettled[0]!.value : [];
-  const assetRows = buildAssetRows(runId, numberAssets, analogyAssets);
+  const comparisonAssets = cmpSettled[0]!.status === "fulfilled" ? cmpSettled[0]!.value : [];
+  const assetRows = buildAssetRows(runId, numberAssets, analogyAssets, comparisonAssets);
 
   // 7) 반론(critic) — 확증편향 차단.
   await setProgress(supa, runId, "5/5·반론 (확증편향 차단)");
