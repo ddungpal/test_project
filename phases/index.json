@@ -292,12 +292,8 @@
     },
     {
       "dir": "research-gate-removal",
-      "status": "running",
-      "progress": "1/2",
-      "running_step": "1 (research-gate-cleanup)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-01T02:37:40+0900"
+      "status": "completed",
+      "completed_at": "2026-07-01T02:37:44+0900"
     }
   ]
 }
