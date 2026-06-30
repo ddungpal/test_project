@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "visual-cue-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-06-30T15:12:01+0900",
+      "completed_at": "2026-06-30T15:18:15+0900",
+      "summary": "SegmentList.tsx VisualBlock만 확장 — payload.cueType(subtitle→자막/capture→화면/chart→그래프/table→표)로 배지 라벨 분기. cueType 없는 레거시는 화면 폴백(하위호환). VISUAL_CUE_LABELS Record<VisualCueType,string>로 타입 누락 방지, VisualCueType import 추가. 배지 스타일(trus-yellow 한 톤)·cue·note 렌더·prose/table/case 마크업 전부 불변(회귀 0). 색 남발 없이 라벨 텍스트로만 구분. AC: typecheck/test(815 pass)/build 전부 exit 0."
     }
   ],
   "created_at": "2026-06-30T15:04:43+0900"
