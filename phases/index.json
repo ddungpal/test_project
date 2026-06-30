@@ -238,11 +238,11 @@
     {
       "dir": "visual-cues",
       "status": "running",
-      "progress": "0/2",
-      "running_step": "0 (scribe-visual-cues)",
+      "progress": "1/2",
+      "running_step": "1 (visual-cue-ui)",
       "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-06-30T15:11:43+0900"
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-06-30T15:18:01+0900"
     }
   ]
 }

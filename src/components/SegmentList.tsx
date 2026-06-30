@@ -1,5 +1,5 @@
 import type { SegmentView } from "@/lib/dashboard/scriptView";
-import type { TablePayload, CasePayload, VisualPayload } from "@/pipeline/segmentBlock";
+import type { TablePayload, CasePayload, VisualPayload, VisualCueType } from "@/pipeline/segmentBlock";
 
 // 대본 세그먼트 + lineage(이 단락이 어떤 fact/asset에 근거하는지). 순수 표시.
 //   kind별 분기 렌더(prose/table/case/visual). prose는 기존 마크업 불변(회귀 0 — 실 런은 전부 prose).
@@ -104,14 +104,23 @@ function CaseBlock({ text, payload }: { text: string; payload: CasePayload }) {
   );
 }
 
+// cueType → 배지 라벨. 레거시(cueType 없음)는 '화면' 폴백(하위호환). 색은 한 톤 trus-yellow, 구분은 라벨 텍스트로만.
+const VISUAL_CUE_LABELS: Record<VisualCueType, string> = {
+  subtitle: "자막",
+  capture: "화면",
+  chart: "그래프",
+  table: "표",
+};
+
 // visual: 직설 텍스트 배지(trus-yellow 보더) + cue + note(있으면 보조). 이모지 톤 금지.
 function VisualBlock({ text, payload }: { text: string; payload: VisualPayload }) {
+  const label = payload.cueType ? VISUAL_CUE_LABELS[payload.cueType] : "화면";
   return (
     <div className="flex min-w-0 flex-1 flex-col gap-2">
       {text.trim().length > 0 && <Prose text={text} />}
       <div className="flex items-start gap-2">
         <span className="shrink-0 border border-trus-yellow px-1.5 py-0.5 text-[10px] font-black tracking-widest text-trus-yellow uppercase">
-          화면
+          {label}
         </span>
         <p className="text-sm leading-relaxed text-trus-white">{payload.cue}</p>
       </div>
