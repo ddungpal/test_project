@@ -1,0 +1,10 @@
+{
+  "project": "produce script",
+  "phase": "topic-target-persona",
+  "steps": [
+    { "step": 0, "name": "persona-generate", "status": "pending" },
+    { "step": 1, "name": "structurer-persona", "status": "pending" },
+    { "step": 2, "name": "scribe-persona", "status": "pending" },
+    { "step": 3, "name": "persona-ui", "status": "pending" }
+  ]
+}
