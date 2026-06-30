@@ -1,0 +1,12 @@
+{
+  "promptHash": "0ad9daa0a0aac0d46ffa6a891eda244c2a25766678ef4a2f6e174ae2679b8d0d",
+  "roleId": "topic_scout",
+  "model": "opus",
+  "rawJson": "{\"candidates\":[{\"title\":\"월배당 ETF가 대체 뭐예요? 분배금 기초부터 시작하는 입문 가이드\",\"reason\":\"댓글 신호는 없지만 외부에서 '월배당 ETF의 모든 것'(web:5, 다음 더비비드 기초강의)과 TIGER 공식채널의 '월배당 ETF 총정리'(web:3)가 기초 개념 수요를 보여준다. 김짠부 자체 ETF 졸업 영상(yt:0, 56만뷰)이 입문 수요를 입증하므로, 그 다음 단계로 '월배당·분배금이 뭔지'부터 떠먹여주는 입문 영상이 적합하다.\",\"evidence_ids\":[\"web:5\",\"web:3\",\"yt:0\",\"focuskw:배당금 ETF 총정리\"],\"audience_level\":\"beginner\",\"audience_need\":\"배당금·분배금·월배당 개념 자체가 처음. '이게 뭐고 왜 받는지'부터 알고 싶다.\"},{\"title\":\"SCHD·VYM·JEPI·JEPQ, 나에게 맞는 배당 ETF 고르는 법\",\"reason\":\"외부에서 삼성증권 리포트가 SCHD·VYM·SDY·DVY를 총보수·AUM로 비교(web:1)하고, 네이버 블로그가 JEPI·JEPQ·리얼티인컴을 투자유형별로 정리(web:0)하는 등 '어떤 종목을 고를지' 수요가 뚜렷하다. 개념은 알지만 상품 선택을 못하는 초급 시청자를 겨냥한 비교 영상.\",\"evidence_ids\":[\"web:1\",\"web:0\",\"focuskw:배당금 ETF 총정리\"],\"audience_level\":\"novice\",\"audience_need\":\"배당 ETF가 뭔지는 알지만 SCHD·JEPI 등 뭐가 나한테 맞는지 못 고른다.\"},{\"title\":\"연금저축·ISA 계좌에서 SCHD 사면 세금 15%? 배당 ETF 절세 계좌 활용법\",\"reason\":\"경쟁영상 '2026 ETF 총정리'(yt:1)가 '연금저축 계좌에서 SCHD 샀다가 15% 세금'을 핵심 후킹으로 쓰고, '한국판 배당투자 총정리: 2026년부터 달라지는 배당 ETF 전략'(yt:3, 한경)도 계좌·세금 각도를 다룬다. 이미 배당 ETF를 굴리는 중급자가 '내 계좌 이대로 괜찮나' 궁금해하는 절세 최적화 주제.\",\"evidence_ids\":[\"yt:1\",\"yt:3\",\"focuskw:배당금 ETF 총정리\"],\"audience_level\":\"intermediate\",\"audience_need\":\"이미 배당 ETF에 투자 중인데 어느 계좌에 담아야 세금을 덜 내는지 모른다.\"},{\"title\":\"연 38% 초고배당 커버드콜 ETF, 진짜 받아도 될까? 함정과 원금 손실 체크\",\"reason\":\"트레이딩뷰 고배당 ETF 랭킹(web:4)에 YieldMax 등 연 38%대 커버드콜 상품이 상위에 노출되고, TIGER 영상(web:6)도 '옵션 프리미엄 재원 커버드콜 월배당'을 다룬다. 분배율 숫자에 혹하기 쉬운 구조를 해부하는, 전략 고도화 단계 시청자용 심화 영상.\",\"evidence_ids\":[\"web:4\",\"web:6\",\"focuskw:배당금 ETF 총정리\"],\"audience_level\":\"advanced\",\"audience_need\":\"배당 현금흐름을 셋팅 중이며 초고배당·커버드콜의 진짜 위험과 원금 흐름을 따지고 싶다.\"},{\"title\":\"2026년부터 달라지는 배당 ETF 제도, 지금 갈아타야 하는 이유\",\"reason\":\"★외부 신규 트렌드: 댓글에는 없지만 '한국판 배당투자 총정리: 2026년부터 달라지는 배당 ETF 전략'(yt:3, 한경 코리아마켓)과 TIGER의 2026년 월배당 주목 상품 영상(web:3)이 제도·전략 변화라는 시의성 이슈를 띄우고 있다. 시청자 수요를 앞서가 '바뀌는 제도'를 정리해주는 선제 발굴 주제.\",\"evidence_ids\":[\"yt:3\",\"web:3\"],\"audience_level\":\"intermediate\",\"audience_need\":\"제도가 바뀐다는데 내 배당 ETF 전략을 어떻게 조정해야 할지 알고 싶다.\"}]}",
+  "usage": {
+    "inTok": 2920,
+    "outTok": 483,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T09:17:57.087Z"
+}
