@@ -6,8 +6,14 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { TablesInsert, Json } from "../../lib/supabase/database.types.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
-import { gatherExternalSignals, viewsPerSubscriber } from "./externalSignals.js";
+import { gatherExternalSignals, viewsPerSubscriber, engagementRate } from "./externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
+
+// 품질 바닥(D) 상수 — youtube 경쟁영상 후보 컷. 댓글·웹 트렌드엔 적용 안 함(viewCount 없음).
+//   MIN_VIEWS: 1만 미만은 경쟁 레퍼런스로 신호가 약함(아웃라이어 가치 낮음) → 컷.
+//   MAX_AGE_YEARS: 3년 초과 영상은 시의성 낮음(재테크 제도·트렌드 빠르게 변함) → 컷.
+const FLOOR_MIN_VIEWS = 10_000;
+const FLOOR_MAX_AGE_YEARS = 3;
 
 export interface DiscoveryResult {
   comment: number;
@@ -18,16 +24,48 @@ export interface DiscoveryResult {
 
 type CandidateRow = TablesInsert<"topic_candidates">;
 
-/** 경쟁(youtube) 영상 후보의 signal_score — 조회수 로그 스케일에 배수(아웃라이어) 가중.
+// 반응도 가중 계수(B) — engagementRate(=(좋아요+댓글)/조회수)에 곱하는 k.
+//   재테크 영상 통상 반응도는 1~3%(0.01~0.03) 수준. k=5면 반응도 2%일 때 가중 ×1.1,
+//   극단적 10%여도 ×1.5로 폭주를 막는다(배수 가중과 곱해져 점수 폭발 방지). 단조 증가 유지.
+const ENGAGEMENT_K = 5;
+
+/** 경쟁(youtube) 영상 후보의 signal_score — 조회수 로그 스케일에 배수(아웃라이어)·반응도 가중.
  *  배수 있으면 log10(views+1) * (1 + log10(mult+1)): views 단조증가 × 배수 단조증가, 결정적.
  *  배수 null(비공개·노이즈 컷·FLOOR_SUBS 미만)이면 기존 log10(views+1) 폴백(회귀 최소).
+ *  반응도 가중: × (1 + ENGAGEMENT_K * engagementRate). engagement(=engagementRate 결과) null이면 ×1(회귀 0).
+ *  배수·반응도 둘 다 null이면 기존 조회수 폴백과 정확히 동일.
  *  순수함수. 소수 둘째 자리 반올림(폭발 방지·결정성). */
-export function competitorSignalScore(viewCount: number | null, subscriberCount: number | null): number {
+export function competitorSignalScore(
+  viewCount: number | null,
+  subscriberCount: number | null,
+  engagement: number | null = null,
+): number {
   if (viewCount == null) return 1; // 조회수 없으면 presence 기본점(기존 폴백과 동일).
   const base = Math.log10(viewCount + 1);
   const mult = viewsPerSubscriber(viewCount, subscriberCount, FLOOR_SUBS);
-  const score = mult == null ? base : base * (1 + Math.log10(mult + 1));
-  return Math.round(score * 100) / 100;
+  const multWeighted = mult == null ? base : base * (1 + Math.log10(mult + 1));
+  // engagement null → ×1(회귀 0). 음수 방어(이론상 없지만 단조성 보장).
+  const engFactor = engagement != null && engagement > 0 ? 1 + ENGAGEMENT_K * engagement : 1;
+  return Math.round(multWeighted * engFactor * 100) / 100;
+}
+
+/** 품질 바닥 필터(D) — youtube 경쟁영상 후보용 순수·결정적 게이트.
+ *  viewCount < minViews → false(신호 약한 저조회). publishedAt이 maxAgeYears보다 오래면 false(시의성 낮음).
+ *  publishedAt null이면 통과(데이터 없음을 벌하지 않음). now 주입으로 테스트 가능.
+ *  댓글·웹 트렌드 후보엔 호출하지 않는다(viewCount 없어 전부 탈락 방지 — 콜러 책임). */
+export function passesQualityFloor(
+  viewCount: number | null,
+  publishedAt: string | null,
+  opts: { minViews: number; maxAgeYears: number; now: Date | string },
+): boolean {
+  if (viewCount == null || viewCount < opts.minViews) return false;
+  if (publishedAt == null) return true; // 발행일 미상은 통과(벌하지 않음).
+  const pub = new Date(publishedAt).getTime();
+  if (!Number.isFinite(pub)) return true; // 파싱 불가도 벌하지 않음(통과).
+  const now = (typeof opts.now === "string" ? new Date(opts.now) : opts.now).getTime();
+  const ageMs = now - pub;
+  const maxAgeMs = opts.maxAgeYears * 365.25 * 24 * 60 * 60 * 1000;
+  return ageMs <= maxAgeMs;
 }
 
 /** 댓글 용어 정규화 — dedup_key 안정화(공백 압축·소문자·NFC). */
@@ -91,16 +129,22 @@ export async function refreshTopicCandidates(
   for (const e of external) {
     if (!e.url) continue;
     const isYt = e.source === "youtube";
+    // D) 품질 바닥: youtube 경쟁영상만 컷(저조회·노후). 댓글·트렌드는 대상 아님(viewCount 없음 → 적용 시 전멸).
+    if (isYt && !passesQualityFloor(e.viewCount, e.published_at, { minViews: FLOOR_MIN_VIEWS, maxAgeYears: FLOOR_MAX_AGE_YEARS, now: nowIso })) {
+      continue; // 후보 만들지 않음.
+    }
     // 경쟁 영상: 구독 대비 조회수 배수(아웃라이어). null=비공개·노이즈 컷·FLOOR_SUBS 미만 → score는 조회수 폴백.
     const mult = isYt ? viewsPerSubscriber(e.viewCount, e.subscriberCount, FLOOR_SUBS) : null;
+    // B) 반응도(좋아요+댓글)/조회수 — externalSignals.engagementRate 재사용(재구현 금지). null이면 score 회귀 0.
+    const eng = isYt ? engagementRate(e.viewCount, e.likeCount, e.commentCount) : null;
     put({
       source: isYt ? "competitor" : "trend",
       title: e.title || e.url,
       rationale: isYt
-        ? `경쟁 영상${e.viewCount != null ? ` · 조회 ${e.viewCount.toLocaleString()}` : ""}${mult != null ? ` · 구독대비 ${Math.round(mult)}배` : ""}${e.publisher ? ` · ${e.publisher}` : ""}`
+        ? `경쟁 영상${e.viewCount != null ? ` · 조회 ${e.viewCount.toLocaleString()}` : ""}${mult != null ? ` · 구독대비 ${Math.round(mult)}배` : ""}${eng != null ? ` · 반응도 ${(eng * 100).toFixed(1)}%` : ""}${e.publisher ? ` · ${e.publisher}` : ""}`
         : `웹 트렌드${e.publisher ? ` · ${e.publisher}` : ""}`,
-      // 경쟁: 조회수 로그 스케일에 배수 가중(아웃라이어 우선·폭발 방지) / 트렌드: presence 기본점.
-      signal_score: isYt ? competitorSignalScore(e.viewCount, e.subscriberCount) : 1,
+      // 경쟁: 조회수 로그 스케일에 배수·반응도 가중(아웃라이어 우선·폭발 방지) / 트렌드: presence 기본점.
+      signal_score: isYt ? competitorSignalScore(e.viewCount, e.subscriberCount, eng) : 1,
       evidence: {
         kind: isYt ? "competitor_video" : "web_trend",
         url: e.url,
@@ -109,6 +153,9 @@ export async function refreshTopicCandidates(
         view_count: e.viewCount,
         subscriber_count: e.subscriberCount,
         multiplier: mult,
+        like_count: e.likeCount,
+        comment_count: e.commentCount,
+        engagement_rate: eng,
       } as Json,
       dedup_key: `${isYt ? "competitor" : "trend"}:${e.url}`,
       last_seen_at: nowIso,

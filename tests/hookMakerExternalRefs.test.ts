@@ -14,6 +14,8 @@ function yt(id: string, title: string, viewCount: number | null, subscriberCount
     published_at: null,
     snippet: "",
     viewCount,
+    likeCount: null,
+    commentCount: null,
     subscriberCount,
     thumbnailUrl: null,
   };
@@ -28,6 +30,8 @@ function web(id: string, title: string): ExternalItem {
     published_at: null,
     snippet: "",
     viewCount: 999999, // web은 viewCount가 있어도 제외되어야 함
+    likeCount: null,
+    commentCount: null,
     subscriberCount: null,
     thumbnailUrl: null,
   };

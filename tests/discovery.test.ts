@@ -2,7 +2,7 @@
 import { describe, it, expect } from "vitest";
 import { ttlSecondsFor } from "../src/search/search.js";
 import { aggregateCommentSignals } from "../src/agents/topic_scout/commentSignals.js";
-import { competitorSignalScore } from "../src/agents/topic_scout/discovery.js";
+import { competitorSignalScore, passesQualityFloor } from "../src/agents/topic_scout/discovery.js";
 
 const TTL = {
   defaultTtlSeconds: 86_400,
@@ -81,5 +81,67 @@ describe("경쟁 영상 signal_score(competitorSignalScore) — 배수 가중", 
 
   it("조회수 null → presence 기본점 1", () => {
     expect(competitorSignalScore(null, 5_000)).toBe(1);
+  });
+});
+
+describe("경쟁 영상 signal_score(competitorSignalScore) — 반응도 가중(B)", () => {
+  it("engagement null → 기존 값과 동일(회귀 0)", () => {
+    expect(competitorSignalScore(1_000_000, 20_000, null)).toBe(competitorSignalScore(1_000_000, 20_000));
+  });
+
+  it("engagement 생략 → null과 동일(기본 인자)", () => {
+    expect(competitorSignalScore(1_000_000, 20_000)).toBe(competitorSignalScore(1_000_000, 20_000, null));
+  });
+
+  it("배수·반응도 둘 다 null이면 기존 조회수 폴백과 정확히 동일", () => {
+    expect(competitorSignalScore(1_000_000, null, null)).toBe(Math.round(Math.log10(1_000_001) * 100) / 100);
+  });
+
+  it("반응도 높은 영상이 같은 조회수·배수에서 점수가 더 높다(단조증가)", () => {
+    const noEng = competitorSignalScore(1_000_000, 20_000, null);
+    const lowEng = competitorSignalScore(1_000_000, 20_000, 0.01);
+    const highEng = competitorSignalScore(1_000_000, 20_000, 0.05);
+    expect(lowEng).toBeGreaterThan(noEng);
+    expect(highEng).toBeGreaterThan(lowEng);
+  });
+
+  it("배수 null이어도 반응도는 조회수 폴백에 가중된다", () => {
+    const fallback = competitorSignalScore(1_000_000, null, null);
+    const withEng = competitorSignalScore(1_000_000, null, 0.03);
+    expect(withEng).toBeGreaterThan(fallback);
+  });
+});
+
+describe("품질 바닥 필터(passesQualityFloor) — D", () => {
+  const now = "2026-06-30T00:00:00.000Z";
+  const opts = { minViews: 10_000, maxAgeYears: 3, now };
+
+  it("minViews 미만 → false", () => {
+    expect(passesQualityFloor(9_999, "2026-01-01T00:00:00Z", opts)).toBe(false);
+  });
+
+  it("minViews 경계값(딱 minViews) → 통과", () => {
+    expect(passesQualityFloor(10_000, "2026-01-01T00:00:00Z", opts)).toBe(true);
+  });
+
+  it("viewCount null → false(데이터 없는 경쟁영상은 컷)", () => {
+    expect(passesQualityFloor(null, "2026-01-01T00:00:00Z", opts)).toBe(false);
+  });
+
+  it("maxAgeYears 초과(오래된 영상) → false", () => {
+    // 5년 전 → 3년 초과
+    expect(passesQualityFloor(1_000_000, "2021-01-01T00:00:00Z", opts)).toBe(false);
+  });
+
+  it("maxAgeYears 이내(최근) → 통과", () => {
+    expect(passesQualityFloor(1_000_000, "2024-06-30T00:00:00Z", opts)).toBe(true);
+  });
+
+  it("publishedAt null → 통과(데이터 없음을 벌하지 않음)", () => {
+    expect(passesQualityFloor(1_000_000, null, opts)).toBe(true);
+  });
+
+  it("now를 Date로 줘도 동작", () => {
+    expect(passesQualityFloor(1_000_000, "2024-06-30T00:00:00Z", { minViews: 10_000, maxAgeYears: 3, now: new Date(now) })).toBe(true);
   });
 });
