@@ -18,6 +18,7 @@ export interface ExternalItem {
   commentCount: number | null; // YouTube 댓글수(비공개면 null). 반응도용 — LLM 프롬프트엔 안 들어감.
   subscriberCount: number | null; // YouTube 채널 구독자수(비공개면 null)
   thumbnailUrl: string | null; // YouTube 썸네일 이미지 URL(웹·없으면 null). evidence/UI용 — LLM 프롬프트엔 안 들어감.
+  sourceQuery: string | null; // 어느 ytQuery(테마)로 발견됐나 — 분산 선택(pickSpreadYoutube)용. 웹은 null.
 }
 
 // 구독자 대비 조회수 배수(아웃라이어 판별용). 데이터 부족(조회수/구독자 null·비유한·≤0) 또는
@@ -61,6 +62,39 @@ export function rankExternalByMultiplier(items: ExternalItem[], n: number, floor
     return (bv - av) || (a.it.id < b.it.id ? -1 : a.it.id > b.it.id ? 1 : 0);
   });
   return withMult.slice(0, n).map((w) => w.it);
+}
+
+// youtube ExternalItem을 sourceQuery(테마)별로 고르게 분산해 상위 n. 순수·결정적(입력 비변형).
+//   각 테마(sourceQuery) 그룹 내부는 rankExternalByMultiplier 동일 정렬(배수 desc) → 테마들을
+//   라운드로빈(테마1 1위, 테마2 1위, 테마3 1위, 테마1 2위 …)으로 번갈아 pick → n 슬롯이 한 테마에
+//   쏠리지 않고 여러 테마를 커버. 한 테마만 있으면 그 테마에서 n개(폴백·기존 rankExternalByMultiplier 동작).
+//   sourceQuery null(웹·태그 없음)도 한 그룹으로 취급(누락 방지). 테마 그룹 순회 순서는 첫 등장 순서(안정).
+export function pickSpreadYoutube(items: ExternalItem[], n: number, floorSubs: number): ExternalItem[] {
+  // 1) sourceQuery별 그룹화(첫 등장 순서 보존 — 결정적). null은 빈 문자열 키로 한 그룹.
+  const groups = new Map<string, ExternalItem[]>();
+  for (const it of items) {
+    const key = it.sourceQuery ?? "";
+    const g = groups.get(key);
+    if (g) g.push(it);
+    else groups.set(key, [it]);
+  }
+  // 2) 각 그룹 내부 동일 정렬(배수 desc) — 재사용(재구현 금지). 그룹 크기만큼 정렬해 두면 라운드로빈에서 0번부터.
+  const ranked = [...groups.values()].map((g) => rankExternalByMultiplier(g, g.length, floorSubs));
+  // 3) 라운드로빈: round 0의 각 그룹 1위 → round 1의 각 그룹 2위 … n 채울 때까지.
+  const out: ExternalItem[] = [];
+  for (let round = 0; out.length < n; round++) {
+    let added = false;
+    for (const g of ranked) {
+      const pick = g[round];
+      if (pick !== undefined) {
+        out.push(pick);
+        added = true;
+        if (out.length >= n) break;
+      }
+    }
+    if (!added) break; // 모든 그룹 소진 — 더 줄 항목 없음.
+  }
+  return out;
 }
 
 // 반응도율 = (좋아요+댓글) / 조회수. 조회수 데이터 부족(null·비유한·≤0)이면 null.
@@ -232,15 +266,20 @@ async function searchYouTube(query: string, max: number): Promise<Omit<ExternalI
         it.snippet?.thumbnails?.medium?.url ??
         it.snippet?.thumbnails?.default?.url ??
         null,
+      sourceQuery: query, // 어느 키워드로 발견됐나 — 테마별 분산(pickSpreadYoutube)용.
     };
   });
 }
 
-/** 웹(여러 쿼리) + YouTube(1쿼리) 외부 신호를 모은다. source별 url 디덥, source별 인덱스 id 부여.
- *  volatility: 웹 검색 캐시 신선도 힌트(발굴 B). 트렌드='fast'(매일 갱신), 키워드='slow'. */
+/** 웹(여러 쿼리) + YouTube(여러 쿼리) 외부 신호를 모은다. source별 url 디덥, source별 인덱스 id 부여.
+ *  ytQueries: 테마 다양성 위해 top-N 수요 키워드로 youtube 검색을 확장(발굴 모드). 결과는 sourceQuery로 태깅.
+ *    단일 ytQuery는 [ytQuery]로 흡수(하위호환). videoId 기준 전역 dedup(첫 쿼리 것 유지).
+ *  volatility: 웹 검색 캐시 신선도 힌트(발굴 B). 트렌드='fast'(매일 갱신), 키워드='slow'.
+ *  ponytail: 3 keywords × 2-pass = ~600 quota/run (N=3 상한 — 콜러가 top-3로 제한; dev는 fixture $0). */
 export async function gatherExternalSignals(opts: {
   webQueries: string[];
   ytQuery?: string | undefined;
+  ytQueries?: string[] | undefined;
   maxPerQuery?: number;
   volatility?: "static" | "slow" | "fast";
 }): Promise<ExternalItem[]> {
@@ -257,6 +296,7 @@ export async function gatherExternalSignals(opts: {
           publisher: res.publisher, published_at: res.published_at,
           snippet: (res.content ?? "").slice(0, 280),
           viewCount: null, likeCount: null, commentCount: null, subscriberCount: null, thumbnailUrl: null,
+          sourceQuery: null, // 웹은 테마 태그 없음.
         });
       }
     } catch (e) {
@@ -264,12 +304,27 @@ export async function gatherExternalSignals(opts: {
     }
   }
 
-  let ytRaw: Omit<ExternalItem, "id">[] = [];
-  if (opts.ytQuery?.trim()) {
+  // ytQueries로 흡수(단일 ytQuery는 [ytQuery]). 빈/공백 스킵 + 중복 쿼리 제거(같은 키워드 두 번 검색 방지).
+  const ytQueries = [...(opts.ytQueries ?? []), ...(opts.ytQuery != null ? [opts.ytQuery] : [])]
+    .map((q) => q.trim())
+    .filter((q) => q.length > 0);
+  const ytSeenQ = new Set<string>();
+  const ytRaw: Omit<ExternalItem, "id">[] = [];
+  const ytSeenVid = new Set<string>(); // videoId 전역 dedup(여러 키워드가 같은 영상 주면 첫 쿼리 것 유지).
+  for (const q of ytQueries) {
+    if (ytSeenQ.has(q)) continue;
+    ytSeenQ.add(q);
     try {
-      ytRaw = await searchYouTube(opts.ytQuery.trim(), max);
+      const rows = await searchYouTube(q, max);
+      for (const r of rows) {
+        // url = .../watch?v=<videoId> — videoId 추출해 전역 dedup.
+        const vid = r.url.split("v=")[1] ?? r.url;
+        if (ytSeenVid.has(vid)) continue;
+        ytSeenVid.add(vid);
+        ytRaw.push(r);
+      }
     } catch (e) {
-      console.warn(`[촉이 외부신호] YouTube 검색 실패(무시):`, e instanceof Error ? e.message : e);
+      console.warn(`[촉이 외부신호] YouTube 검색 실패(무시) q="${q}":`, e instanceof Error ? e.message : e);
     }
   }
 

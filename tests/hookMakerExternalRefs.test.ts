@@ -18,6 +18,7 @@ function yt(id: string, title: string, viewCount: number | null, subscriberCount
     commentCount: null,
     subscriberCount,
     thumbnailUrl: null,
+    sourceQuery: null,
   };
 }
 function web(id: string, title: string): ExternalItem {
@@ -34,6 +35,7 @@ function web(id: string, title: string): ExternalItem {
     commentCount: null,
     subscriberCount: null,
     thumbnailUrl: null,
+    sourceQuery: null,
   };
 }
 

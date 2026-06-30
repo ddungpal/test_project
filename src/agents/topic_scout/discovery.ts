@@ -138,10 +138,12 @@ export async function refreshTopicCandidates(
   const topComment = keyword_signals.slice(0, 10);
 
   // 2) 외부 경쟁영상(YouTube only). 주제 발굴은 유튜브 영상 기준 — 웹 트렌드 기사(Tavily)는 제거.
-  //   ytQuery: 댓글 top1을 앵커로, 없으면 연도 재테크 광역.
+  //   ytQueries: top-3 댓글 키워드로 검색 확장(경쟁영상이 여러 테마로 퍼지게), 없으면 연도 재테크 폴백.
+  //   ponytail: 3 keywords × 2-pass = ~600 quota/run (N=3 상한; dev는 fixture $0).
+  const ytQueries = topComment.slice(0, 3).map((c) => c.term).filter((t) => t.trim().length > 0);
   const external = await gatherExternalSignals({
     webQueries: [], // 웹 트렌드 검색 안 함(주제 발굴 유튜브 only).
-    ytQuery: topComment[0]?.term ?? `${asOfYear} 재테크`,
+    ytQueries: ytQueries.length ? ytQueries : [`${asOfYear} 재테크`],
     maxPerQuery: 5,
     volatility: "fast",
   });

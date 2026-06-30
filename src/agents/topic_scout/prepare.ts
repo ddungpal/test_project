@@ -6,7 +6,7 @@ import { setProgress, type Supa } from "../../pipeline/runState.js";
 import type { JsonSchema } from "../../llm/types.js";
 import type { ProposalSource } from "../../lib/dashboard/proposalTypes.js";
 import { TOPIC_SCOUT_SCHEMA, TOPIC_SCOUT_SYSTEM, appendLevelDirective } from "./schema.js";
-import { gatherExternalSignals, rankExternalByMultiplier, type ExternalItem } from "./externalSignals.js";
+import { gatherExternalSignals, pickSpreadYoutube, type ExternalItem } from "./externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
@@ -57,18 +57,21 @@ export async function prepareTopicScout(
   const { comment_count, question_comment_count, keyword_signals } = aggregateCommentSignals(comments ?? [], { keyword });
 
   // 2) 외부 검색 신호(YouTube 경쟁영상 only). 주제 선정은 유튜브 영상 기준 — 웹 기사(Tavily)는
-  //   주제 경로에서 제거(기사는 리서치 단계용). ytQuery는 유지: 키워드 모드는 그 키워드, 발굴 모드는 댓글 top1.
-  const topTerms = keyword_signals.slice(0, 3).map((s) => s.term);
+  //   주제 경로에서 제거(기사는 리서치 단계용).
+  //   키워드 모드: 그 키워드 단일 검색(focus 의도 유지). 발굴 모드: top-3 distinct 수요 키워드로 검색 확장
+  //     → 외부 영상이 한 테마로 쏠리지 않고 여러 테마를 커버(쏠림 버그 픽스).
+  //   ponytail: 3 keywords × 2-pass = ~600 quota/run (N=3 상한; dev는 fixture $0).
+  const topTerms = keyword_signals.slice(0, 3).map((s) => s.term).filter((t) => t.trim().length > 0);
   await setProgress(supa, runId, "2/3·외부 검색 (YouTube)");
   // 발굴 모드는 fast(매일 갱신), 키워드 모드는 slow(특정 키워드·덜 시변).
   const gathered = await gatherExternalSignals({
     webQueries: [], // 웹 Tavily 호출 안 함(주제 경로 유튜브 only).
-    ytQuery: keyword ?? topTerms[0],
+    ytQueries: keyword ? [keyword] : topTerms, // 키워드 모드 단일, 발굴 모드 top-3.
     maxPerQuery: keyword ? 5 : 4,
     volatility: keyword ? "slow" : "fast",
   });
-  // LLM 입력 토큰 캡 — YouTube만. 구독 대비 조회수 배수 desc 정렬 후 상위 6(플롭 언더퍼포머 노출 방지).
-  const external_items = rankExternalByMultiplier(
+  // LLM 입력 토큰 캡 — YouTube만. 테마(sourceQuery)별 분산 선택으로 상위 6(한 테마 쏠림 방지·각 테마 내부 배수 desc).
+  const external_items = pickSpreadYoutube(
     gathered.filter((e) => e.source === "youtube"),
     6,
     FLOOR_SUBS,

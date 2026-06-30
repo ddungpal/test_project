@@ -19,6 +19,7 @@ function yt(id: string, viewCount: number | null, subscriberCount: number | null
     commentCount: null,
     subscriberCount,
     thumbnailUrl: null,
+    sourceQuery: null,
   };
 }
 

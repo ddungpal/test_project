@@ -25,6 +25,7 @@ function yt(
     commentCount: null,
     subscriberCount,
     thumbnailUrl,
+    sourceQuery: null,
   };
 }
 function web(id: string, title: string): ExternalItem {
@@ -41,6 +42,7 @@ function web(id: string, title: string): ExternalItem {
     commentCount: null,
     subscriberCount: null,
     thumbnailUrl: "https://example.com/thumb.jpg", // web은 thumbnailUrl 있어도 제외
+    sourceQuery: null,
   };
 }
 

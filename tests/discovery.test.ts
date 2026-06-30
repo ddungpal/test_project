@@ -164,6 +164,7 @@ describe("후보 빌드 youtube-only 필터(buildCompetitorCandidate) — 옵션
     commentCount: 100,
     subscriberCount: 20_000,
     thumbnailUrl: null,
+    sourceQuery: null,
     ...over,
   });
 
