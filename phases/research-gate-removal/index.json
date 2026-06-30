@@ -1,0 +1,8 @@
+{
+  "project": "produce script",
+  "phase": "research-gate-removal",
+  "steps": [
+    { "step": 0, "name": "script-review-landing", "status": "pending" },
+    { "step": 1, "name": "research-gate-cleanup", "status": "pending" }
+  ]
+}

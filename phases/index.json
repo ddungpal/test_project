@@ -289,6 +289,10 @@
       "dir": "script-review-inline-facts",
       "status": "completed",
       "completed_at": "2026-07-01T02:05:54+0900"
+    },
+    {
+      "dir": "research-gate-removal",
+      "status": "pending"
     }
   ]
 }
