@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { getRunDetail, type StageView } from "@/lib/dashboard/runDetail";
-import { getResearchView, getResearchScopeView, type ResearchView, type ScopeGateView } from "@/lib/dashboard/researchView";
+import { getResearchView, type ResearchView } from "@/lib/dashboard/researchView";
 import { getScriptView, getCostView, type SegmentView, type CostView } from "@/lib/dashboard/scriptView";
 import { getOutlierThumbnailRefs } from "@/lib/dashboard/outlierThumbnailsView";
 import type { OutlierThumbnailRef } from "@/agents/hook_maker/externalRefs";
@@ -17,12 +17,7 @@ import { ThumbnailStudio } from "@/components/ThumbnailStudio";
 import { PostConfirmTitleEdit } from "@/components/PostConfirmTitleEdit";
 import { PostConfirmThumbnailsEdit } from "@/components/PostConfirmThumbnailsEdit";
 import { RefreshButton } from "@/components/RefreshButton";
-import { EnterReviewButton } from "@/components/EnterReviewButton";
-import { ResearchReview } from "@/components/ResearchReview";
-import { ResearchScopeGate } from "@/components/ResearchScopeGate";
-import { ResearchReentryActions } from "@/components/ResearchReentryActions";
 import { FactCard } from "@/components/FactCard";
-import { EnterScriptReviewButton } from "@/components/EnterScriptReviewButton";
 import { ScriptReview } from "@/components/ScriptReview";
 import { SegmentList } from "@/components/SegmentList";
 import { ComparisonAssetTable } from "@/components/ComparisonAssetTable";
@@ -31,7 +26,6 @@ import { CostPanel } from "@/components/CostPanel";
 import { RunControls } from "@/components/RunControls";
 import { StageStepper } from "@/components/StageStepper";
 import { parseSubProgress } from "@/lib/dashboard/stageProgress";
-import { GenerateScopeButton } from "@/components/GenerateScopeButton";
 import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
 import type { RunState } from "@/domain/enums";
@@ -283,8 +277,9 @@ function ResearchPanel({ rv }: { rv: ResearchView }) {
   );
 }
 
-// 리서치 단계(3.3) — 시작/대기/검수시작/트리아지/승인후.
-function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: string; runState: RunState; rv: ResearchView | null; scope: ScopeGateView | null; progressNote: string | null }) {
+// 리서치 단계(3.3) — 시작/대기(자동진행)/승인후. 리서치~스크립트는 셜록이 무중단 자동 진행 —
+//   research_scoped/ready/review는 전이 중 잠깐만 스치므로 수동 게이트 대신 진행표시만.
+function ResearchSection({ runId, runState, rv, progressNote }: { runId: string; runState: RunState; rv: ResearchView | null; progressNote: string | null }) {
   let body: React.ReactNode;
   if (runState === "structure_selected") {
     body = (
@@ -294,16 +289,8 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
       </div>
     );
   } else if (runState === "research_scoped") {
-    // 셜록 scope 게이트 — 검증 후보를 사용자가 고른다(고른 것만 검증·출처확인). scope 없으면 폴백.
-    body = scope ? (
-      <div className="flex flex-col gap-4">
-        <p className="text-xs text-trus-white/40">셜록이 검증 후보를 뽑았습니다 — 리서치할 항목을 고르세요. 고른 것만 검증·출처확인합니다.</p>
-        <ResearchScopeGate runId={runId} proposalId={scope.proposalId} candidates={scope.candidates} />
-      </div>
-    ) : (
-      // 후보 0개(셜록 scope 미생성·stale) — 막다른 "불러오는 중" 대신 후보 생성 복구 버튼.
-      <GenerateScopeButton runId={runId} />
-    );
+    // 셜록이 검증 범위를 자동 선택하고 바로 검증으로 넘어감 — 사람 선택 없음.
+    body = <WaitingNote text="셜록이 리서치 준비 중… 새로고침하세요." />;
   } else if (runState === "researching") {
     // 진행 마커(researchCell가 단계마다 progress_note에 "i/n·라벨" 기록)를 본문에 노출 — 어느 작업 중인지.
     //   마커 없으면(셀 미가동·inngest down) 기존 안내로 폴백.
@@ -314,30 +301,11 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
       />
     );
   } else if (runState === "research_ready") {
-    body = (
-      <div className="flex flex-col gap-4">
-        <div className="flex flex-col gap-2">
-          <EnterReviewButton runId={runId} />
-          <p className="text-xs text-trus-white/40">고위험 fact만 검수 대상으로 띄웁니다(전건 검토 아님). 아래는 생성된 리서치 미리보기.</p>
-        </div>
-        <ResearchReentryActions runId={runId} />
-        {rv && <ResearchPanel rv={rv} />}
-      </div>
-    );
+    // 검수 진입도 자동 — research_review로 무중단 통과. 진행표시만.
+    body = <WaitingNote text="리서치 마무리 중… 새로고침하세요." />;
   } else if (runState === "research_review") {
-    body = (
-      <div className="flex flex-col gap-5">
-        {rv == null ? (
-          <WaitingNote text="검수 데이터를 불러오는 중… 새로고침하세요." />
-        ) : rv.escalated.length > 0 ? (
-          <ResearchReview runId={runId} escalated={rv.escalated} />
-        ) : (
-          <ApproveAllInline runId={runId} />
-        )}
-        <ResearchReentryActions runId={runId} />
-        {rv && <ResearchPanel rv={rv} />}
-      </div>
-    );
+    // 고위험 사실 검수는 스크립트 완성 후 최종 검수로 운반 — 여기선 멈추지 않고 자동 통과.
+    body = <WaitingNote text="검수 준비 중… 새로고침하세요." />;
   } else if (RESEARCH_LOADED.includes(runState) && rv) {
     body = <ResearchPanel rv={rv} />;
   } else {
@@ -355,18 +323,6 @@ function ResearchSection({ runId, runState, rv, scope, progressNote }: { runId: 
   );
 }
 
-// 검수대상 0건이면 토글 없이 바로 승인(상태전환만).
-function ApproveAllInline({ runId }: { runId: string }) {
-  return (
-    <div>
-      <p className="text-xs text-trus-white/50">검수할 고위험 fact가 없습니다(전부 자동 통과). 승인하고 다음으로.</p>
-      <div className="mt-2">
-        <ResearchReview runId={runId} escalated={[]} />
-      </div>
-    </div>
-  );
-}
-
 // 스크립트 단계(3.4) — 시작/대기/검수진입+세그먼트/검수/완료. segments는 lineage 포함.
 function ScriptSection({
   runId,
@@ -381,12 +337,8 @@ function ScriptSection({
 }) {
   let body: React.ReactNode;
   if (runState === "research_approved") {
-    body = (
-      <div className="flex flex-col gap-2">
-        <RequestStageButton runId={runId} next="script" label="대본 작성 시작 (짠펜)" />
-        <p className="text-xs text-trus-white/40">freshness 게이트·표절 가드를 거쳐 대본을 씁니다 — 잠시 후 새로고침.</p>
-      </div>
-    );
+    // 검증 완료 시 대본 작성이 자동 발행됨 — 사람 클릭 없음. 진행표시만.
+    body = <WaitingNote text="짠펜이 대본 작성 중… 새로고침하세요." />;
   } else if (runState === "scripting") {
     {
       // 짠펜도 진행 마커("1/2·대본 작성"·"2/2·표절 검사")를 본문에 노출. 없으면 기존 안내로 폴백.
@@ -398,12 +350,8 @@ function ScriptSection({
       );
     }
   } else if (runState === "script_ready") {
-    body = (
-      <div className="flex flex-col gap-4">
-        <EnterScriptReviewButton runId={runId} />
-        {segments && <SegmentList segments={segments} />}
-      </div>
-    );
+    // 검수 진입도 자동 — script_review로 무중단 통과. 진행표시만.
+    body = <WaitingNote text="검수 준비 중… 새로고침하세요." />;
   } else if (runState === "script_review") {
     // ScriptReview가 본문(SegmentBody)을 직접 그린다 → 별도 SegmentList 중복 제거.
     body = (
@@ -455,9 +403,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
   // 상태에 따라 필요한 추가 조회(병렬). 비용은 항상.
   //   outlierRefs는 썸네일 제안 단계(thumbnails_proposed)에서만 — 게이트 off면 read가 즉시 []. 그 외 상태는 호출 안 함.
-  const [rv, scope, segments, cost, outlierRefs] = await Promise.all([
+  const [rv, segments, cost, outlierRefs] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
-    run.state === "research_scoped" ? getResearchScopeView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
     run.state === "thumbnails_proposed" ? getOutlierThumbnailRefs(run.id) : Promise.resolve([]),
@@ -522,7 +469,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} outlierRefs={outlierRefs} />
       ))}
 
-      <ResearchSection runId={run.id} runState={run.state} rv={rv} scope={scope} progressNote={run.progressNote} />
+      <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
       <ScriptSection runId={run.id} runState={run.state} segments={segments} progressNote={run.progressNote} />
       <CostSection cost={cost} />
     </main>
