@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "case-miner-agent",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-06-30T12:25:10+0900",
+      "completed_at": "2026-06-30T12:39:20+0900",
+      "team_round": "2/3 PASS",
+      "summary": "분기가(case_miner) 추가 — P3 비교가 미러. roles 등록(tools:[]) + case_miner/{schema,step}(loose 스키마·money-safety SYSTEM·maxTokens 4096) + caseSectionsOf(format='case') + buildAssetRows 5번째 인자 caseAssets(normalizeCaseAsset null 드랍) + researchCell full 경로 wiring(case 섹션 ≥1일 때만 comments_raw 로드→aggregateCommentSignals 집계 신호만 분기가에 전달, 원문 비전송·거버넌스 C안) + caseMiner.test 17케이스(원문 비전송 회귀가드 포함). examples 재진입 미포함(full 경로만). AC typecheck/test(800)/build 전부 exit 0."
     },
     {
       "step": 2,
