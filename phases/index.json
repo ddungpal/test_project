@@ -297,7 +297,12 @@
     },
     {
       "dir": "topic-target-persona",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (persona-generate)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-07-01T03:42:12+0900"
     }
   ]
 }

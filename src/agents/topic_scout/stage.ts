@@ -14,8 +14,9 @@ export function topicStageSpec(runId: string, opts?: { levelSplit?: boolean }): 
     toCandidates: (out): Candidate[] =>
       out.candidates.map((c, idx) => ({
         idx,
-        // audience_level/need를 payload에 보존 → 선택 시 저장(V2 다운스트림이 읽음)·대시보드 배지 표시.
-        payload: { title: c.title, audience_level: c.audience_level, audience_need: c.audience_need },
+        // audience_level/need/target_persona를 payload에 보존 → 선택 시 저장(다운스트림이 읽음)·대시보드 표시.
+        // target_persona를 빼면 LLM이 생성해도 payload에 안 실려 구다리·짠펜 전파가 끊긴다.
+        payload: { title: c.title, audience_level: c.audience_level, audience_need: c.audience_need, target_persona: c.target_persona },
         reason: c.reason,
         evidence_ids: c.evidence_ids,
       })),

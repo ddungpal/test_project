@@ -11,6 +11,7 @@ export interface TopicCandidateOut {
   evidence_ids: string[]; // prep가 준 신호 id("kw:…","tc:…") 중에서만
   audience_level: AudienceLevel; // 이 주제의 주 타깃 시청자 수준
   audience_need: string; // 그 수준 시청자의 현재 상태/핵심 욕구(한 줄)
+  target_persona: string; // 이 영상의 대상 '사람'을 한 줄로(누구+상황+막막함/욕구). audience_need와 다른 축(사람 정의).
 }
 export interface TopicScoutOutput {
   candidates: TopicCandidateOut[];
@@ -27,13 +28,14 @@ export const TOPIC_SCOUT_SCHEMA: JsonSchema = {
       items: {
         type: "object",
         additionalProperties: false,
-        required: ["title", "reason", "evidence_ids", "audience_level", "audience_need"],
+        required: ["title", "reason", "evidence_ids", "audience_level", "audience_need", "target_persona"],
         properties: {
           title: { type: "string", minLength: 1 },
           reason: { type: "string", minLength: 1 }, // 왜 이 주제인가(시청자 신호 근거)
           evidence_ids: { type: "array", items: { type: "string" }, minItems: 1 },
           audience_level: { type: "string", enum: [...AUDIENCE_LEVELS] }, // 입문/초급/중급/고급
           audience_need: { type: "string", minLength: 1 }, // 그 수준 시청자의 욕구 한 줄
+          target_persona: { type: "string", minLength: 1 }, // 대상 사람 한 줄(누구+상황+막막함)
         },
       },
     },
@@ -84,6 +86,13 @@ export const TOPIC_SCOUT_SYSTEM = [
   "- ★ 후보를 한 주제·한 테마에 몰지 말고, 시청자 수요가 큰 서로 다른 키워드(top 수요 키워드 'kw:'·overlap·여러 테마의 경쟁영상)에 고르게 분산한다. 입력의 external_items(yt:)는 여러 테마로 미리 펼쳐져 제공되므로, 각 테마에서 잘 터진 영상을 근거로 서로 다른 주제를 낸다.",
   "- 최소 2~3개의 서로 다른 수요 키워드/테마를 커버한다(가능하면 후보마다 다른 테마). 가장 강한 한 테마에 묶이는 후보가 전체의 절반을 넘지 않게 한다(예: 예적금 종류만 4개 같은 쏠림 금지).",
   "- 이 분산은 위 '유튜브 근거 과반'과 충돌하지 않는다: 과반의 후보는 여전히 yt: evidence를 가지되, 그 yt: 근거들이 '서로 다른 테마'를 가리키게 한다(여러 테마 영상이 입력에 있으니 양립 가능). 즉 'youtube 근거를 갖되 테마는 분산'이 동시 목표다.",
+  "",
+  "",
+  "■ 타겟 페르소나(target_persona) — 후보마다 '이 영상은 누구를 위한 것인지'를 한 줄로 적는다:",
+  "- 형태: 누구 + 상황 + 막막함/욕구를 한 문장으로(대상 '사람'을 떠올릴 수 있게 구체적으로).",
+  "- 예시1: \"2030 사회초년생, 첫 월급 받고 목돈 굴리는 법 막막한 사람\"",
+  "- 예시2: \"자녀계좌 만들려는 30·40대 부모, 증여세·절차 헷갈리는 사람\"",
+  "- audience_need와의 차이(둘 다 채운다, 중복 아님): target_persona=대상 '사람'의 정의(누구·어떤 상황인가), audience_need=그 사람의 '욕구' 한 줄(무엇을 원하나). audience_level(전문성 수준)과도 다른 축이다.",
   "",
   "공통 원칙:",
   "- 각 후보는 반드시 입력에 있는 신호 id를 evidence_ids로 1개 이상 링크한다. 유효 접두사: 'kw:'·'yt:'·'focuskw:<키워드>'·'tc:'. 없는 id 날조 금지.",
