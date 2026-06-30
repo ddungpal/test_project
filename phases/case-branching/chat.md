@@ -57,3 +57,11 @@
 
 [Joy] 검수 끝! 변경은 딱 3파일(comparisonAsset·schema·scribeCase.test)+메타뿐, scriptCell·segmentBlock·caseAsset diff 텅 비어서 금지영역 0 터치 확인. isAssetUsable에 case 한 줄만 깔끔하게 끼웠고 헬퍼 단일 출처 유지, number/analogy payload 키 없는 것도 테스트로 못박았네. grounded=false outcome '확인 필요'로 바꾸고 세그먼트에 grounded 안 남는 것까지 assert — money-safety 회귀 정면 차단이야 굿! AC typecheck/test(809)/build 다 exit 0. 라운드1 통과 🎉
 [리드] 좋아 step2 완료! 짠펜이 이제 검증된 case 자산 그대로 옮겨 케이스 블록 만들고 미검증 분기는 '확인 필요'로 둔다 — 즉흥 분기 끝. index.json completed+summary로 갱신했어. 다음은 step3 case-ui(검수 뷰). 수고했어 맥스 조이!
+
+=== Step 3: case-ui ===
+
+[리드] 에스더, 이번 step은 순수 프론트야. 리서치 검수 화면에 분기가가 만든 케이스 자산을 '조건 → 결과' 분기 목록으로 보여주고, grounded=false(확인 필요) 분기를 강조하면 돼. P3 ComparisonAssetTable이 verified=false 칸 흐림+'확인 필요' 라벨 한 패턴이랑 SegmentList CaseBlock의 '조건→결과' 패턴을 미러해. researchView에 case 노출 + CaseAssetView.tsx 신규 + page.tsx 자산 루프에 case 분기. SegmentList·ComparisonAssetTable·백엔드는 절대 건드리지 마. 맡아줄래?
+
+[Esther] 응 맡을게. 패턴 다 읽어봤어. ComparisonAssetTable이랑 SegmentList CaseBlock 둘 다 결이 깔끔해서 미러하기 좋아. grounded=false 분기 강조는 짠부님 검수 안전이랑 직결되니까 거기 확실히 신경쓸게.
+
+=== Step 3: case-ui (재시도 2) ===

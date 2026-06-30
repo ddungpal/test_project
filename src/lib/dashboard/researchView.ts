@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "../supabase/admin.js";
 import type { VerificationStatus, SourceTier, Freshness, Volatility } from "../../domain/enums.js";
 import { normalizeComparison, type ComparisonPayload } from "../../pipeline/comparisonAsset.js";
+import { normalizeCaseAsset, type CaseAssetPayload } from "../../pipeline/caseAsset.js";
 
 // 리서치 검수 읽기(Phase 3.3) — 서버 컴포넌트 전용. admin(읽기전용).
 
