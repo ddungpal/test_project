@@ -249,6 +249,11 @@
       "dir": "search-pool-engagement",
       "status": "completed",
       "completed_at": "2026-06-30T18:07:05+0900"
+    },
+    {
+      "dir": "topic-ref-multiplier",
+      "status": "completed",
+      "completed_at": "2026-06-30T18:34:20+0900"
     }
   ]
 }

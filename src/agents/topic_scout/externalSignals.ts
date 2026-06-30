@@ -34,6 +34,35 @@ export function viewsPerSubscriber(
   return viewCount / subscriberCount;
 }
 
+// youtube ExternalItem을 구독자 대비 조회수 배수 desc로 정렬해 상위 n. 순수·결정적(입력 비변형·복사 정렬).
+//   정렬 우선순위(hook_maker/externalRefs.ts pickTopExternalTitles 미러):
+//     배수(viewsPerSubscriber, floorSubs) desc → 배수 null(구독 비공개·노이즈 컷·FLOOR_SUBS 미만)은 후순위
+//     → null끼리는 viewCount desc → 최종 tie는 id asc(안정).
+//   배수 null 항목도 버리지 않는다(후순위로만) — 구독 비공개 영상도 유효 레퍼런스.
+//   하드 언더퍼포머 컷(임계 드롭)은 두지 않는다 — 정렬+slice면 충분하고, 임계 드롭은 작은 풀을 비울 위험.
+//   floorSubs는 인자로 받는다(hook_maker FLOOR_SUBS import 순환 회피 — 콜러가 넘김).
+export function rankExternalByMultiplier(items: ExternalItem[], n: number, floorSubs: number): ExternalItem[] {
+  const withMult = items.map((it) => ({
+    it,
+    multiplier: viewsPerSubscriber(it.viewCount, it.subscriberCount, floorSubs),
+  }));
+  withMult.sort((a, b) => {
+    if (a.multiplier == null && b.multiplier == null) {
+      // 둘 다 배수 없음 → 조회수 보조 정렬.
+    } else if (a.multiplier == null) {
+      return 1; // null은 뒤로
+    } else if (b.multiplier == null) {
+      return -1;
+    } else if (a.multiplier !== b.multiplier) {
+      return b.multiplier - a.multiplier;
+    }
+    const av = a.it.viewCount ?? -Infinity;
+    const bv = b.it.viewCount ?? -Infinity;
+    return (bv - av) || (a.it.id < b.it.id ? -1 : a.it.id > b.it.id ? 1 : 0);
+  });
+  return withMult.slice(0, n).map((w) => w.it);
+}
+
 // 반응도율 = (좋아요+댓글) / 조회수. 조회수 데이터 부족(null·비유한·≤0)이면 null.
 //   likes·comments가 둘 다 null이면 반응도 미상 → null. 하나라도 있으면 있는 것만 합산
 //   ((likes ?? 0) + (comments ?? 0)). likeCount/commentCount는 비공개 가능 → null 허용.

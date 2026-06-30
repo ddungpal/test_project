@@ -6,7 +6,8 @@ import { setProgress, type Supa } from "../../pipeline/runState.js";
 import type { JsonSchema } from "../../llm/types.js";
 import type { ProposalSource } from "../../lib/dashboard/proposalTypes.js";
 import { TOPIC_SCOUT_SCHEMA, TOPIC_SCOUT_SYSTEM, appendLevelDirective } from "./schema.js";
-import { gatherExternalSignals, type ExternalItem } from "./externalSignals.js";
+import { gatherExternalSignals, rankExternalByMultiplier, type ExternalItem } from "./externalSignals.js";
+import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
 
@@ -76,9 +77,10 @@ export async function prepareTopicScout(
     volatility: keyword ? "slow" : "fast",
   });
   // LLM 입력 토큰 캡 — 소스별로 잘라 YouTube 신호가 web에 묻히지 않게(웹12·유튜브6).
+  //   youtube는 그냥 slice가 아니라 구독 대비 조회수 배수 desc 정렬 후 상위 6 — 플롭(저배수 언더퍼포머) 레퍼런스 노출 방지.
   const external_items = [
     ...gathered.filter((e) => e.source === "web").slice(0, 12),
-    ...gathered.filter((e) => e.source === "youtube").slice(0, 6),
+    ...rankExternalByMultiplier(gathered.filter((e) => e.source === "youtube"), 6, FLOOR_SUBS),
   ];
 
   // 3) 융합 — 댓글 키워드가 외부 결과(제목·스니펫)에도 등장 = 교집합(시청자 수요 ∩ 외부 트렌드).
