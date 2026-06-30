@@ -32,10 +32,11 @@
     {
       "step": 3,
       "name": "case-ui",
-      "status": "error",
+      "status": "completed",
       "started_at": "2026-06-30T12:47:12+0900",
-      "error_message": "[2회 시도 후 실패] Step did not update status [exit 1; stderr tail: ]",
-      "failed_at": "2026-06-30T12:48:50+0900"
+      "completed_at": "2026-06-30T15:00:00+0900",
+      "team_round": "수동 구현(하네스 세션 2회 크래시=환경 리셋·코드 무관)",
+      "summary": "리서치 검수 화면에 case 자산을 '조건 → 결과' 분기 목록으로 노출(순수 프론트). researchView AssetView에 caseAsset:CaseAssetPayload|null 추가 + normalizeCaseAsset 정규화(깨짐/분기<2 null=표시 제외) + 신규 CaseAssetView.tsx(P3 ComparisonAssetTable 미러·grounded=false 분기 흐림+'확인 필요' trus-yellow=money-safety UI·화살표 aria-hidden) + page.tsx 자산 루프 case 분기. 백엔드·SegmentList·ComparisonAssetTable 무변경·TRUS 3색. AC typecheck 0/test 809/build 0."
     }
   ],
   "created_at": "2026-06-30T12:15:36+0900"

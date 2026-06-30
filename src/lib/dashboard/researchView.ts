@@ -34,6 +34,8 @@ export interface AssetView {
   analogy: string | null;
   // comparison 자산일 때만 채워짐(normalizeComparison으로 정규화 — 깨진 payload는 null=표시 제외). number/analogy는 항상 null.
   comparison: ComparisonPayload | null;
+  // case 자산일 때만 채워짐(normalizeCaseAsset으로 정규화 — 깨졌거나 분기<2면 null=표시 제외). 그 외 항상 null.
+  caseAsset: CaseAssetPayload | null;
   sourceFactId: string | null;
   mathVerified: boolean | null;
   distortionChecked: boolean | null;
@@ -170,6 +172,8 @@ export async function getResearchView(runId: string): Promise<ResearchView> {
     analogy: a.analogy,
     // comparison 자산만 payload를 정규화해 담는다(깨졌으면 null → 표시 제외). number/analogy는 항상 null.
     comparison: a.kind === "comparison" ? normalizeComparison(a.payload) : null,
+    // case 자산만 정규화해 담는다(깨졌거나 분기<2면 null → 표시 제외). 그 외 항상 null.
+    caseAsset: a.kind === "case" ? normalizeCaseAsset(a.payload) : null,
     sourceFactId: a.source_fact_id,
     mathVerified: a.math_verified,
     distortionChecked: a.distortion_checked,

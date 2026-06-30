@@ -24,6 +24,7 @@ import { EnterScriptReviewButton } from "@/components/EnterScriptReviewButton";
 import { ScriptReview } from "@/components/ScriptReview";
 import { SegmentList } from "@/components/SegmentList";
 import { ComparisonAssetTable } from "@/components/ComparisonAssetTable";
+import { CaseAssetView } from "@/components/CaseAssetView";
 import { CostPanel } from "@/components/CostPanel";
 import { RunControls } from "@/components/RunControls";
 import { StageStepper } from "@/components/StageStepper";
@@ -247,6 +248,18 @@ function ResearchPanel({ rv }: { rv: ResearchView }) {
                     <span className="text-trus-white/50"> · {a.concept}</span>
                     <div className="mt-2">
                       <ComparisonAssetTable payload={a.comparison} />
+                    </div>
+                  </div>
+                )
+              ) : a.kind === "case" ? (
+                // case 자산(정규화 성공·분기≥2)은 '조건 → 결과' 분기 목록 — 미검증 분기는 CaseAssetView가 '확인 필요'로 강조.
+                //   정규화 실패(caseAsset=null)면 표시 제외(드랍).
+                a.caseAsset && (
+                  <div key={a.id} className="border border-trus-white/15 px-3 py-2 text-xs">
+                    <span className="text-trus-yellow font-bold">분기</span>
+                    <span className="text-trus-white/50"> · {a.concept}</span>
+                    <div className="mt-2">
+                      <CaseAssetView payload={a.caseAsset} />
                     </div>
                   </div>
                 )
