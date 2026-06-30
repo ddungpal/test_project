@@ -4,7 +4,14 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-30(밤3 — 주제발굴 개선 **6 phase 완료**(…·topic-youtube-only·**topic-keyword-spread**). main tip 최신·test 893·typecheck 0·build 0·**push 완료**. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = 라이브 일괄 검증 계속**(아래 "🔬 체크리스트"). 새 주제 런으로 (a)발굴 모드가 top-3 distinct 수요 키워드로 **분산**되는지(쏠림 해소) (b)유튜브 영상만·고조회/반응/배수 우선 (c)로드맵 표·케이스·시각큐. 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+_Last updated: 2026-06-30(밤4 — 주제발굴 개선 6 phase + **제목 시그니처 `title-signature` 완료**. main tip 최신·test 914·typecheck 0·build 0·**push 완료**. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = 라이브 일괄 검증 계속**(아래 "🔬 체크리스트"). 새 런으로 (a)제목에 김짠부 skeleton·시그니처 워딩 실제 사용·약하면 ⚠칩 (b)발굴 모드 top-3 키워드 분산 (c)유튜브 영상만·고배수/반응 (d)로드맵 표·케이스·시각큐. 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+>
+> ## ✅ `title-signature` 완료 (2026-06-30 밤4 — 하네스 2 step, main, test 893→914)
+> **라이브 발견: 제목에 김짠부 후킹·워딩이 안 보임.** 진단=프로필 부재가 **아님** — `title v3` 활성·주입되나 **약하게 따름**(skeleton JSON 덤프·외부 레퍼런스와 경쟁). 1~3번 모두 반영.
+> - **step0 `title-style-mandate`**(#1·#2): `appendTitleStyle`이 skeletons.title을 **강제 템플릿**("1~2개 슬롯 채워 써라")+signature_words/banned 가독 강조로 렌더(3키는 JSON 덤프 제외·없던 프로필은 바이트 동일=해시 보존·`hasUsablePatterns` 가드 유지). "CTR 검증" 과장 문구 정정(raw 제목 기반). `HOOK_MAKER_SYSTEM` 위계 명문화(김짠부 말투·골격·시그니처 **MUST 최우선**·외부 reference_titles_external은 **각도·소재 영감만**·앵글 차별화가 시그니처 희생 금지).
+> - **step1 `title-signature-check`**(#3): 순수 `detectTitleSignatureMissing`(`titleSignature.ts`·signature_words+skeleton 리터럴 토큰을 후보로·제목에 하나도 없으면 missing·**데이터 없으면 중립·크래시0·표시전용**·detectTopicMissing 미러) + stage 부착(생성/promptHash 불변) + proposalTypes + CandidateBody title_thumb ⚠"김짠부 시그니처 약함" 칩(missing만·차단없음·TRUS 3색).
+> - **랜딩**: 코드만 main checkout(라이브 fixture 11개 별도 chore)·NUL 0·규칙제안 0. step0만 hook_maker promptHash 변경→다음 라이브 런 자동 재기록. step1은 사후표시라 불변. 마이그 0.
+> - **▶ 라이브: 새 제목 런으로 skeleton 골격·시그니처 워딩이 실제로 쓰이는지 + 약하면 ⚠칩 뜨는지 확인.**
 >
 > ## ✅ `topic-keyword-spread` 완료 (2026-06-30 밤3 — 하네스 2 step, main, test 884→893)
 > **라이브 발견: 발굴 모드 주제가 한 테마로 쏠림(예적금 종류 4개).** 원인=youtube 검색이 댓글 1위 키워드 **하나**로만 + 직전 topic-youtube-only가 다양성 공급원(웹 트렌드 쿼리) 제거한 회귀 + 프롬프트 "youtube 근거 과반" 강제.
