@@ -51,3 +51,24 @@ export async function approveResearch(supa: Supa, runId: string, approval: Resea
   await transitionRun(supa, runId, "research_review", "research_approved");
   return { state: "research_approved", approved: approveIds.length };
 }
+
+/** 자동 검수 통과(autoflow·§B) — research_ready → research_review → research_approved 전이만.
+ *  ★ 핵심 불변식: research_facts.human_approved를 절대 건드리지 않는다(null 유지 = '미검수·보류').
+ *    approveResearch(human_approved=true 박음)를 호출하지 않는다 — 에스컬레이션 fact의 사람 최종확인은
+ *    Phase 2 스크립트 최종검수로 미룬다(거버넌스 '사람 최종확인'을 가짜로 만들지 않음).
+ *  ★ 멱등: 이미 research_approved면 no-op. research_ready면 review로, research_review면 approved로
+ *    (각 전이 전 현재 state 확인) — durable replay/retry 안전. */
+export async function autoPassResearchReview(supa: Supa, runId: string): Promise<{ state: "research_approved" }> {
+  let run = await getRun(supa, runId);
+  if (run.state === "research_approved") return { state: "research_approved" }; // 멱등
+
+  if (run.state === "research_ready") {
+    await transitionRun(supa, runId, "research_ready", "research_review");
+    run = await getRun(supa, runId);
+  }
+  if (run.state === "research_review") {
+    await transitionRun(supa, runId, "research_review", "research_approved");
+    return { state: "research_approved" };
+  }
+  throw new Error(`자동 검수 통과는 'research_ready'/'research_review'에서만(현재 '${run.state}').`);
+}

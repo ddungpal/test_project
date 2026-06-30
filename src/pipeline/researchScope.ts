@@ -218,6 +218,70 @@ export async function regenerateResearchScope(
   }
 }
 
+// 자동 스코프 선택(정책 나·§A) — autoflow 무중단. 사람 선택 없이 '어차피 검수했을' 후보만 검증대상으로 고른다.
+//   정책: claim이고 is_financial===true / concept이고 (needs_number===true || needs_analogy===true)만 선택.
+//   그 외(비금융 평범 주장·숫자/비유 불필요 개념)는 검증 안 함(출처만) — 에스컬레이션 술어와 같은 범위.
+//   반환: 선택된 candidate의 '전역 idx'(claims가 concepts보다 앞 — buildScopeCandidates 순서 = 금융 우선 자연 정렬).
+//   ★ 깨진 입력 방어: candidates null/undefined·payload 없음·idx 비숫자는 조용히 스킵(throw 금지). 빈 후보→빈 선택.
+//   ponytail: cap(비용 하드캡)은 cell의 costGuard가 강제한다 — 여기선 인위적 개수 컷 없이 '정책 선택'만 한다(우회 금지).
+export function autoSelectScope(candidates: Candidate[]): { claims: number[]; concepts: number[] } {
+  const claims: number[] = [];
+  const concepts: number[] = [];
+  if (!Array.isArray(candidates)) return { claims, concepts };
+  for (const c of candidates) {
+    if (!c || typeof c !== "object") continue;
+    const idx = (c as { idx?: unknown }).idx;
+    if (typeof idx !== "number" || !Number.isFinite(idx)) continue; // idx 숫자 아니면 스킵
+    const payload = (c as { payload?: unknown }).payload;
+    if (!payload || typeof payload !== "object") continue; // payload 없으면 스킵
+    const p = payload as { kind?: unknown; is_financial?: unknown; needs_number?: unknown; needs_analogy?: unknown };
+    if (p.kind === "claim") {
+      if (p.is_financial === true) claims.push(idx);
+    } else if (p.kind === "concept") {
+      if (p.needs_number === true || p.needs_analogy === true) concepts.push(idx);
+    }
+  }
+  return { claims, concepts };
+}
+
+// 자동 scope 전진(§A) — autoSelectScope 결과를 기록하고 research_scoped→researching 전이. 사람 0-guard 미재사용
+//   (자동 흐름은 고위험 0건이면 빈 선택으로 그냥 통과 — 검증할 게 없으면 출처만, 정책대로). selectResearchScope와 동일
+//   기록 형태(chosen_idx=0 센티넬·edited_payload={selectedClaimIdx, selectedConceptIdx}, 빈 배열 허용).
+//   ★ 멱등: state가 research_scoped가 아니면 no-op(retry/durable replay 안전 — 중복 selection insert·이중 전이 금지).
+export async function autoAdvanceResearchScope(supa: Supa, runId: string): Promise<void> {
+  const run = await getRun(supa, runId);
+  if (run.state !== "research_scoped") return; // 멱등: 이미 전진했으면 no-op
+
+  // 최신 stage='research' proposal candidates 로드(runResearchScope 멱등 읽기 미러).
+  const { data: proposal, error: pe } = await supa
+    .from("stage_proposals")
+    .select("id, candidates")
+    .eq("run_id", runId)
+    .eq("stage", "research")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pe) throw new Error(`research proposal 조회 실패: ${pe.message}`);
+  if (!proposal) throw new Error(`run ${runId}에 'research' proposal이 없음(자동 scope 전진 불가).`);
+
+  const candidates = (proposal.candidates as unknown as Candidate[]) ?? [];
+  const selected = autoSelectScope(candidates);
+
+  // selectResearchScope와 동일 형태(빈 배열 허용 — 사람 0-guard 없음).
+  const editedPayload = {
+    selectedClaimIdx: selected.claims,
+    selectedConceptIdx: selected.concepts,
+  } as unknown as Json;
+  const { error: se } = await supa
+    .from("stage_selections")
+    .insert({ proposal_id: proposal.id, chosen_idx: 0, edited_payload: editedPayload })
+    .select("id")
+    .single();
+  if (se) throw new Error(`stage_selections insert 실패: ${se.message}`);
+
+  await transitionRun(supa, runId, "research_scoped", "researching");
+}
+
 // 사람 게이트(§8.1) — 사용자가 고른 scope 후보(claims/concepts) idx 집합을 기록 + research_scoped→researching 전이.
 //   gate.ts selectProposal/confirmThumbnailSet 미러(새 방식 발명 금지):
 //   - research_scoped에서만(아니면 throw), proposal이 이 run·stage='research'에 속하는지 스코프검증.
