@@ -32,7 +32,11 @@
     {
       "step": 3,
       "name": "persona-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-01T04:04:10+0900",
+      "summary": "타겟 페르소나 표시+인라인 편집(UI 마지막 step). proposalTypes.ts: TopicPayload에 target_persona?:string 옵셔널 추가. gate.ts: editSelectedTopic(editSelectedTitle 정확 미러·descriptor만 topic·새 상태전이 없음·확정 후에만). topicRun.ts: editTopicPersona(runId,persona) 액션 — getSelectedStagePayload('topic')로 현재 payload 읽어 {...current, target_persona} 스프레드로 persona만 교체·나머지(title·audience_level·audience_need) 보존, 빈값 throw, auditLog stage_edited. CandidateBody.tsx: topic 분기에 '🎯 타겟:'(주, white/50) + audience_need는 🎯 떼고 '· 욕구:'(보조, white/35)로 위계 분리(이모지 타겟 1개만), 둘 다 && 가드라 옛 후보 회귀 안전. PostConfirmTopicPersonaEdit.tsx 신규: PostConfirmTitleEdit 미러(재생성 폴링 제외)·editTopicPersona 호출·router.refresh·TRUS 3색. page.tsx: StageSection topic 확정 요약에 컴포넌트 배선(title_thumb 대칭). tests/editTopicPersona.test.ts 9개(불변식·확정가드·라운드트립). typecheck 0/test 979/build 0. 마이그 0, 촉이·구다리·짠펜 백엔드 미변경. edited_payload 우선 반환으로 편집 persona가 구다리·짠펜에 자동 전파 → 페르소나 phase 4 step 전부 완료.",
+      "completed_at": "2026-07-01T04:17:12+0900"
     }
   ],
   "created_at": "2026-07-01T03:35:12+0900"
