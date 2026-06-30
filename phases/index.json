@@ -284,6 +284,10 @@
       "dir": "research-autoflow-pipeline",
       "status": "completed",
       "completed_at": "2026-07-01T01:06:45+0900"
+    },
+    {
+      "dir": "script-review-inline-facts",
+      "status": "pending"
     }
   ]
 }
