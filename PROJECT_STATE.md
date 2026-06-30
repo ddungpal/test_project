@@ -4,7 +4,13 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-30(밤4 — 주제발굴 개선 6 phase + **제목 시그니처 `title-signature` 완료**. main tip 최신·test 914·typecheck 0·build 0·**push 완료**. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = 라이브 일괄 검증 계속**(아래 "🔬 체크리스트"). 새 런으로 (a)제목에 김짠부 skeleton·시그니처 워딩 실제 사용·약하면 ⚠칩 (b)발굴 모드 top-3 키워드 분산 (c)유튜브 영상만·고배수/반응 (d)로드맵 표·케이스·시각큐. 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+_Last updated: 2026-06-30(밤5 — **레퍼런스 롱폼 제한 `longform-refs` 완료**(숏폼 컷·기준 5분). main tip 최신·test 929·typecheck 0·build 0·**로컬 커밋(push 안 함)**. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = 라이브 일괄 검증 계속**(아래 "🔬 체크리스트"). 새 런으로 (a)제목에 김짠부 skeleton·시그니처 워딩 실제 사용·약하면 ⚠칩 (b)발굴 모드 top-3 키워드 분산 (c)유튜브 영상만·고배수/반응 (d)로드맵 표·케이스·시각큐. 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+>
+> ## ✅ `longform-refs` 완료 (2026-06-30 밤5 — 하네스 1 step·Joy 1라운드 PASS, main, test 914→929)
+> **사용자 요구(라이브 검증): 유튜브 레퍼런스에 숏폼이 롱폼과 섞여 들어옴 — 김짠부는 롱폼만 찾음.** 근본원인=`searchYouTube`가 `type:video`만 쓰고 길이를 안 봄. 모든 외부 레퍼런스(주제·제목·썸네일)가 거치는 **단일 지점** 1곳 수정.
+> - **step0 `shorts-filter`**: `externalSignals.ts`에 순수헬퍼 `parseISODurationSec`(ISO8601 PT#H#M#S→초·미상 null·throw 0)·`isLongform`(`null || >SHORTS_MAX_SEC=300`). `VideoStats.durationSec` 추가, `fetchVideoStats` part를 `statistics,contentDetails`로 확장해 duration 파싱(best-effort 유지). `searchYouTube`가 통계 보강 직후 map 전에 `isLongform` 필터 — **길이 미상(stats quota 실패)은 통과시켜 풀 전멸 방지**(null-stats는 viewCount null이라 다운스트림 자연 후순위/제외). 2패스 union·통계·구독자·썸네일·sourceQuery 매핑 불변. tests/longformFilter.test.ts 15(경계값은 SHORTS_MAX_SEC 상수 기준). **기준=5분**(사용자가 180→300 상향).
+> - **랜딩**: 코드+테스트만 main 격리 checkout(feat 2844f2e + chore 메타). **stray fixture 1개**(topic_scout/964a43c27375de3d.json — 세션시작부터 untracked였던 무관 replay 캐시)가 하네스 `git add -A`로 feat에 딸려갔으나 main에서 제외(feat 히스토리에만 잔존·$0 재생성). promptHash 불변(fixture 재기록 불필요). 마이그 0·규칙제안 0. **push 안 함.**
+> - **▶ 라이브: 새 주제/제목/썸네일 런으로 숏폼(≤5분)이 레퍼런스에서 사라지는지 확인.**
 >
 > ## ✅ `title-signature` 완료 (2026-06-30 밤4 — 하네스 2 step, main, test 893→914)
 > **라이브 발견: 제목에 김짠부 후킹·워딩이 안 보임.** 진단=프로필 부재가 **아님** — `title v3` 활성·주입되나 **약하게 따름**(skeleton JSON 덤프·외부 레퍼런스와 경쟁). 1~3번 모두 반영.
