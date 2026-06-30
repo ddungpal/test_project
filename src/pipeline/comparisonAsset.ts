@@ -148,3 +148,23 @@ export function tableSectionsOf(structure: unknown): { section: string; goal: st
   }
   return out;
 }
+
+/**
+ * structure(getSelectedStagePayload 결과)에서 format==='case'인 outline 섹션만 추출한다(순수·결정적).
+ * 분기가는 이 섹션들에 대해서만 케이스 분기 자산을 만든다(case 0개면 분기가 호출 자체를 안 함 → 기존 런 동작·비용 불변).
+ * 방어적: structure/outline 형태가 깨졌어도 throw하지 않고 빈 배열(outline이 배열 아니면 [], 항목이 객체 아니면 skip). tableSectionsOf 미러.
+ */
+export function caseSectionsOf(structure: unknown): { section: string; goal: string }[] {
+  if (typeof structure !== "object" || structure === null) return [];
+  const outline = (structure as Record<string, unknown>).outline;
+  if (!Array.isArray(outline)) return [];
+  const out: { section: string; goal: string }[] = [];
+  for (const s of outline) {
+    if (typeof s !== "object" || s === null) continue;
+    const sec = s as Record<string, unknown>;
+    if (sec.format !== "case") continue;
+    if (typeof sec.section !== "string") continue;
+    out.push({ section: sec.section, goal: typeof sec.goal === "string" ? sec.goal : "" });
+  }
+  return out;
+}

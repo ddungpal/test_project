@@ -15,10 +15,13 @@ import { numbersStep } from "../agents/numbers/step.js";
 import { analogyStep } from "../agents/analogist/step.js";
 import { criticStep } from "../agents/critic/step.js";
 import { comparatorStep } from "../agents/comparator/step.js";
-import { tableSectionsOf } from "./comparisonAsset.js";
+import { caseMinerStep } from "../agents/case_miner/step.js";
+import { aggregateCommentSignals } from "../agents/topic_scout/commentSignals.js";
+import { tableSectionsOf, caseSectionsOf } from "./comparisonAsset.js";
 import type { NumbersOutput } from "../agents/numbers/schema.js";
 import type { AnalogistOutput } from "../agents/analogist/schema.js";
 import type { ComparatorOutput } from "../agents/comparator/schema.js";
+import type { CaseMinerOutput } from "../agents/case_miner/schema.js";
 import type { CriticOutput } from "../agents/critic/schema.js";
 import type { ResearchFactContext } from "../agents/numbers/step.js";
 import type { LlmBackendDriver } from "../llm/types.js";
@@ -130,12 +133,32 @@ export async function runResearchCell(
     tableSections.length > 0
       ? comparatorStep(llm, runId, { sections: tableSections, facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as ComparatorOutput["assets"]; })
       : Promise.resolve([] as ComparatorOutput["assets"]);
-  const [numSettled, anaSettled, cmpSettled] = await Promise.all([Promise.allSettled([numPs]), Promise.allSettled([anaPs]), Promise.allSettled([cmpPs])]);
-  await throwIfCapRejected([...numSettled, ...anaSettled, ...cmpSettled], supa, runId, run.cost_usd, ledger);
+  // 분기가 — outline에 format='case' 섹션이 있을 때만 셈이·유이·비교가와 병렬로 실행. case 0개면 호출·댓글 로드 둘 다 안 함
+  //   → 기존 런 동작·비용 영향 0(조건부 추가). ★ governance C안: 댓글 원문(body)은 코드 안에서만 쓰고 버린다 — 분기가엔 집계 신호만 전달.
+  const caseSections = caseSectionsOf(structure);
+  let casePs: Promise<CaseMinerOutput["assets"]> = Promise.resolve([] as CaseMinerOutput["assets"]);
+  if (caseSections.length > 0) {
+    // 댓글 본문 로드(redacted 제외, prepare.ts 패턴 미러). 본문은 여기서 코드 집계 후 버린다(거버넌스 C — LLM에 비전송).
+    const { data: comments, error: ce } = await supa
+      .from("comments_raw")
+      .select("body, like_count")
+      .is("redacted_at", null)
+      .not("body", "is", null)
+      .limit(5000);
+    if (ce) throw new Error(`comments_raw 조회 실패: ${ce.message}`);
+    const keyword = ((await getSelectedStagePayload(supa, runId, "topic")) as { title?: string } | null)?.title ?? null;
+    // 코드 집계: question_comment_count·keyword_signals만 추출(원문 body는 분기가에 절대 넘기지 않는다).
+    const agg = aggregateCommentSignals(comments ?? [], { keyword });
+    const commentSignals = { question_comment_count: agg.question_comment_count, keyword_signals: agg.keyword_signals };
+    casePs = caseMinerStep(llm, runId, { sections: caseSections, facts: factContext, commentSignals }).catch((e) => { if (isCapError(e)) throw e; return [] as CaseMinerOutput["assets"]; });
+  }
+  const [numSettled, anaSettled, cmpSettled, caseSettled] = await Promise.all([Promise.allSettled([numPs]), Promise.allSettled([anaPs]), Promise.allSettled([cmpPs]), Promise.allSettled([casePs])]);
+  await throwIfCapRejected([...numSettled, ...anaSettled, ...cmpSettled, ...caseSettled], supa, runId, run.cost_usd, ledger);
   const numberAssets = numSettled[0]!.status === "fulfilled" ? numSettled[0]!.value : [];
   const analogyAssets = anaSettled[0]!.status === "fulfilled" ? anaSettled[0]!.value : [];
   const comparisonAssets = cmpSettled[0]!.status === "fulfilled" ? cmpSettled[0]!.value : [];
-  const assetRows = buildAssetRows(runId, numberAssets, analogyAssets, comparisonAssets);
+  const caseAssets = caseSettled[0]!.status === "fulfilled" ? caseSettled[0]!.value : [];
+  const assetRows = buildAssetRows(runId, numberAssets, analogyAssets, comparisonAssets, caseAssets);
 
   // 7) 반론(critic) — 확증편향 차단.
   await setProgress(supa, runId, "5/5·반론 (확증편향 차단)");

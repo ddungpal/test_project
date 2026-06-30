@@ -6,7 +6,9 @@ import type { VerifyClaimResult } from "../agents/fact_verifier/step.js";
 import type { NumbersOutput } from "../agents/numbers/schema.js";
 import type { AnalogistOutput } from "../agents/analogist/schema.js";
 import type { ComparatorOutput } from "../agents/comparator/schema.js";
+import type { CaseMinerOutput } from "../agents/case_miner/schema.js";
 import { normalizeComparison } from "./comparisonAsset.js";
+import { normalizeCaseAsset } from "./caseAsset.js";
 import type { Json } from "../lib/supabase/database.types.js";
 
 /** "a * b = c" 형태 검산. 안전 문자만 매칭 후 평가. 통과=true/실패=false/판별불가=null. */
@@ -89,7 +91,7 @@ export function reconcileFacts(runId: string, facts: VerifyClaimResult[], asOfDa
 export interface AssetRow {
   run_id: string;
   concept: string;
-  kind: "number" | "analogy" | "comparison";
+  kind: "number" | "analogy" | "comparison" | "case";
   numeric_example?: string;
   analogy?: string;
   payload?: Json; // 비교 자산(kind='comparison') — normalizeComparison 통과한 ComparisonPayload. step0이 DB payload(jsonb) 컬럼 추가.
@@ -106,6 +108,7 @@ export function buildAssetRows(
   numberAssets: NumbersOutput["assets"],
   analogyAssets: AnalogistOutput["assets"],
   comparisonAssets: ComparatorOutput["assets"] = [],
+  caseAssets: CaseMinerOutput["assets"] = [],
 ): AssetRow[] {
   return [
     ...numberAssets.map((a) => ({
@@ -129,6 +132,17 @@ export function buildAssetRows(
       return [{
         run_id: runId, concept: a.concept, kind: "comparison" as const, payload: payload as unknown as Json,
         created_by: "comparator", used_in_script: false,
+      }];
+    }),
+    // ★ 분기가(case_miner) — comparison 패턴 미러. normalizeCaseAsset이 null(branches<2·깨짐)이면 그 자산은 드랍(row 미생성 — money-safety).
+    //   grounded는 normalizeCaseAsset이 그대로 보존(comparison의 grounded→verified 매핑과 달리 case payload는 grounded 필드 유지).
+    ...caseAssets.flatMap((a) => {
+      const payload = normalizeCaseAsset({ intro: a.intro, branches: a.branches });
+      if (!payload) return [];
+      // CaseAssetPayload는 런타임상 Json 호환(중첩 string/boolean/배열)이나 인덱스 시그니처가 없어 캐스팅.
+      return [{
+        run_id: runId, concept: a.concept, kind: "case" as const, payload: payload as unknown as Json,
+        created_by: "case_miner", used_in_script: false,
       }];
     }),
   ];

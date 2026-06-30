@@ -26,6 +26,8 @@ export const ROLES = {
   analogist: { roleId: "analogist", name: "유이", defaultModel: "opus", tools: [] },
   // 비교가 — 검증된 사실만 entity×dimension×cell 비교로 구조화(§7·§10). web/fetch 없음: 새 사실 생성·인젝션 차단(검증 후 형제). roleId 영구.
   comparator: { roleId: "comparator", name: "비교가", defaultModel: "opus", tools: [] },
+  // 분기가 — 검증된 사실 + 댓글 집계 신호(원문 비전송)로 '상황→결과' 케이스 분기 구조화(§7·§10·governance C). web/fetch/code 없음: 새 사실 생성·인젝션 차단(검증 후 형제), 댓글 원문 미수신. roleId 영구.
+  case_miner: { roleId: "case_miner", name: "분기가", defaultModel: "opus", tools: [] },
   critic: { roleId: "critic", name: "반론", defaultModel: "opus", tools: ["web", "fetch"] },
   scribe: { roleId: "scribe", name: "짠펜", defaultModel: "opus", tools: [] }, // web/fetch 없음(§10). 골든 A/B(2026-06-23): Opus 4.8 > GPT-5.5 → 말투 품질 우선 opus.
   // 학습 작업(파이프라인 단계 아님) — corpus 위에서 1회 도는 말투 추출(§12). 짠펜이 의존하는 자산 생성.
