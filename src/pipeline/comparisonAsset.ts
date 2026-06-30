@@ -5,6 +5,8 @@
 //   stray 흡수: 명시 필드만 추려 반환하고 알 수 없는 추가 필드는 버린다(segmentBlock.ts 철학 미러).
 //   ⚠ 이 모듈은 P3 comparison-table의 데이터 레일 — 생성(comparator)=step1, 짠펜 연결=step2, UI=step3.
 
+import { normalizeCaseAsset, type CaseAssetPayload } from "./caseAsset.js";
+
 export interface ComparisonCell {
   dimension: string; // 비교 차원(예: "가입조건")
   entity: string; // 비교 대상(예: "청년도약계좌")
@@ -81,7 +83,8 @@ export interface AssetRowForScribe {
 
 /**
  * money 게이트: 이 자산을 대본에 넣어도 되는지(검증 완료 여부) 판정한다.
- *   number→math_verified, analogy→distortion_checked, comparison→normalizeComparison 유효, 그 외→false.
+ *   number→math_verified, analogy→distortion_checked, comparison→normalizeComparison 유효,
+ *   case→normalizeCaseAsset 유효(구조 깨지거나 분기<2면 드랍), 그 외→false.
  * 순수 predicate(부수효과 없음).
  */
 export function isAssetUsable(a: AssetRowForScribe): boolean {
@@ -91,25 +94,28 @@ export function isAssetUsable(a: AssetRowForScribe): boolean {
       ? a.distortion_checked === true
       : a.kind === "comparison"
         ? normalizeComparison(a.payload) !== null
-        : false;
+        : a.kind === "case"
+          ? normalizeCaseAsset(a.payload) !== null
+          : false;
 }
 
 // 짠펜에 넘어가는 자산 입력 한 건의 형태.
 //   number/analogy: 기존 그대로(payload 미포함) — promptHash 영향 최소화.
 //   comparison: payload(정규화된 ComparisonPayload)를 함께 전달 — 짠펜이 entities/dimensions/cells로 표를 만든다.
+//   case: payload(정규화된 CaseAssetPayload — branches+grounded)를 함께 전달 — 짠펜이 검증된 분기를 그대로 옮긴다.
 export interface ScribeAssetInput {
   idx: number;
   concept: string;
   kind: string;
   numeric_example: string | null;
   analogy: string | null;
-  payload?: ComparisonPayload;
+  payload?: ComparisonPayload | CaseAssetPayload;
 }
 
 /**
  * 게이트를 통과한 자산만 추려 짠펜 입력(assetsInput)으로 빌드한다(순수·결정적).
  *   - 반환 배열의 인덱스(idx)는 게이트 통과 순서 = scriptCell의 lineage 매핑(assets[ai]) 인덱스와 일치한다.
- *   - comparison만 payload를 포함(normalizeComparison 재호출 — 게이트와 일관, non-null 보장).
+ *   - comparison/case만 payload를 포함(정규화 재호출 — 게이트와 일관, non-null 보장).
  *   - number/analogy-only 입력에선 기존과 동일한 모양(payload 키 없음)을 보장한다.
  */
 export function buildAssetsInput(rows: AssetRowForScribe[]): ScribeAssetInput[] {
@@ -123,6 +129,9 @@ export function buildAssetsInput(rows: AssetRowForScribe[]): ScribeAssetInput[] 
     };
     if (a.kind === "comparison") {
       const payload = normalizeComparison(a.payload);
+      if (payload) base.payload = payload; // 게이트 통과면 non-null 보장. 방어적 가드.
+    } else if (a.kind === "case") {
+      const payload = normalizeCaseAsset(a.payload);
       if (payload) base.payload = payload; // 게이트 통과면 non-null 보장. 방어적 가드.
     }
     return base;

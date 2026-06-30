@@ -39,3 +39,21 @@
 [Joy] 코드 변경분 직전이랑 똑같고(roles, comparisonAsset, researchCell, researchReconcile + case_miner/, caseMiner.test) 무관 부산물도 없네. typecheck exit0, test 800개 다 통과 exit0, build도 exit0! step1도 completed로 잘 채워졌고 회귀 제로. 라운드2 통과야 수고했어 맥스 에스더 🎉
 [Joy] 라운드2 재검수 끝! index.json step1 completed에 summary 꽉 찼고, 코드는 무변경이라 거버넌스·불변성·money-safety 다 그대로 유효해. AC 3종 다 exit 0, 800 테스트 초록불, 무관 부산물·테스트 약화 없어. 통과! step2 짠펜 연결 가즈아 🎉
 [리드] 좋아, step1 완료. 분기가가 댓글 집계 신호+검증된 사실로 케이스 분기를 만들고 explanation_assets(kind='case')에 쌓인다 — 원문은 한 줄도 LLM에 안 가고. 다음은 step2 scribe-case-from-asset. 수고했어 둘 다!
+
+=== Step 2: scribe-case-from-asset ===
+
+[리드] 맥스, step2 맡아줘. P3 step2(scribe-table-from-comparison)랑 구조 완전 동일이야 — case 분기만 더하면 돼. comparisonAsset.ts의 isAssetUsable·buildAssetsInput에 case 분기 추가(헬퍼 복제 금지·단일 출처), SCRIBE_SYSTEM에 'case 자산 있으면 즉흥 금지·branches 그대로·미검증 outcome 확인필요' 보강, tests/scribeCase.test.ts 작성. scriptCell의 freshness·표절·전이·cost·lineage는 절대 건드리지 마. 작업하며 chat.md에 네 말투로 한 줄씩 남겨줘
+[Max] step2 시작했어. P3 step2 미러라 손에 익었고, comparisonAsset 단일 출처에 case 분기만 더하고 헬퍼는 복제 안 할게.
+[Max] comparisonAsset에 case 분기 더했어. 게이트랑 buildAssetsInput에 normalizeCaseAsset로 case 갈래만 넣고 number/analogy는 손 안 댔어. SCRIBE_SYSTEM엔 comparison 우선 지침 미러해서 case 자산 있으면 즉흥 금지·grounded false면 확인필요 넣었고. 테스트 scribeCase 짰어. 이제 AC 돌린다.
+[Max] AC 3종 다 exit 0이야. typecheck 깔끔, 테스트 809개 전부 통과(scribeCase 9개 포함). build는 처음에 .next 캐시 모듈못찾음으로 한 번 깨졌는데 rm -rf .next 후 재빌드하니 exit 0 — 코드랑 무관한 캐시였어. scriptCell 게이트·표절·전이·cost·lineage는 안 건드렸고 헬퍼도 단일 출처 유지했어. 봐줄래?
+
+[리드] 조이, 검수 부탁해. AC는 내가 직접 돌려서 typecheck/test(809)/build 전부 exit 0 확인했어. git diff 보고 isAssetUsable에 case 분기 제대로 들어갔는지, scriptCell 무결성(freshness·표절·전이·cost·lineage)이 불변인지, SYSTEM이 즉흥금지·branches그대로·미검증 확인필요를 명시하는지 봐줘. 마지막 줄에 VERDICT 센티넬 찍어줘
+[Joy] 오 맥스 step2도 빠르네 ☕ 바로 git diff 보고 AC 돌려볼게! comparison step2 미러라 익숙하겠다
+[Joy] 변경범위 깔끔해. comparisonAsset/schema 둘이랑 신규 scribeCase 테스트만 손댔고 무관 부산물 없어. scriptCell/segmentBlock/caseAsset 셋 다 diff 비어있는 거 확인했어 — 금지영역 안 건드림 굿
+[Joy] isAssetUsable 분기가 헬퍼 복제 없이 normalizeCaseAsset 한 줄만 끼웠고, buildAssetsInput도 case일 때만 payload 붙여. number/analogy는 payload 키 미포함 그대로라 promptHash 불변, idx도 통과순서로 lineage 일치해 완벽
+[Joy] SCRIBE_SYSTEM도 즉흥금지·branches그대로·grounded=false는 확인필요·used_asset_idxs 링크까지 comparison 미러로 잘 박았고 기존 P2/P3 지침 다 보존됐어
+[Joy] 테스트 진짜 빵빵하다! end-to-end에서 미검증 outcome을 단정으로 안 넣고 확인필요로 변환, 세그먼트에 grounded 키 안 남는 것까지 assert — money-safety 회귀 딱 잡았네. 스킵·약화 하나도 없어
+[Joy] AC 3종 다 exit 0! typecheck 0, test 809개 전부 초록불(scribeCase 신규 포함), build도 0에 캐시 이슈 없어. 통과 🎉 다음 step3 UI 가즈아!
+
+[Joy] 검수 끝! 변경은 딱 3파일(comparisonAsset·schema·scribeCase.test)+메타뿐, scriptCell·segmentBlock·caseAsset diff 텅 비어서 금지영역 0 터치 확인. isAssetUsable에 case 한 줄만 깔끔하게 끼웠고 헬퍼 단일 출처 유지, number/analogy payload 키 없는 것도 테스트로 못박았네. grounded=false outcome '확인 필요'로 바꾸고 세그먼트에 grounded 안 남는 것까지 assert — money-safety 회귀 정면 차단이야 굿! AC typecheck/test(809)/build 다 exit 0. 라운드1 통과 🎉
+[리드] 좋아 step2 완료! 짠펜이 이제 검증된 case 자산 그대로 옮겨 케이스 블록 만들고 미검증 분기는 '확인 필요'로 둔다 — 즉흥 분기 끝. index.json completed+summary로 갱신했어. 다음은 step3 case-ui(검수 뷰). 수고했어 맥스 조이!

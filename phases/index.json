@@ -233,11 +233,11 @@
     {
       "dir": "case-branching",
       "status": "running",
-      "progress": "1/4",
-      "running_step": "1 (case-miner-agent)",
+      "progress": "2/4",
+      "running_step": "2 (scribe-case-from-asset)",
       "attempt": 1,
-      "elapsed_seconds": 840,
-      "heartbeat_at": "2026-06-30T12:39:10+0900"
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-06-30T12:46:20+0900"
     }
   ]
 }
