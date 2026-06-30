@@ -1,0 +1,31 @@
+{
+  "project": "produce script",
+  "phase": "case-branching",
+  "steps": [
+    {
+      "step": 0,
+      "name": "case-asset-schema",
+      "status": "completed",
+      "started_at": "2026-06-30T12:15:36+0900",
+      "completed_at": "2026-06-30T12:25:10+0900",
+      "team_round": "2/3 PASS",
+      "summary": "마이그31(explanation_assets.kind CHECK +'case', payload는 마이그30 재사용·중복 금지) + 순수 normalizeCaseAsset(branches<2→null·grounded 비-boolean→false 폴백·throw 0) + database.types kind union +'case' + caseAsset.test 9케이스. AC typecheck/test/build 전부 exit 0."
+    },
+    {
+      "step": 1,
+      "name": "case-miner-agent",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "scribe-case-from-asset",
+      "status": "pending"
+    },
+    {
+      "step": 3,
+      "name": "case-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-06-30T12:15:36+0900"
+}
