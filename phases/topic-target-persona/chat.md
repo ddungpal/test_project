@@ -25,3 +25,19 @@
 [Joy] 회귀 가드(케이스 E) 진짜 잠그는지 코드 일부러 깨봤거든? 조건부를 무조건 주입으로 바꾸니까 딱 그 테스트만 빨갛게 떴어. 껍데기 아니고 진짜 불변식 지켜줌 굿굿
 [Joy] 같은 getSelectedStagePayload('topic') 한 번 호출에서 title이랑 persona 같이 꺼내고, 마이그 0, scribe/UI/촉이 안 건드림. step2(짠펜)는 따로 남겨둔 거 맞고. 깔끔하다 통과 🎉
 [리드] 좋아, 1라운드 PASS. Step 1 완료 처리한다. 이제 구다리가 선택된 주제 페르소나를 읽어 목차를 그 대상에 맞춰 짜고, persona 없는 옛 주제는 input 바이트 그대로라 기존 픽스처도 안전해. 다음은 step2 짠펜(scribe) — 같은 패턴으로 스크립트까지 페르소나 전파하면 돼. 맥스·조이 수고했어.
+
+=== Step 2: scribe-persona ===
+[리드] 마지막 전파 단계 가자. 이번엔 짠펜(scribe) 차례야. step0에서 촉이가 심은 target_persona를, 짠펜도 같은 getSelectedStagePayload("topic")로 꺼내서 스크립트 톤·예시·어휘를 그 대상한테 직접 말 걸듯 맞추는 거. 단 짠펜 픽스처는 골든 A/B에 opus라 더 민감하니까, persona 없으면 input은 물론 system까지 바이트 그대로여야 해(promptHash 보존). step1처럼 input 조건부 + system도 persona 있을 때만 한 줄 append하는 방식으로. 말투/money-safety/형식 규칙은 절대 안 건드리고. 맥스, 맡아줄래?
+[Max] 맡을게. scriptCell, step, schema 셋 다 봤어. 구다리랑 다른 점은 짠펜은 system 합성을 step.ts에서 한다는 거. 그래서 SCRIBE_SYSTEM 본문은 그대로 두고 SCRIBE_PERSONA_DIRECTIVE 별도 상수를 만들어서 persona 있을 때만 한 줄 append하는 방식으로 갈게. callLLM input에도 persona 있을 때만 넣고. 없으면 system도 input도 바이트 그대로. fake driver로 캡처하는 테스트부터 짜고 red 확인할게.
+[Max] 테스트 먼저 짜서 red 확인했어. fake driver로 scribeStep이 callLLM에 넘기는 system이랑 input을 캡처해서, persona 있을 때 input에 실리고 system에 지시 붙는지(A), 없을 때 키 없고 system이 SCRIBE_SYSTEM 바이트 동일인지(B 회귀 가드), 빈 문자열은 주입 안 하는지(C), 지시가 별도 상수로 본문에 안 섞였는지(D) 네 케이스.
+[Max] 구현 끝. schema에 SCRIBE_PERSONA_DIRECTIVE 별도 상수 추가했고(SCRIBE_SYSTEM 본문은 한 글자도 안 건드림), step.ts에서 persona truthy일 때만 system 뒤에 한 줄 append + input에 키 포함. 없으면 둘 다 바이트 그대로. scriptCell은 같은 getSelectedStagePayload('topic')로 persona 꺼내서 있을 때만 scribeStep에 넘겨. 그 테스트 4개 다 통과. AC 전체 돌려볼게.
+[Max] AC 셋 다 통과. typecheck 0, 테스트 970개 전부 통과(신규 4개 포함), build도 0. 이번엔 build가 캐시 이슈 없이 한 번에 깨끗하게 됐어. 짠펜 골든 픽스처는 persona 없는 경로 system/input 바이트 보존이라 안 깨졌고.
+[Max] 정리하면 짠펜도 이제 주제 payload의 target_persona를 읽어서, persona 있을 때만 그 대상한테 직접 말 걸듯 예시·어휘를 맞춰. 말투·money-safety·형식 블록 규칙은 안 건드렸고 persona는 맥락만 더하는 보조 신호라고 지시에 못박았어. persona 없으면 system도 input도 바이트 그대로라 promptHash 보존돼. 건드린 건 scriptCell.ts, step.ts, schema.ts, 배선 테스트 하나뿐이야. 놓친 거 있으면 말해줘.
+[Joy] 오 맥스 step2 짠펜 페르소나 받았다~ git diff부터 보고 typecheck/test/build 3종 바로 돌려볼게!
+[Joy] typecheck 0, test 970 다 통과! 그리고 회귀가드 진짠지 보려고 일부러 무조건주입으로 깨봤는데 케이스 B/C가 딱 빨개졌다가 원복했어. 껍데기 아니고 진짜 잠겨있네 굿굿
+[Joy] build도 exit 0 깔끔! SCRIBE_SYSTEM 본문 한 글자도 안 건드렸고 directive 별도 상수로 잘 뺐어. canonicalize가 키 정렬해서 input 재조립해도 해시 안전한 것도 확인했고. 범위도 scribe/scriptCell/test 딱 세 개라 군더더기 없음. 맥스 이번 거 진짜 교과서다, 통과! 🎉
+[리드] 조이, 짠펜 검수 부탁해. AC는 내가 다 돌려봤어 — typecheck 0, test 970 통과, build 0(이번엔 캐시 이슈 없이 한 번에). 특히 persona 없을 때 system까지 바이트 동일인지(골든 픽스처 보존) 회귀 가드가 진짜 잠겼는지 봐줘.
+[Joy] 오 짠펜이면 골든 픽스처 걸려있으니 더 꼼꼼히 봐야지. AC 3종 다시 돌리고 회귀 가드 뮤테이션으로 깨볼게!
+[Joy] AC 셋 다 exit 0 재현됐고 970 통과. 조건부를 무조건 주입으로 일부러 깨보니까 케이스 B(system 바이트 동일)랑 C(빈 문자열) 딱 그것만 빨갛게 떴어. 원복하니 초록불. 껍데기 아니고 진짜 promptHash 불변식 잠금이야.
+[Joy] SCRIBE_SYSTEM 본문은 한 글자도 안 변했고 persona 지시는 별도 상수로 깔끔하게 분리됐어. 말투·money-safety·형식·lineage도 안 건드림, persona는 맥락만 더하는 보조 신호라고 못박았네. 마이그 0, 촉이·구다리·UI 미변경. 통과 🎉
+[리드] 좋아, 1라운드 PASS. Step 2 완료 처리한다. 이제 타겟 페르소나가 촉이(생성)→구다리(목차)→짠펜(스크립트)까지 파이프라인 전체에 전파돼. persona 없는 옛 런은 어디서도 input/system 바이트 그대로라 기존 골든 픽스처 다 안전하고. 남은 건 step3 persona-ui — 화면에 표시하고 편집하는 거. 맥스·조이 수고했어!

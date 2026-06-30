@@ -52,6 +52,8 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
   if (re) throw new Error(`run content_id 조회 실패: ${re.message}`);
   const contentId = runRow.content_id;
   const structure = await getSelectedStagePayload(supa, runId, "structure");
+  // target_persona(전파): 선택된 주제 payload에 실린 시청 대상 한 줄 — 있으면 짠펜에 전달(조건부). edited_payload 우선 반환이라 사람 수정본이 흐른다.
+  const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { target_persona?: string } | null;
   const tone = await getToneProfile(supa);
 
   // 사용 가능 fact = 명시 반려(human_approved=false)만 배제(= true·null 허용).
@@ -102,7 +104,10 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
   await setProgress(supa, runId, "1/2·대본 작성 (짠펜)");
   // AX 단계 전환(§14): 기본(AX_STAGES 미설정)=빈 Set → tone?.components ?? null 그대로(바이트 불변·픽스처 보존).
   const toneInjection = resolveToneInjection("script", tone?.components ?? null, parseAxStages());
-  const scribe = await scribeStep(llm, runId, { tone: toneInjection, outline: structure, facts: factsInput, assets: assetsInput });
+  const scribeInput: { tone: unknown; outline: unknown; facts: unknown; assets: unknown; target_persona?: string } = { tone: toneInjection, outline: structure, facts: factsInput, assets: assetsInput };
+  // persona 있을 때만 키 포함(없으면 scribeStep input/system 바이트 불변 → promptHash 보존).
+  if (topicPayload?.target_persona) scribeInput.target_persona = topicPayload.target_persona;
+  const scribe = await scribeStep(llm, runId, scribeInput);
   const segments = [...scribe.segments].sort((a, b) => a.ord - b.ord);
 
   // 3) 표절 가드 — 코퍼스 대비 포함도.
