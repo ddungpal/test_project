@@ -1,0 +1,12 @@
+{
+  "promptHash": "a6b5c6b0ffa5f3fe718a21cfcbea2e534d8f0d600d569f4615ca7d53745cd3fc",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://www.a-ha.io/questions/4657d40081027f018652ce8a693caa7e\",\"quote_excerpt\":\"ROC는 배당처럼 현금을 지급하지만 회사의 이익에서 나온 것이 아니라 투자자의 원금 중 일부를 돌려주는 것입니다.\",\"citation_verified\":true,\"independent_origin_count\":2,\"misleading_check\":\"claim은 'ROC(원금환급)'와 '주가 하락으로 분배율이 높아 보이는 현상'을 한 문장으로 묶었으나, 둘은 별개 메커니즘이다. ROC는 분배 재원을 원금에서 충당하는 회계·세무상 분류이고, 주가 하락에 따른 분배율 착시는 분모(가격) 하락 효과다. 결론(높은 분배율≠이득)은 타당하나 두 개념이 다소 혼용됨.\",\"freshness\":\"fresh\",\"reasoning\":\"a-ha.io의 다수 전문가 답변과 네이버 블로그(TIGER ETF 공식블로그, lifesimple 등)가 'ROC = 회사 이익이 아닌 투자자 원금의 일부 반환'이라는 점, 그리고 분배율이 높아도 실제 이득이 아닐 수 있다는 점을 일치되게 설명한다. 서로 다른 발행처(a-ha.io, naver 블로그) 2곳 이상에서 claim을 뒷받침하는 실재 문장이 확인되어 verified로 판정. 다만 출처가 모두 블로그·Q&A 등급(primary/press 부재)이어서 source_tier는 blog로 보수 처리했다. TIGER 공식블로그 글은 2025.8자로 시점이 최근이다.\"}",
+  "usage": {
+    "inTok": 2671,
+    "outTok": 208,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T15:08:08.634Z"
+}

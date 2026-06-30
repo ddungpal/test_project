@@ -1,0 +1,12 @@
+{
+  "promptHash": "1e337a5626b62b3f64f6e39b5c3356670465c58e532cb8180256ad9d9f346c3e",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"'월배당 ETF'라는 명칭은 통상 월 단위 분배를 표방하나, 실제 지급 여부·금액은 운용사 정책과 분배재원에 따라 달라질 수 있어 '매달 반드시 지급'은 단정하기 어려움. 다만 제공된 검색결과로는 검증 자체가 불가.\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과는 금융투자업규정(law.go.kr), DART 전자공시 메인, 국세청 지급명세서 프로그램 등으로 모두 월배당 ETF의 분배금 지급 주기와 무관하거나 메뉴·바이너리 더미성 텍스트에 가깝다. claim('월배당 ETF는 분배금을 매달 지급한다')을 직접 뒷받침하는 실재 문장이 어떤 결과에도 없으며, 그대로 발췌할 인용도 존재하지 않는다. 따라서 근거를 찾지 못한 것으로 보아 could_not_verify로 판정하고 citation_verified=false 처리한다.\"}",
+  "usage": {
+    "inTok": 2172,
+    "outTok": 155,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T15:08:06.371Z"
+}

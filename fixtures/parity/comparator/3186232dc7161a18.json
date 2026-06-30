@@ -1,0 +1,12 @@
+{
+  "promptHash": "3186232dc7161a18ecccedadb3a77101e42f2f8c516ddcc46aa3cfa90f8d7429",
+  "roleId": "comparator",
+  "model": "opus",
+  "rawJson": "{\"assets\":[{\"concept\":\"일반 월배당 ETF vs 커버드콜 월배당 ETF 비교\",\"entities\":[\"일반 월배당 ETF\",\"커버드콜 월배당 ETF\"],\"dimensions\":[\"분배율(배당 구조)\",\"상승여력\",\"원금 흐름\"],\"cells\":[{\"dimension\":\"분배율(배당 구조)\",\"entity\":\"일반 월배당 ETF\",\"value\":\"확인 필요\",\"grounded\":false},{\"dimension\":\"분배율(배당 구조)\",\"entity\":\"커버드콜 월배당 ETF\",\"value\":\"기초자산 현물을 매수하고 관련 콜옵션을 매도해 옵션 프리미엄을 수취, 이를 투자자에게 배당하는 구조로 높은 분배율을 지급\",\"grounded\":true},{\"dimension\":\"상승여력\",\"entity\":\"일반 월배당 ETF\",\"value\":\"확인 필요\",\"grounded\":false},{\"dimension\":\"상승여력\",\"entity\":\"커버드콜 월배당 ETF\",\"value\":\"콜옵션 매도로 기초자산의 가격상승 이익을 일부 포기하는 구조\",\"grounded\":true},{\"dimension\":\"원금 흐름\",\"entity\":\"일반 월배당 ETF\",\"value\":\"확인 필요\",\"grounded\":false},{\"dimension\":\"원금 흐름\",\"entity\":\"커버드콜 월배당 ETF\",\"value\":\"확인 필요\",\"grounded\":false}]}]}",
+  "usage": {
+    "inTok": 774,
+    "outTok": 179,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T15:08:46.137Z"
+}

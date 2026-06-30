@@ -1,0 +1,12 @@
+{
+  "promptHash": "9bb54b541ca3eb50ba05f7bd9f170a53ece54e709e1afbd683a01a38aff53ae5",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.fsc.go.kr/no010101/86751?srchCtgry=&curPage=8&srchKey=all&srchText=&srchBeginDt=&srchEndDt=%2F1000\",\"quote_excerpt\":\"기초자산 현물(주식·채권 등)을 매수하고 관련 콜옵션을 매도하는 상품 → 가격상승 이익을 일부 포기하는 대신 옵션 프리미엄을 수취해 투자자에게 배당\",\"citation_verified\":true,\"independent_origin_count\":3,\"misleading_check\":\"구조 설명은 정확하나, '높은 분배율'이 곧 높은 총수익을 뜻하지는 않음. 분배금에 원금(자본) 환급분이 포함될 수 있고 분배락으로 NAV가 하락하므로 분배율만으로 상품 우열을 판단하는 것은 평균/체리피킹 함정 소지가 있음.\",\"freshness\":\"fresh\",\"reasoning\":\"claim은 '커버드콜=기초자산 매수+콜옵션 매도로 상승분 일부를 포기하는 대가로 옵션 프리미엄(분배 재원)을 수취'하는 구조라는 내용. 금융위원회(fsc.go.kr, 정부 1차 출처)가 '가격상승 이익을 일부 포기하는 대신 옵션 프리미엄을 수취해 투자자에게 배당'이라고 명시하여 claim을 그대로 뒷받침한다. 보험연구원(kiri.or.kr)도 '시장의 상승 잠재력을 포기하는 명백한 기회비용'·'옵션 프리미엄이 분배금의 주요 재원'으로, 미래에셋(investpension.miraeasset.com)도 '주가 상방에 대한 제한'·'미래의 불확실한 상승 가능성 대신 현재의 확정적 인컴(프리미엄)을 받아오는 개념'으로 동일하게 서술. 발행처 3곳(정부·연구기관·금융기관)이 일치하므로 verified. 인용문은 fsc.go.kr content에 원문 그대로 존재하여 citation_verified=true. MOCK 표식 없음.\"}",
+  "usage": {
+    "inTok": 4195,
+    "outTok": 249,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T15:08:05.990Z"
+}

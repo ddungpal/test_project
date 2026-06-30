@@ -1,0 +1,12 @@
+{
+  "promptHash": "041ad5d498826fba12601437c52646e20a33847d7e4db0749051884e42ad5a8e",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"secondary\",\"primary_source_url\":\"https://investpension.miraeasset.com/m/contents/view.do?idx=20461\",\"quote_excerpt\":\"옵션프리미엄(배당수익률)이 높을수록 옵션 매도비중이 높아지고, 미래의 가치상승에 대한 자본차익이 줄어든다. 반대로 배당수익률이 적다면 미래의 주가상승에 대한 참여도가 높아지는 명백한 trade-off가 존재한다.\",\"citation_verified\":true,\"independent_origin_count\":4,\"misleading_check\":\"트레이드오프는 일반적으로 성립하나 '명확/명백'의 정도는 상품 설계(옵션 매도비중·고정형/타겟형·액티브 조정)에 따라 달라짐. 또한 핵심 비교 기준은 분배율이 아니라 총수익률이라는 점에 유의(배당 착시·원금 잠식 가능).\",\"freshness\":\"fresh\",\"reasoning\":\"미래에셋 연금센터(investpension.miraeasset.com)는 옵션 프리미엄이 높을수록 자본차익이 줄어드는 '명백한 trade-off'를 명시했고, 보험연구원(kiri.or.kr) 보고서도 커버드콜의 '비대칭적 손익구조'(분배율↑·상방 제한·총수익률 저하)와 배당·이자 전달형(분배율↓·자본성장 잠재력 온전)의 대비를 동일하게 기술해 서로 다른 발행처 2곳 이상이 일치한다. 미래에셋 TIGER 인사이트와 유튜브 자료도 상방 제한·원금 잠식을 같은 취지로 보강한다. 인용문은 제공된 content에 그대로 존재하여 검증 가능. 다만 출처 다수가 자산운용사/교육성 사이트(secondary)라 보수적으로 secondary 등급을 부여했으며, 비교의 핵심은 분배율이 아닌 총수익률이라는 오해 소지를 misleading_check에 기재.\"}",
+  "usage": {
+    "inTok": 4301,
+    "outTok": 234,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T15:08:08.033Z"
+}

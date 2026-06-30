@@ -1,0 +1,12 @@
+{
+  "promptHash": "4f0e4b401c9aa7af0518511e775f357b352587ecfdc248922be9fb8ebc93a7d8",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"unknown\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"가정 수익률·분배율에 기반한 단순계산식 추정치로, 실제 배당·수익은 변동하므로 확정 금액인 것처럼 제시하면 오해 소지가 큼(과거수익률≠미래수익률, 세전/세후 미구분 가능성)\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과는 금융투자업규정 고시, 보험통계 용어정의, 국세청 PDF(깨진 본문), 건강보험 납부안내, 부평구문화재단 공지 등으로 claim(월 50만원 5·10년 적립 시 누적 배당금·평가자산 도달액)과 무관하다. claim의 구체적 금액·가정 수익률·분배율을 뒷받침하는 실재 문장이 어느 결과에도 없으며, 일치하는 발행처도 0곳이다. 따라서 근거를 찾을 수 없어 could_not_verify로 판정하고 발췌 인용은 null, citation_verified=false 처리한다.\"}",
+  "usage": {
+    "inTok": 3311,
+    "outTok": 149,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-06-30T15:08:07.936Z"
+}
