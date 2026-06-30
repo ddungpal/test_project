@@ -14,7 +14,7 @@ import { enterResearchReview, approveResearch, listEscalatedFacts, type Research
 import { selectResearchScope, regenerateResearchScope, type ManualClaim, type ManualConcept } from "../../pipeline/researchScope.js";
 import { reenterResearch } from "../../pipeline/researchReentry.js";
 import { withStageRuntime } from "../../pipeline/stageRuntime.js";
-import { enterScriptReview, approveScript, requestScriptRework } from "../../pipeline/scriptGate.js";
+import { enterScriptReview, approveScript, requestScriptRework, reviewScript } from "../../pipeline/scriptGate.js";
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
@@ -348,6 +348,24 @@ export async function requestScriptReworkAction(runId: string): Promise<{ state:
   const supa = createAdminClient();
   const res = await requestScriptRework(supa, runId);
   await auditLog(supa, { actorId: ownerId, action: "script_rework", targetType: "run", targetId: runId });
+  return res;
+}
+
+// 단일 최종 검수(autoflow §D) — 인라인 칩에서 사람이 보류 fact를 확정한다.
+//   reject 비었으면 전체 승인(→approved), 반려 있으면 그 fact만 false·나머지 보류 true 후 전체 재작성(→scripting).
+//   보류 fact의 human_approved=true는 오직 이 사람 액션에서만 확정(거버넌스 '사람 최종확인').
+export async function reviewScriptAction(runId: string, decision: { rejectFactIds: string[] }): Promise<{ state: string }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  const rejected = decision.rejectFactIds ?? [];
+  const res = await reviewScript(supa, runId, rejected);
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "script_reviewed",
+    targetType: "run",
+    targetId: runId,
+    detail: { approved: res.state, rejected: rejected.length },
+  });
   return res;
 }
 

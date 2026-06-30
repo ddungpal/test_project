@@ -287,7 +287,12 @@
     },
     {
       "dir": "script-review-inline-facts",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (review-data-action)",
+      "attempt": 1,
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-07-01T01:52:12+0900"
     }
   ]
 }

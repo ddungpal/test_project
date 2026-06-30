@@ -13,6 +13,7 @@ export type AuditAction =
   | "research_approved"
   | "script_approved"
   | "script_rework"
+  | "script_reviewed"
   | "run_aborted"
   | "run_deleted"
   | "insight_status"
