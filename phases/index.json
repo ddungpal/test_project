@@ -298,11 +298,11 @@
     {
       "dir": "topic-target-persona",
       "status": "running",
-      "progress": "0/4",
-      "running_step": "0 (persona-generate)",
+      "progress": "1/4",
+      "running_step": "1 (structurer-persona)",
       "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-07-01T03:42:12+0900"
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-07-01T03:50:42+0900"
     }
   ]
 }

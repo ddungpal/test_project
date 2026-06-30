@@ -30,10 +30,15 @@ const ACTIVE_STRUCTURE_ROW = {
 interface FakeOptions {
   structureRow: unknown | null; // style_profiles active 1행(maybeSingle) — null이면 active 없음
   styleEqLog?: string[]; // style_profiles에서 eq("component_type", ...) 인자 기록(structure만 읽는지 검증)
+  topicPersona?: string; // topic selection의 edited_payload에 실을 target_persona(없으면 기존처럼 persona 미포함)
 }
 
 /** 테이블명으로 분기하는 체이너블 fake Supa. stage_proposals/selections는 stage(eq 인자)로 topic/title 분기. */
-function makeFakeSupa({ structureRow, styleEqLog }: FakeOptions): Supa {
+function makeFakeSupa({ structureRow, styleEqLog, topicPersona }: FakeOptions): Supa {
+  // topic selection의 edited_payload — persona 옵션이 있으면 그것만 추가(없으면 기존 바이트 동일).
+  const topicSelection = topicPersona
+    ? { ...TOPIC_SELECTION, edited_payload: { ...TOPIC_SELECTION.edited_payload, target_persona: topicPersona } }
+    : TOPIC_SELECTION;
   const from = (table: string) => {
     const chain: Record<string, unknown> = {};
     let stageFilter = ""; // eq("stage", ...) — topic vs title_thumb 분기
@@ -54,7 +59,7 @@ function makeFakeSupa({ structureRow, styleEqLog }: FakeOptions): Supa {
         case "stage_proposals":
           return { data: stageFilter === "title_thumb" ? TITLE_PROPOSAL : TOPIC_PROPOSAL, error: null };
         case "stage_selections":
-          return { data: proposalFilter === TITLE_PROPOSAL.id ? TITLE_SELECTION : TOPIC_SELECTION, error: null };
+          return { data: proposalFilter === TITLE_PROPOSAL.id ? TITLE_SELECTION : topicSelection, error: null };
         case "tone_profile":
           return { data: null, error: null };
         case "style_profiles":
@@ -110,5 +115,29 @@ describe("prepareStructurer 배선(통합) — active 구성 스타일 주입", 
     expect(styleEqLog).toContain("structure");
     expect(styleEqLog).not.toContain("thumbnail_copy");
     expect(styleEqLog).not.toContain("title");
+  });
+});
+
+describe("prepareStructurer 배선(통합) — target_persona 조건부 주입", () => {
+  const PERSONA = "2030 사회초년생, 첫 월급 받고 목돈 굴리는 법 막막한 사람";
+
+  it("케이스 D: topic payload에 target_persona가 있으면 input.target_persona에 그 값이 실린다", async () => {
+    const supa = makeFakeSupa({ structureRow: null, topicPersona: PERSONA });
+    const { input } = await prepareStructurer(supa, "run-D");
+
+    expect(input.target_persona).toBe(PERSONA);
+    expect(input.topic).toBe("연봉 3천 이하 무조건 보세요"); // 기존 title 추출 불변
+  });
+
+  it("케이스 E(회귀 가드): persona가 없으면 input에 target_persona 키 자체가 없다(바이트 불변 → 픽스처 해시 보존)", async () => {
+    const supa = makeFakeSupa({ structureRow: null }); // topicPersona 미지정
+    const { input } = await prepareStructurer(supa, "run-E");
+
+    expect("target_persona" in input).toBe(false);
+    expect(input.target_persona).toBeUndefined();
+  });
+
+  it("케이스 F: STRUCTURER_SYSTEM에 target_persona 대상 맞춤 지시 문구가 있다(정적 프롬프트)", () => {
+    expect(STRUCTURER_SYSTEM).toContain("target_persona");
   });
 });
