@@ -58,3 +58,18 @@
 
 [Joy] 검수 끝! typecheck exit 0, test 774개 전부 통과(새 scribeComparison 11개 포함), build도 exit 0. lineage 매핑은 assets[ai]랑 buildAssetsInput이 둘 다 같은 게이트 통과 배열을 같은 순서로 쓰니까 인덱스 안 어긋나고, number/analogy는 payload 키 자체가 안 생겨서 입력 바이트 불변까지 테스트로 못박았네. freshness 게이트·표절가드·전이·cost flush 다 그대로고. SCRIBE_SYSTEM도 기존 P2 문장 하나도 안 지우고 comparison 우선 분기만 보강했고, 미검증 칸은 '확인 필요'로 두라고 money-safety 두 군데서 챙겼어. 범위 외 파일도 없고. 맥스 이번 거 진짜 깔끔하다, 통과! 🎉
 [리드] 조이 PASS 확인. AC도 ground-truth로 일치(typecheck 0·test 774 pass·build 0). step2 마감 — 짠펜이 이제 검증된 비교 자산으로 정확한 표를 짜고, 미검증 칸은 '확인 필요'로 둔다. 다음은 step3 comparison-ui. 둘 다 수고했어!
+
+=== Step 3: comparison-ui ===
+[리드] 에스더, step3 맡아줘. 비교가가 만든 comparison 자산을 리서치 검수 화면에 표로 보여주는 순수 프론트 작업이야. 미검증(verified=false) 칸은 '확인 필요'로 강조해서 짠부님이 검수 때 위험 칸을 바로 알아채게. TRUS 3색만, 백엔드·SegmentList는 절대 손대지 마. 시작 전에 CLAUDE.md·.claude/rules/ 전체·researchView.ts·ResearchReview.tsx·comparisonAsset.ts 직접 읽어줘.
+
+[Esther] 음 시작할게. CLAUDE.md랑 rules 다 읽었고 researchView, ResearchReview, comparisonAsset, SegmentList TableBlock, FactCard 직접 다 봤어. 디자인은 TRUS 3색만, principles 톤 확인했어.
+[Esther] 리드 말대로 실제 자산이 렌더되는 곳은 page.tsx의 ResearchPanel이 맞아. 거기 assets.map에서 comparison이면 numericExample analogy 둘 다 null이라 지금은 빈 박스가 떠. 이걸 표로 분기할게.
+[Esther] 표가 entities x dimensions 매트릭스에 verified false 칸 강조까지 들어가서 코드가 좀 길어. SegmentList는 P1 완성이라 못 건드리니까 패턴만 빌려서 ComparisonAssetTable 순수 표시 컴포넌트 하나로 분리하는 게 확실히 깔끔해. 이건 내가 자신 있어.
+[Esther] researchView에 comparison 필드 추가하고 payload select 넣었어. number analogy 뷰는 항상 null로 채워서 회귀 0이야. ComparisonAssetTable은 dimensions를 행, entities를 열로 뒀어 차원이 보통 더 많으니까 가로 스크롤이 줄어. 이건 자신 있어.
+[Esther] verified false 칸은 흐리게 하고 밑에 확인 필요 라벨을 trus-yellow로 작게 달았어. 검증된 칸은 일반 흰색. 짠부님이 위험 칸 바로 알아챌 거야. 이제 AC 세 개 돌려볼게.
+[Esther] 다 됐어. typecheck exit 0, test 774개 다 통과 exit 0, build exit 0. 떠돌이 파일도 없고 백엔드랑 SegmentList는 한 줄도 안 건드렸어.
+[Esther] TRUS 3색만 썼고 그라데이션 그림자 이모지 0이야. number analogy 렌더는 기존 마크업 글자 하나 안 바꿨으니 회귀 없어. 깨진 payload는 normalizeComparison이 null 주면 표시 제외하니까 빈 표 박제도 안 돼. 색 조합 신경 좀 썼는데 아무도 안 물어봤지만 흐림이랑 노랑 라벨 대비 딱 좋아 🙈
+[Joy] 에스더 step3 받았어! git diff 먼저 봤는데 백엔드랑 SegmentList diff가 진짜 0줄이네 굿굿. 이제 컴포넌트 읽고 색 grep이랑 AC 세 개 돌려볼게~
+[Joy] gradient shadow 0, 임의색 0, UI 노출 이모지 0 확인했어. 화살표는 주석 텍스트라 세이프. 이제 typecheck test build 순서로 ground-truth 뽑는다
+[Joy] 검수 끝! typecheck exit 0, test 774개 다 통과 exit 0, build도 exit 0(/audit chunk 에러 없음). 백엔드랑 SegmentList comparator researchCell scriptCell comparisonAsset 전부 diff 0줄로 진짜 안 건드렸고, researchView는 payload select랑 comparison 매핑만 깔끔하게 추가했네. verified false 칸은 흐림+확인 필요 라벨로 위험 칸 딱 보이고, 깨진 payload는 normalizeComparison null이면 page에서 그대로 드랍해서 빈 표 박제 없어. number analogy는 else 브랜치 마크업 그대로라 회귀 0. 신규 파일도 ComparisonAssetTable 딱 하나, 떠돌이 파일 없고. 에스더 이번 거 군더더기 없이 깔끔하다 통과! 🎉 색 대비 신경 쓴 거 나는 봤어 굿
+[리드] 조이 PASS 확인. AC도 ground-truth로 일치(typecheck 0·test 774 pass·build 0). step3 마감 — 이제 리서치 검수 화면에서 비교 자산이 표로 뜨고, 미검증(verified=false) 칸은 '확인 필요'로 흐리게 강조돼서 짠부님이 위험 칸을 바로 짚을 수 있어. P3 comparison-table 4단계 전부 완료! 에스더·조이 수고했어 🎉

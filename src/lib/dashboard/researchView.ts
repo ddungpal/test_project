@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "../supabase/admin.js";
 import type { VerificationStatus, SourceTier, Freshness, Volatility } from "../../domain/enums.js";
+import { normalizeComparison, type ComparisonPayload } from "../../pipeline/comparisonAsset.js";
 
 // 리서치 검수 읽기(Phase 3.3) — 서버 컴포넌트 전용. admin(읽기전용).
 
@@ -30,6 +31,8 @@ export interface AssetView {
   kind: "number" | "analogy" | "comparison"; // migration 30: comparison 자산(표시/payload 연결은 step3 comparison-ui)
   numericExample: string | null;
   analogy: string | null;
+  // comparison 자산일 때만 채워짐(normalizeComparison으로 정규화 — 깨진 payload는 null=표시 제외). number/analogy는 항상 null.
+  comparison: ComparisonPayload | null;
   sourceFactId: string | null;
   mathVerified: boolean | null;
   distortionChecked: boolean | null;
@@ -127,7 +130,7 @@ export async function getResearchView(runId: string): Promise<ResearchView> {
       .order("created_at", { ascending: true }),
     supa
       .from("explanation_assets")
-      .select("id, concept, kind, numeric_example, analogy, source_fact_id, math_verified, distortion_checked, created_at")
+      .select("id, concept, kind, numeric_example, analogy, payload, source_fact_id, math_verified, distortion_checked, created_at")
       .eq("run_id", runId)
       .order("created_at", { ascending: true }),
   ]);
@@ -164,6 +167,8 @@ export async function getResearchView(runId: string): Promise<ResearchView> {
     kind: a.kind,
     numericExample: a.numeric_example,
     analogy: a.analogy,
+    // comparison 자산만 payload를 정규화해 담는다(깨졌으면 null → 표시 제외). number/analogy는 항상 null.
+    comparison: a.kind === "comparison" ? normalizeComparison(a.payload) : null,
     sourceFactId: a.source_fact_id,
     mathVerified: a.math_verified,
     distortionChecked: a.distortion_checked,

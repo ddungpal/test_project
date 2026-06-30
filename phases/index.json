@@ -228,11 +228,11 @@
     {
       "dir": "comparison-table",
       "status": "running",
-      "progress": "2/4",
-      "running_step": "2 (scribe-table-from-comparison)",
+      "progress": "3/4",
+      "running_step": "3 (comparison-ui)",
       "attempt": 1,
-      "elapsed_seconds": 540,
-      "heartbeat_at": "2026-06-30T11:55:11+0900"
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-06-30T12:03:35+0900"
     }
   ]
 }
