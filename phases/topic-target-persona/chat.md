@@ -41,3 +41,26 @@
 [Joy] AC 셋 다 exit 0 재현됐고 970 통과. 조건부를 무조건 주입으로 일부러 깨보니까 케이스 B(system 바이트 동일)랑 C(빈 문자열) 딱 그것만 빨갛게 떴어. 원복하니 초록불. 껍데기 아니고 진짜 promptHash 불변식 잠금이야.
 [Joy] SCRIBE_SYSTEM 본문은 한 글자도 안 변했고 persona 지시는 별도 상수로 깔끔하게 분리됐어. 말투·money-safety·형식·lineage도 안 건드림, persona는 맥락만 더하는 보조 신호라고 못박았네. 마이그 0, 촉이·구다리·UI 미변경. 통과 🎉
 [리드] 좋아, 1라운드 PASS. Step 2 완료 처리한다. 이제 타겟 페르소나가 촉이(생성)→구다리(목차)→짠펜(스크립트)까지 파이프라인 전체에 전파돼. persona 없는 옛 런은 어디서도 input/system 바이트 그대로라 기존 골든 픽스처 다 안전하고. 남은 건 step3 persona-ui — 화면에 표시하고 편집하는 거. 맥스·조이 수고했어!
+
+=== Step 3: persona-ui ===
+[리드] 마지막 step이다. 이제 화면 차례야. 김짠부가 주제 후보에서 타겟을 보고 고르고, 확정한 주제의 페르소나를 손질할 수 있게 하는 거. 편집값은 edited_payload 우선이라 구다리·짠펜한테 자동 전파돼. 백엔드(편집 액션·게이트)는 맥스, 표시·편집 컴포넌트는 에스더가 맡는다. 맥스부터 — 에스더 컴포넌트가 네 editTopicPersona 액션을 부르거든. 맥스, 백엔드 먼저 맡아줄래?
+[Max] 맡을게. gate의 editSelectedTitle, topicRun의 editTitle, editSelected 테스트 다 봤어. editSelectedTopic은 descriptor만 topic으로 바꾼 미러고, 액션은 persona만 교체하고 나머지 필드 보존하는 게 핵심이야. 기존 editSelected 테스트 fake supa 그대로 빌려서 라운드트립까지 테스트 먼저 짜고 시작할게.
+[Max] 타입·gate·액션·테스트 다 짰어. 불변식(persona만 교체, title/audience 보존)이랑 미확정 throw, edited_payload 우선 반환 라운드트립까지 잠갔어. 이제 AC 돌려본다.
+[Max] AC 둘 다 통과. typecheck 0, 테스트 979개 전부 통과(신규 9개 포함). editSelectedTopic은 editSelectedTitle 미러라 새 상태 전이 안 만들었고, 액션은 현재 payload 스프레드에서 target_persona만 갈아끼워. current 없으면 에러, 빈 값도 막아. UI 파일이랑 촉이·구다리·짠펜 백엔드는 안 건드렸어. 에스더 컴포넌트가 editTopicPersona(runId, persona) 시그니처로 부르면 돼. 놓친 거 있으면 말해줘.
+[Esther] 음 나도 합류했어. 표시랑 편집 UI 맡을게. 스펙이랑 CandidateBody, PostConfirmTitleEdit 다 읽었어. 백엔드는 맥스가 끝내놨네 고마워.
+[Esther] 일단 후보 카드부터. 지금 audience_need가 🎯를 쓰고 있는데 타겟도 🎯면 둘이 헷갈려. 타겟을 🎯로 두고 욕구는 마커 바꿔서 보조 위계로 내릴게. 이건 확실히 분리하는 게 나아.
+[Esther] 편집 컴포넌트는 제목 손편집 그대로 미러했고 AI 재생성 폴링은 뺐어. 순수하게 손편집만. 빈 값이면 막고 editTopicPersona만 호출해. 검증은 백엔드가 하니까 UI에서 중복 안 했어.
+[Esther] page.tsx에 title_thumb 손편집이랑 대칭으로 topic일 때 페르소나 편집 붙였어. 이제 typecheck랑 build 돌려볼게.
+[Esther] typecheck 0 통과. build는 처음에 /copy-learn PageNotFoundError 떴는데 내가 안 건드린 페이지라 stale .next 캐시 의심하고 rm -rf .next 후 재빌드했어. 그랬더니 다 깨끗하게 통과. 코드 오류 아니었어.
+[Esther] 끝났어. 타겟은 🎯로 주, 욕구는 점마커로 보조 위계 내려서 안 헷갈리게 했고 TRUS 3색 그대로야. 편집은 제목 손편집 미러. 안티슬롭 깔끔해.
+[Esther] 표시는 욕구랑 안 헷갈리게 마커를 분리했어. 타겟은 주로 🎯 타겟:, 욕구는 · 욕구:로 한 단계 내렸고 이모지는 타겟 하나만. 편집 컴포넌트는 제목 손편집 그대로 미러하고 재생성 폴링은 뺐어. typecheck 0, build 0(첫 빌드는 copy-learn 캐시 이슈라 .next 지우고 통과).
+[리드] 둘 다 받았어. 내가 AC 전체 돌렸어 — typecheck 0, test 979, build 0(캐시 클리어 후). 조이, 검수 부탁해. diff랑 같이 봐줘. 특히 editTopicPersona가 persona만 갈아끼우고 title·audience_level·audience_need는 보존하는지(다운스트림 안 깨지게), 확정 후에만 동작하는지, 그리고 표시에서 타겟이랑 욕구가 시각적으로 구분되는지.
+[Joy] 오 맥스랑 에스더 step3 받았다~ 마지막 UI 단계네! git diff부터 쭉 보고 typecheck/test/build 3종 직접 돌려볼게. 불변식(persona만 교체) 뮤테이션으로도 깨봐야지
+[Joy] typecheck 0 통과! test도 979개 전부 초록불(신규 9개 포함). diff 보니까 editSelectedTopic이 editSelectedTitle 딱 미러네 descriptor만 topic. 이제 build 돌리고 불변식 뮤테이션으로 깨볼게
+[Joy] 불변식 두 개 다 뮤테이션으로 깨봤어! mergePersona 스프레드 제거하니까 title/audience 보존 단언 4개 딱 빨개졌고, 확정가드 무력화하니 미확정 throw 테스트가 딱 떴어. 원복하니 9개 다 그린. 진짜 잠겨있네 굿굿
+[Joy] build 0 캐시이슈 없이 한 번에! editSelectedTopic은 editSelectedTitle 완전 미러(새 상태전이 없음), edited_payload 우선반환으로 편집 persona가 구다리·짠펜에 자동전파 확인. CandidateBody는 타겟 🎯 주 / 욕구 점마커 보조로 위계 분리, persona 없는 옛 후보는 회귀안전. 에스더 안티슬롭 깔끔하고 TRUS 3색만 썼어
+[Joy] 마이그 0, 촉이·구다리·짠펜 백엔드 미변경, 범위 외 부산물 없음. 맥스 에스더 마지막 step 진짜 교과서다 통과 🎉
+[Joy] 받았다~ git diff부터 보고 AC 3종 직접 돌릴게!
+[Joy] typecheck 0, test 979 통과, build도 0(캐시 이슈 없이 한 번에). 불변식 뮤테이션으로 깨봤어 — mergePersona 스프레드 빼니까 딱 보존 단언만 빨개지고, 확정 가드 무력화하니 미확정 throw 테스트만 빨개졌어. 원복하니 다 그린, 진짜 잠겨있음.
+[Joy] 표시도 타겟 🎯 주 / 욕구 · 보조로 깔끔하게 갈렸고 옛 후보는 회귀 안전. 편집 컴포넌트는 제목 손편집 미러에 재생성만 뺀 거라 TRUS 3색·안티슬롭 다 지켰어. 마이그 0, 백엔드 미변경. 통과 🎉
+[리드] 좋아, 1라운드 PASS. Step 3 완료 처리한다. 이제 타겟 페르소나가 화면에 뜨고(후보 카드 🎯 타겟) 확정 후 손편집까지 돼서, 편집값이 edited_payload 우선으로 구다리·짠펜에 자동 전파돼. 촉이 생성→구다리 목차→짠펜 스크립트→화면 표시·편집까지 페르소나 phase 4 step 전부 닫혔다. 맥스·에스더·조이 수고했어!

@@ -6,8 +6,9 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { inngest } from "../../inngest/client.js";
-import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, type SelectInput } from "../../pipeline/gate.js";
-import type { TitlePayload, ThumbnailPayload } from "../../lib/dashboard/proposalTypes.js";
+import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, editSelectedTopic, type SelectInput } from "../../pipeline/gate.js";
+import { getSelectedStagePayload } from "../../pipeline/context.js";
+import type { TitlePayload, ThumbnailPayload, TopicPayload } from "../../lib/dashboard/proposalTypes.js";
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
@@ -170,6 +171,25 @@ export async function editTitle(runId: string, payload: TitlePayload): Promise<v
   await editSelectedTitle(supa, runId, payload, ownerId);
   await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "title_thumb" } });
 }
+// 확정된 주제의 타겟 페르소나만 손편집 — title·audience_level·audience_need 등 나머지 필드는 보존(★불변식).
+//   현재 선택된 주제 payload(편집본 우선)를 읽어 target_persona만 교체·병합 → editSelectedTopic(상태 전이 없음).
+//   edited_payload 우선 반환(context.ts) 덕에 편집한 페르소나가 구다리·짠펜에 자동 전파. editTitle 패턴 미러.
+export async function editTopicPersona(runId: string, persona: string): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const next = persona.trim();
+  if (!next) throw new Error("타겟은 비울 수 없습니다.");
+
+  const current = await getSelectedStagePayload(supa, runId, "topic");
+  if (current == null) throw new Error("선택된 주제가 없습니다 — 주제 확정 후에만 타겟을 손질할 수 있습니다.");
+
+  // ★ persona만 교체. title 등 나머지 필드는 스프레드로 그대로 보존(다운스트림 제목·구성 보호).
+  const payload: TopicPayload = { ...(current as TopicPayload), target_persona: next };
+  await editSelectedTopic(supa, runId, payload, ownerId);
+  await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "topic" } });
+}
+
 export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]): Promise<void> {
   const ownerId = await requireOwner();
   const supa = createAdminClient();

@@ -15,6 +15,7 @@ import { CandidateBody } from "@/components/CandidateBody";
 import { RequestStageButton } from "@/components/RequestStageButton";
 import { ThumbnailStudio } from "@/components/ThumbnailStudio";
 import { PostConfirmTitleEdit } from "@/components/PostConfirmTitleEdit";
+import { PostConfirmTopicPersonaEdit } from "@/components/PostConfirmTopicPersonaEdit";
 import { PostConfirmThumbnailsEdit } from "@/components/PostConfirmThumbnailsEdit";
 import { RefreshButton } from "@/components/RefreshButton";
 import { FactCard } from "@/components/FactCard";
@@ -100,6 +101,8 @@ function StageSection({ runId, sv, runState, topic, outlierRefs }: { runId: stri
             regenCandidate={sv.proposal?.candidates?.[0]?.payload}
           />
         )}
+        {/* 주제(topic) 확정 후 타겟 페르소나 손편집 — title_thumb의 PostConfirmTitleEdit와 대칭(editTopicPersona·상태 전이 없음). */}
+        {stage === "topic" && <PostConfirmTopicPersonaEdit runId={runId} payload={effective} />}
         {sv.selection.reason && <p className="mt-2 text-xs text-trus-white/50">이유: {sv.selection.reason}</p>}
         <SourceLinks sources={chosenSources} />
       </div>

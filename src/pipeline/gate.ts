@@ -5,7 +5,7 @@
 import { transitionRun, getRun, type Supa } from "./runState.js";
 import { STAGE_DESCRIPTORS, type StageDescriptor } from "./stages.js";
 import type { Json } from "../lib/supabase/database.types.js";
-import type { TitlePayload, ThumbnailPayload } from "../lib/dashboard/proposalTypes.js";
+import type { TitlePayload, ThumbnailPayload, TopicPayload } from "../lib/dashboard/proposalTypes.js";
 
 export interface SelectInput {
   runId: string;
@@ -162,6 +162,46 @@ export async function editSelectedTitle(
   const desc = STAGE_DESCRIPTORS.title_thumb;
   if (!(await stageIsConfirmed(supa, runId, desc.stage))) {
     throw new Error(`제목 손편집은 확정(${desc.stage} 선택 기록) 후에만 가능 — 아직 확정 전.`);
+  }
+
+  const proposal = await latestProposal(supa, runId, desc.stage);
+
+  // 기존(최신) selection의 chosen_idx 보존(없으면 0). 손편집은 어떤 후보를 골랐었는지 유지한다.
+  const { data: prev, error: pre } = await supa
+    .from("stage_selections")
+    .select("chosen_idx")
+    .eq("proposal_id", proposal.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (pre) throw new Error(`기존 selection 조회 실패: ${pre.message}`);
+  const chosenIdx = (prev?.chosen_idx as number | undefined) ?? 0;
+
+  const { data: selection, error: se } = await supa
+    .from("stage_selections")
+    .insert({
+      proposal_id: proposal.id,
+      chosen_idx: chosenIdx,
+      edited_payload: payload as unknown as Json,
+      selected_by: editedBy,
+    })
+    .select("id")
+    .single();
+  if (se) throw new Error(`stage_selections insert 실패: ${se.message}`);
+  return { selectionId: selection.id };
+}
+
+// 최신 topic proposal에 수정본으로 새 selection 행 INSERT(상태 전이 없음). editSelectedTitle 미러(descriptor만 topic).
+//   chosen_idx는 최신 selection의 값을 보존(없으면 0). edited_payload=수정본 단일 객체(target_persona만 교체된 주제 payload).
+export async function editSelectedTopic(
+  supa: Supa,
+  runId: string,
+  payload: TopicPayload,
+  editedBy: string,
+): Promise<{ selectionId: string }> {
+  const desc = STAGE_DESCRIPTORS.topic;
+  if (!(await stageIsConfirmed(supa, runId, desc.stage))) {
+    throw new Error(`주제 손편집은 확정(${desc.stage} 선택 기록) 후에만 가능 — 아직 확정 전.`);
   }
 
   const proposal = await latestProposal(supa, runId, desc.stage);

@@ -23,7 +23,9 @@ export function CandidateBody({ stage, payload }: { stage: ProposalStage; payloa
           )}
           <span className="text-sm font-bold text-trus-white">{p.title || "—"}</span>
         </div>
-        {p.audience_need && <p className="mt-1 text-xs text-trus-white/50">🎯 {p.audience_need}</p>}
+        {/* 타겟(persona)이 주(主) — 🎯 마커. 욕구(audience_need)는 보조 위계로 '· 욕구:' (이모지는 타겟에만 1개). */}
+        {p.target_persona && <p className="mt-1 text-xs text-trus-white/50">🎯 타겟: {p.target_persona}</p>}
+        {p.audience_need && <p className="mt-1 text-xs text-trus-white/35">· 욕구: {p.audience_need}</p>}
       </div>
     );
   }

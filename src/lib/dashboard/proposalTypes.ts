@@ -27,6 +27,7 @@ export interface TopicPayload {
   title: string;
   audience_level?: AudienceLevel; // 이 주제의 주 타깃 시청자 수준
   audience_need?: string; // 그 수준 시청자의 핵심 욕구(한 줄)
+  target_persona?: string; // 이 주제의 시청 타겟 페르소나(누구+상황+막막함, 한 줄) — audience_level(전문성 축)과 별개의 사람 축
 }
 export interface TitlePayload {
   title: string;
