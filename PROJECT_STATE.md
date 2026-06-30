@@ -4,7 +4,14 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-30(밤2 — 주제발굴 개선 **5 phase 전부 완료**(outlier-refs·search-pool-engagement·topic-ref-multiplier·**topic-youtube-only**). main tip=`31d7773`·test 884·typecheck 0·build 0·**push 완료**. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = 라이브 일괄 검증 계속**(아래 "🔬 체크리스트"). 새 주제 런으로 (a)유튜브 영상만 레퍼런스로 뜨는지(웹 기사 사라짐)·고조회/고반응/고배수 영상 우선인지 (b)로드맵 표·케이스·시각큐. 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+_Last updated: 2026-06-30(밤3 — 주제발굴 개선 **6 phase 완료**(…·topic-youtube-only·**topic-keyword-spread**). main tip 최신·test 893·typecheck 0·build 0·**push 완료**. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = 라이브 일괄 검증 계속**(아래 "🔬 체크리스트"). 새 주제 런으로 (a)발굴 모드가 top-3 distinct 수요 키워드로 **분산**되는지(쏠림 해소) (b)유튜브 영상만·고조회/반응/배수 우선 (c)로드맵 표·케이스·시각큐. 그 외: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선).**_
+>
+> ## ✅ `topic-keyword-spread` 완료 (2026-06-30 밤3 — 하네스 2 step, main, test 884→893)
+> **라이브 발견: 발굴 모드 주제가 한 테마로 쏠림(예적금 종류 4개).** 원인=youtube 검색이 댓글 1위 키워드 **하나**로만 + 직전 topic-youtube-only가 다양성 공급원(웹 트렌드 쿼리) 제거한 회귀 + 프롬프트 "youtube 근거 과반" 강제.
+> - **step0 `multi-keyword-youtube`**: `gatherExternalSignals`에 `ytQueries[]`(다중·videoId 전역 dedup·`sourceQuery` 태깅) + 순수 `pickSpreadYoutube`(테마별 그룹→그룹내 rankExternalByMultiplier→라운드로빈 n개·1테마 폴백·null 보존). prepare 발굴=top-3 distinct·키워드=단일 유지, discovery top-3. **quota N=3 상한**(ponytail 주석).
+> - **step1 `topic-spread-system`**: TOPIC_SCOUT_SYSTEM 발굴 모드 테마 분산 규칙(+5줄: 2~3 distinct 테마 커버·한 테마 ≤ 절반·키워드 모드 예외·"youtube 근거 과반과 양립"). 나머지 원칙 보존.
+> - **랜딩**: 코드만 main checkout(라이브 fixture 2개 별도 chore)·NUL 0·규칙제안 0. 머지 후 build가 stale `.next`로 한 번 깨져 `rm -rf .next` 재빌드로 판별(코드 무관·rules.md 패턴). promptHash(topic_scout) 변경→다음 라이브 런 자동 재기록. 마이그 0.
+> - **▶ 라이브: 발굴 모드(키워드 미지정) 주제 런으로 top-3 distinct 수요 키워드에 분산되는지 확인.**
 >
 > ## ✅ `topic-youtube-only` 완료 (2026-06-30 밤2 — 하네스 2 step, main `31d7773`, test 879→884)
 > **사용자 결정: 주제 선정은 유튜브 영상 기준**(지금 관심·조회수·반응도). 웹 기사(Tavily)는 주제 선정에서 제거(기사=리서치용), **유튜브 경쟁영상 + 댓글(시청자 수요) 유지**(옵션 A). 주제 뽑는 모든 경로 적용.
@@ -13,7 +20,8 @@ _Last updated: 2026-06-30(밤2 — 주제발굴 개선 **5 phase 전부 완료**
 > - **랜딩**: 떠돌이·NUL 0(깔끔). **Joy 규칙제안 1건 기각**(JSDoc 동기화=너무 일반적·bloat)하되 **지적한 stale 주석(prepare.ts docblock "웹·YouTube")은 직접 정정**. promptHash(topic_scout) 변경→다음 라이브 런 자동 재기록. 마이그 0.
 > - **▶ 라이브: 새 주제 런으로 웹 기사 사라지고 유튜브 영상(고조회/반응/배수)만 레퍼런스로 뜨는지 확인.**
 >
-> ## 📜 주제발굴 개선 5 phase (2026-06-30, 라이브 검증 중 발견·전부 머지·push·완료)
+> ## 📜 주제발굴 개선 6 phase (2026-06-30, 라이브 검증 중 발견·전부 머지·push·완료)
+> - **topic-keyword-spread**(2 step): 발굴 모드 주제 쏠림(예적금 4개) 픽스 — top-3 distinct 키워드 youtube 검색 분산 + 프롬프트 분산 규칙. ✅완료.
 > 라이브에서 "주제 레퍼런스 영상이 매력적이지 않다" → 진단·연쇄 개선.
 > - **outlier-refs**(4 step): 구독 대비 조회수 배수(아웃라이어) 레퍼런스 — 제목·주제발굴 배수 정렬 + 썸네일 외부 아웃라이어 패널.
 > - **search-pool-engagement**(2 step): 검색 풀 확대(relevance+viewCount 2패스) + 반응도(좋아요·댓글) + 품질바닥.
