@@ -4,7 +4,21 @@
 > 사용자가 `1`을 입력하면 이 파일을 읽어 "다음 진행 작업 + 남은 작업"을 정리해 보여준다.
 > 전체 설계 근거는 플랜 파일: `/Users/dongwonchoi/.claude/plans/inherited-mixing-honey.md`
 
-_Last updated: 2026-06-30(낮5 — **🎉 스크립트 품질 5-phase 로드맵 P0~P5 전부 완료**(P1 형식레일·P2 outline-format·P3 비교표·P4 케이스분기·P5 시각큐). P5 `visual-cues`(짠펜 visual 큐·`0ecbd9b`). test 815·typecheck 0·build 0·**P1~P4 push 완료·P5 push 진행 중**·**마이그29·30·31 전부 ✅적용**) · 단계: **▶▶▶ 다음(재개점) = 로드맵 라이브 일괄 검증**(아래 "🔬 라이브 검증 체크리스트"). dev/inngest 재기동 → 구성 런(table·case·visual format 섹션 포함)→리서치 런(비교가·분기가·댓글집계)→스크립트 런으로 표·케이스·시각큐가 검수화면+대본에 실제로 뜨는지 + structurer/scribe/comparator/case_miner fixture 자동 재기록 확인. 그 외 검증 대기: 리서치 재진입(마28)·채널 제목학습·썸네일 비차단 큐·단독 실행. 후속: 구다리 3단계·⚠️OpenAI/구글 키 rotate(배포 전 최우선)·검토대기 rules-proposals 3건 병합.**_
+_Last updated: 2026-06-30(밤 — 라이브 검증 중 주제발굴 개선 4 phase(outlier-refs·search-pool-engagement·topic-ref-multiplier 머지·push) + **`topic-youtube-only` 설계 완료·⚠️미실행**. main tip=`f6b7ac0`. 마이그29·30·31 적용·dev 백그라운드 가동 중) · 단계: **▶▶▶ 다음(재개점) = `topic-youtube-only` 하네스 실행부터.**_
+>
+> ## ⚠️ 다음 세션 첫 작업 — `topic-youtube-only` 하네스 실행 (2026-06-30 밤 중단점)
+> **설계는 끝났고 아직 안 돌렸다.** 사용자 결정: **주제 선정은 유튜브 영상 기준**(현재 관심·조회수·반응도). 웹 기사는 주제 선정에서 제거(기사는 리서치용), **유튜브 경쟁영상 + 댓글(시청자 수요) 유지**(옵션 A 확정).
+> - **바로 실행**: `python3 scripts/execute.py topic-youtube-only` (claude-p $0). 끝나면 평소 루틴 — diff 떠돌이/fixture 분리·코드만 main checkout·AC(typecheck/test/build)·PROJECT_STATE 갱신·push·**dev 재기동**(`./node_modules/.bin/next dev -p 3000`+inngest+`npm run preflight`, 빌드가 떠있는 .next 깸).
+> - **2 step**: step0 `topic-sources-youtube-only`(prepare.ts·discovery.ts 둘 다 `webQueries:[]`로 웹 차단→external_items·후보 youtube만·배수랭킹 유지·댓글 보존·discovery trend후보 0) / step1 `topic-scout-youtube-system`(TOPIC_SCOUT_SYSTEM 재작성: 웹기사·`web:` evidence 제거·"지금 유튜브 관심/조회/반응" 기준·댓글·audience_level 보존). **마이그레이션 0.**
+> - **‼️ 절대 주의**: 리서치 단계 웹검색(`research*`·`fact_verifier`·`search/`)은 **불변** — 주제 선정 경로만. promptHash(topic_scout) 변경→다음 라이브 런 자동 재기록.
+> - **설계 파일**: `phases/topic-youtube-only/`(step0.md·step1.md·index.json) — 이미 커밋됨.
+>
+> ## 📜 주제발굴 개선 4 phase (2026-06-30, 라이브 검증 중 발견·전부 머지·push)
+> 라이브에서 "주제 레퍼런스 영상이 매력적이지 않다" → 진단·연쇄 개선. 상세는 아래 각 phase 완료 섹션.
+> - **outlier-refs**(4 step): 구독 대비 조회수 배수(아웃라이어) 레퍼런스 — 제목·주제발굴 배수 정렬 + 썸네일 외부 아웃라이어 패널.
+> - **search-pool-engagement**(2 step): 검색 풀 확대(relevance+viewCount 2패스) + 반응도(좋아요·댓글) + 품질바닥.
+> - **topic-ref-multiplier**(1 step): per-run `prepare.ts`가 youtube를 배수랭킹 없이 slice하던 버그 픽스(플롭 노출 해소).
+> - **topic-youtube-only**(2 step·**미실행**): 위 재개점.
 
 > ## ✅ `topic-ref-multiplier` 완료 (2026-06-30 낮7 — 하네스 1 step·버그픽스, main, test 870→879)
 > **라이브 발견: 키워드 모드 주제 런이 플롭(73만 구독·3.9만 조회=0.05배)을 레퍼런스로 노출.** 원인=배수·반응도·품질 개선이 `discovery.ts`(발굴 Cron)·제목·썸네일엔 붙었으나 **per-run `topic_scout/prepare.ts`엔 누락** — youtube를 배수 랭킹 없이 `slice(0,6)`만 함.
