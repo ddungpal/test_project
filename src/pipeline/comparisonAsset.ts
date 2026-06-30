@@ -64,6 +64,71 @@ export function normalizeComparison(payload: unknown): ComparisonPayload | null 
   return out;
 }
 
+// ── 짠펜 입력용 자산 게이트·빌드(순수·결정적) — scriptCell이 이 헬퍼를 쓴다(테스트 가능). ──
+//   money-safety: 검증 안 된 자산은 대본에 안 넣는다.
+//     숫자=math_verified, 비유=distortion_checked, 비교=normalizeComparison 유효(구조 깨진 비교 표 박제 금지).
+
+// scriptCell이 explanation_assets에서 select하는 자산 행의 형태(게이트·입력 빌드에 필요한 필드만).
+export interface AssetRowForScribe {
+  concept: string;
+  kind: string;
+  numeric_example: string | null;
+  analogy: string | null;
+  math_verified: boolean | null;
+  distortion_checked: boolean | null;
+  payload?: unknown; // comparison 자산일 때만 채워짐(jsonb).
+}
+
+/**
+ * money 게이트: 이 자산을 대본에 넣어도 되는지(검증 완료 여부) 판정한다.
+ *   number→math_verified, analogy→distortion_checked, comparison→normalizeComparison 유효, 그 외→false.
+ * 순수 predicate(부수효과 없음).
+ */
+export function isAssetUsable(a: AssetRowForScribe): boolean {
+  return a.kind === "number"
+    ? a.math_verified === true
+    : a.kind === "analogy"
+      ? a.distortion_checked === true
+      : a.kind === "comparison"
+        ? normalizeComparison(a.payload) !== null
+        : false;
+}
+
+// 짠펜에 넘어가는 자산 입력 한 건의 형태.
+//   number/analogy: 기존 그대로(payload 미포함) — promptHash 영향 최소화.
+//   comparison: payload(정규화된 ComparisonPayload)를 함께 전달 — 짠펜이 entities/dimensions/cells로 표를 만든다.
+export interface ScribeAssetInput {
+  idx: number;
+  concept: string;
+  kind: string;
+  numeric_example: string | null;
+  analogy: string | null;
+  payload?: ComparisonPayload;
+}
+
+/**
+ * 게이트를 통과한 자산만 추려 짠펜 입력(assetsInput)으로 빌드한다(순수·결정적).
+ *   - 반환 배열의 인덱스(idx)는 게이트 통과 순서 = scriptCell의 lineage 매핑(assets[ai]) 인덱스와 일치한다.
+ *   - comparison만 payload를 포함(normalizeComparison 재호출 — 게이트와 일관, non-null 보장).
+ *   - number/analogy-only 입력에선 기존과 동일한 모양(payload 키 없음)을 보장한다.
+ */
+export function buildAssetsInput(rows: AssetRowForScribe[]): ScribeAssetInput[] {
+  return rows.filter(isAssetUsable).map((a, idx) => {
+    const base: ScribeAssetInput = {
+      idx,
+      concept: a.concept,
+      kind: a.kind,
+      numeric_example: a.numeric_example,
+      analogy: a.analogy,
+    };
+    if (a.kind === "comparison") {
+      const payload = normalizeComparison(a.payload);
+      if (payload) base.payload = payload; // 게이트 통과면 non-null 보장. 방어적 가드.
+    }
+    return base;
+  });
+}
+
 /**
  * structure(getSelectedStagePayload 결과)에서 format==='table'인 outline 섹션만 추출한다(순수·결정적).
  * 비교가는 이 섹션들에 대해서만 비교 자산을 만든다(table 0개면 비교가 호출 자체를 안 함 → 기존 런 동작·비용 불변).

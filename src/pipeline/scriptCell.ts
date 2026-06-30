@@ -11,6 +11,7 @@ import { buildCorpusShingles, containment, PLAGIARISM_THRESHOLD, PLAGIARISM_BLOC
 import { parseAxStages, resolveToneInjection } from "./axFlag.js";
 import { scribeStep } from "../agents/scribe/step.js";
 import { normalizeSegmentPayload } from "./segmentBlock.js";
+import { isAssetUsable, buildAssetsInput, type AssetRowForScribe } from "./comparisonAsset.js";
 import type { Json } from "../lib/supabase/database.types.js";
 
 export interface ScriptStageDeps {
@@ -75,12 +76,13 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
 
   const { data: assetRows, error: ae } = await supa
     .from("explanation_assets")
-    .select("id, concept, kind, numeric_example, analogy, math_verified, distortion_checked")
+    .select("id, concept, kind, numeric_example, analogy, math_verified, distortion_checked, payload")
     .eq("run_id", runId);
   if (ae) throw new Error(`explanation_assets 조회 실패: ${ae.message}`);
-  // ★ 코드리뷰 P0(money-safety): 검증 안 된 자산은 대본에 안 넣는다.
-  //   숫자=math_verified(코드 검산 통과)만, 비유=distortion_checked(왜곡 점검 완료)만.
-  const assets = (assetRows ?? []).filter((a) => (a.kind === "number" ? a.math_verified === true : a.distortion_checked === true));
+  // ★ 코드리뷰 P0(money-safety): 검증 안 된 자산은 대본에 안 넣는다(isAssetUsable 순수 게이트).
+  //   숫자=math_verified(코드 검산 통과)만, 비유=distortion_checked(왜곡 점검 완료)만,
+  //   비교=normalizeComparison 유효(구조 깨진 비교는 표로 박제 금지). 게이트 통과 순서가 lineage(assets[ai]) 인덱스.
+  const assets = (assetRows ?? []).filter((a) => isAssetUsable(a as AssetRowForScribe));
 
   // 2) callLLM(짠펜) — 인덱스로 fact/asset 참조(lineage 매핑용).
   // ★ 코드리뷰 P1(money-safety): 미검증 fact는 단정 금지 라벨을 명시적으로 붙여 전달(프롬프트만 의존 X).
@@ -91,7 +93,9 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
     is_financial: f.is_financial,
     caution: f.verification_status === "verified" ? null : "미검증 — 단정 금지, 일반 원리로만 설명",
   }));
-  const assetsInput = assets.map((a, idx) => ({ idx, concept: a.concept, kind: a.kind, numeric_example: a.numeric_example, analogy: a.analogy }));
+  // ★ comparison 자산은 payload(정규화된 entities/dimensions/cells)를 함께 전달 — 짠펜이 검증 데이터로 표를 만든다.
+  //   number/analogy는 기존 모양 그대로(payload 미포함). assets는 이미 게이트 통과분이라 인덱스가 lineage와 일치.
+  const assetsInput = buildAssetsInput(assets as AssetRowForScribe[]);
   await setProgress(supa, runId, "1/2·대본 작성 (짠펜)");
   // AX 단계 전환(§14): 기본(AX_STAGES 미설정)=빈 Set → tone?.components ?? null 그대로(바이트 불변·픽스처 보존).
   const toneInjection = resolveToneInjection("script", tone?.components ?? null, parseAxStages());

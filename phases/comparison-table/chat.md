@@ -42,3 +42,19 @@
 [Joy] 통과! 맥스 grounded→verified 매핑 깔끔하게 잘 끼웠다 수고했어 🎉
 [리드] AC 나도 직접 다 돌렸어 — typecheck exit 0, test 763 pass exit 0, build exit 0. 떠돌이 파일도 없고 범위도 깔끔.
 [리드] Step 1 PASS로 마감. 비교가가 검증 후 형제로 붙어서 table 섹션 있을 때만 비교 데이터를 낸다. 다음은 step2 scribe-table-from-comparison — 짠펜이 이 비교 자산을 표 블록으로 엮는 거. 수고했어 둘 다!
+
+=== Step 2: scribe-table-from-comparison ===
+[리드] 자 step2 가자. 짠펜이 표 섹션에서 즉흥으로 표 짜는 대신, step1 비교가가 만든 검증된 comparison 자산을 받아서 그 셀로 정확한 표를 emit하게 하는 거야.
+[리드] 맥스, scriptCell에 comparison 분기 세 군데(로드 시 payload select / money 게이트 normalizeComparison / assetsInput에 payload 전달) + SCRIBE_SYSTEM에 "comparison 있으면 즉흥금지·검증데이터 그대로·미검증칸 확인필요" 보강 + tests/scribeComparison.test.ts. freshness게이트·표절가드·전이·lineage 매핑은 절대 손대지 마. 부탁해!
+
+[Max] 알겠어. scriptCell이랑 comparisonAsset, scribe schema 다 봤어. 게이트랑 assetsInput 빌드를 순수 헬퍼로 빼서 테스트 가능하게 할 생각이야. number/analogy-only 런에선 입력 바이트 그대로 나오게 신경 쓸게.
+
+[Max] 게이트랑 입력빌드를 isAssetUsable/buildAssetsInput 순수 헬퍼로 comparisonAsset.ts에 빼고 scriptCell이 그걸 쓰게 했어. scriptCell엔 payload select 추가랑 comparison 분기만 손댔고 freshness게이트·표절·전이·lineage는 그대로야. SCRIBE_SYSTEM엔 comparison 있으면 즉흥금지·미검증칸 확인필요 지침 덧붙였어. 이제 테스트 짤게.
+
+[Max] 다 됐어. scriptCell 분기 세 군데랑 SCRIBE_SYSTEM 보강, 테스트 11개 추가했어. typecheck exit0, test 774 pass exit0(763+11), build도 exit0이야. 빌드는 처음에 webpack chunk MODULE_NOT_FOUND 났는데 stale .next 캐시였고 rm 후 클린 빌드 통과했어. freshness게이트·표절·전이·cost flush·lineage 매핑은 한 줄도 안 건드렸고, number/analogy-only 런은 assetsInput 모양 그대로 유지되게 테스트로 박았어. 조이가 볼 때 게이트 인덱스랑 lineage 일치, 미검증칸 확인필요 지침 한번 봐줘.
+[리드] AC 직접 다 돌렸어 — typecheck exit 0, test 774 pass exit 0, build exit 0(stale .next 한번 rm 후). 조이 검수 부탁해!
+
+[Joy] step2 검수 시작! git diff랑 테스트 먼저 훑어봤는데 맥스 깔끔하게 짰네. money 게이트에 comparison 분기 들어갔고 isAssetUsable/buildAssetsInput 순수 헬퍼로 빼서 테스트도 붙였어. 이제 lineage 안 깨졌는지 직접 확인하고 AC 돌려볼게~
+
+[Joy] 검수 끝! typecheck exit 0, test 774개 전부 통과(새 scribeComparison 11개 포함), build도 exit 0. lineage 매핑은 assets[ai]랑 buildAssetsInput이 둘 다 같은 게이트 통과 배열을 같은 순서로 쓰니까 인덱스 안 어긋나고, number/analogy는 payload 키 자체가 안 생겨서 입력 바이트 불변까지 테스트로 못박았네. freshness 게이트·표절가드·전이·cost flush 다 그대로고. SCRIBE_SYSTEM도 기존 P2 문장 하나도 안 지우고 comparison 우선 분기만 보강했고, 미검증 칸은 '확인 필요'로 두라고 money-safety 두 군데서 챙겼어. 범위 외 파일도 없고. 맥스 이번 거 진짜 깔끔하다, 통과! 🎉
+[리드] 조이 PASS 확인. AC도 ground-truth로 일치(typecheck 0·test 774 pass·build 0). step2 마감 — 짠펜이 이제 검증된 비교 자산으로 정확한 표를 짜고, 미검증 칸은 '확인 필요'로 둔다. 다음은 step3 comparison-ui. 둘 다 수고했어!
