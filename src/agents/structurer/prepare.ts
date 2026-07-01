@@ -5,6 +5,7 @@ import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.
 import { STRUCTURER_SCHEMA, STRUCTURER_SYSTEM } from "./schema.js";
 import { loadApprovedInsights } from "../shared/approvedInsights.js";
 import { loadActiveStructureStyle, appendStructureStyle } from "../shared/styleProfile.js";
+import { loadOnboardingGold } from "../../pipeline/onboarding.js";
 
 export interface StructurerInput {
   topic: string;
@@ -13,6 +14,12 @@ export interface StructurerInput {
   tone_easy_explain: unknown | null; // tone_profile.components.easy_explain(쉬운설명 톤)만 발췌
   structure_style_profile?: { id: string; version: number; patterns: unknown }; // PhaseA: active 구성 스타일 사양 — 있을 때만(없으면 input/system 불변)
   target_persona?: string; // target_persona: 주제 payload에 실린 시청 대상 한 줄 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
+  onboardingGold?: {
+    confusionPoints: string[]; // 헷갈린 지점 → 풀어줄 섹션 우선
+    ahaPoints: string[]; // 아하 반전 → 훅/도입 후보
+    coreAngle: string; // 아크가 수렴한 영상 핵심 앵글
+    calibratedLevel: string; // 추론된 수준(audience_level 캘리브레이션)
+  }; // 쏙이 온보딩 금맥 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
 }
 
 export async function prepareStructurer(supa: Supa, runId: string): Promise<{ system: string; input: StructurerInput; schema: JsonSchema }> {
@@ -43,6 +50,18 @@ export async function prepareStructurer(supa: Supa, runId: string): Promise<{ sy
 
   // target_persona 조건부 주입 — persona 있을 때만 input에 실음. 없으면 키 자체를 넣지 않음(바이트 불변 → 픽스처 해시 보존).
   if (targetPersona) input.target_persona = targetPersona;
+
+  // 온보딩 금맥 조건부 주입 — 금맥 있을 때만 input에 실음. 없으면 키 자체를 넣지 않음(바이트 불변 → 픽스처 해시 보존).
+  //   shape은 StructurerInput.onboardingGold로 명시(OnboardingGold와 호환) — 여분 필드 없이 4개만.
+  const gold = await loadOnboardingGold(supa, runId);
+  if (gold) {
+    input.onboardingGold = {
+      confusionPoints: gold.confusionPoints,
+      ahaPoints: gold.ahaPoints,
+      coreAngle: gold.coreAngle,
+      calibratedLevel: gold.calibratedLevel,
+    };
+  }
 
   // system 합성: structure 프로필만 SYSTEM 뒤에 붙인다. 없으면 STRUCTURER_SYSTEM 그대로(바이트 불변).
   const system = appendStructureStyle(STRUCTURER_SYSTEM, structureStyle);

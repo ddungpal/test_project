@@ -107,3 +107,24 @@
 
 [Joy] index.json 재확인 끝~ step3 completed로 딱 찍혔고 summary에 off-chain 등록·이벤트명·submitOnboarding 시그니처·저장위치(아크 proposal/금맥 selection)·마이그32+드리프트까지 6개 다 담겼어. AC 3종 회귀도 전부 exit0(1072통과)! 완전 통과야 🎉
 [리드] 좋아, round2에 PASS. step3 completed로 마감했어. 쏙이가 이제 온디맨드로 파이프라인에 붙었네 — 버튼이 아크 생성, 액션이 금맥 저장까지. 구다리 선형체인은 손 하나 안 대고, 새 테이블 없이 stage_proposals 재사용으로 마이그 딱 1개(32)만. 다음은 step4 금맥→구다리 주입이야. 맥스·조이 둘 다 수고했어!
+
+=== Step 4: structure-gold-injection ===
+
+[리드] 자 step4, 드디어 금맥을 구다리에 꽂는 거야. 쏙이가 뽑은 OnboardingGold(confusion/aha/coreAngle/level)를 구다리 prepare에 조건부 주입 — 있으면 목차를 그 방향으로, 없으면 바이트 동일(promptHash 보존). target_persona 주입이 바로 옆에 이미 있으니까 그 패턴 그대로 미러하면 돼. 맥스, 맡아줘. 가드레일 세 개 — ①금맥 없는 경로는 StructurerInput·STRUCTURER_SYSTEM 한 바이트도 바뀌면 안 돼(기존 구다리 픽스처 다 깨짐). ②금맥 리더가 아직 없어 — step3이 stage_selections.edited_payload에 저장했으니 onboarding.ts에 얇은 loadOnboardingGold 하나 추가해서 그걸로 읽어. ③OnboardingGold 타입은 step0에서 import(재정의 금지). 테스트는 target-persona 회귀가드 미러 — 금맥 없음→바이트 불변, 있음→주입 확인. 작업하면서 네 말투로 chat.md에 한 줄씩 남겨줘.
+
+[Max] 응 맡을게. 설계문서 D절이랑 target-persona 주입 패턴, structurerPrepareWiring 테스트 다 읽었어. 바로 옆에 target_persona가 똑같은 방식으로 이미 꽂혀있어서 그대로 미러하면 돼. 순서는 onboarding.ts에 loadOnboardingGold 얇게 추가 → prepare에서 조건부 주입 → SYSTEM 지침 → 테스트로 갈게.
+
+[Max] 다 붙였어. loadOnboardingGold는 saveOnboardingGold 옆에 얇게 넣었고 latestOnboardingProposalId 재사용해서 그 proposal의 최신 selection.edited_payload 읽고 없으면 null·throw0이야. prepare는 target_persona 바로 밑에 gold 있을 때만 input.onboardingGold 세팅, 없으면 키 자체를 안 넣어. SYSTEM엔 target_persona 지침 뒤에 금맥 4개(confusion→앞배치, aha→훅, coreAngle→정렬, level→깊이) 지침 넣었고 억지금지도 붙였어. 테스트 3케이스 짰어 — 있음 주입, 없음 바이트불변, SYSTEM 문구. AC 돌려볼게.
+
+[Max] AC 3종 다 초록불이야. typecheck exit0, test 1075개 전부 통과(신규 3개, 1072→1075) exit0, build도 6/6 exit0 한 번에 됐어 — 이번엔 .next 캐시 안 깨졌네. 금맥 없는 경로는 target_persona랑 똑같이 키 자체를 안 넣어서 input JSON 바이트 불변, promptHash 보존이야. OnboardingGold는 step0 schema에서 import만 했고 재정의 0, 구다리 상태전이·섹션 스키마도 안 건드렸어. 마이그0·의존성0. git status도 명세 파일 6개+신규 테스트뿐이고 부산물 없어. 순환 import는 onboarding.ts가 onboarder만 물고 structurer는 안 물어서 없어. 놓친 거 있으면 봐줘.
+
+[Max] 조이가 짚어준 거 타당해서 반영했어. 기존 케이스 B는 proposal 자체가 없는 경로(latestOnboardingProposalId null)만 밟고 있었는데, proposal은 있고 selection.edited_payload만 null인 경로(loadOnboardingGold의 payload falsy 가드)는 안 밟혔어. 그 경로도 onboardingGold 키가 안 들어가는지 케이스 B2로 추가했어 — fake supa에 proposalNoSelection 옵션 넣어서 proposal은 반환하되 edited_payload=null로. 기존 케이스는 안 건드리고 추가만 했어. 좋은 지적이야.
+[Joy] 오 step4 왔다 드디어 금맥을 구다리에 꽂는 단계네~ git status부터 봤는데 명세대로 수정3파일(prepare/schema/onboarding)+신규테스트 딱이고 부산물 하나도 없어 깔끔해
+[Joy] diff 다 읽었어. target_persona 바로 밑에 gold 조건부 주입 미러한 거 진짜 예쁘게 붙였네. 없으면 키 자체를 안 넣어서 바이트 불변 패턴 그대로야 굿굿
+[Joy] loadOnboardingGold도 latestOnboardingProposalId 재사용하고 payload falsy 가드로 throw0이네. OnboardingGold는 step0 schema에서 import만 하고 재정의 0 확인
+[Joy] 테스트 4케이스(있음 주입/없음 바이트불변/B2 selection없음/SYSTEM문구) 다 봤어. B2 회귀가드 촘촘하다. 이제 AC 3종 돌린다 typecheck부터!
+[Joy] AC 3종 다 초록불이야~ typecheck exit0, test 1076개 전부 통과(101파일, 신규 4케이스 A/B/B2/C 포함), build도 6/6 한번에 exit0. 이번엔 .next 캐시도 안 깨졌네
+[Joy] 불변식 하나하나 다 봤어 — 금맥 없으면 onboardingGold 키 자체를 안 넣어서 바이트 불변(B/B2 테스트가 in-operator로 증명), target_persona랑 나란히 병존해서 모순 0, OnboardingGold는 step0에서 import만(재정의0), 구다리 상태전이·섹션 스키마 무변경, 죽은 import 없음
+[Joy] 의존성0·마이그0·순환import0(onboarding.ts는 onboarder만 물고 structurer는 안 뭄)까지 다 깨끗해. 회귀도 0(1072→1076, 순증 4). 완벽하다 통과야 맥스 수고했어 🎉
+
+[리드] 좋아, 1라운드에 PASS. AC 3종 나도 직접 돌려서 확인했어 — typecheck exit0, test 1076 통과(순증4), build exit0. 금맥 없는 경로 바이트 불변(케이스 B/B2)까지 회귀가드로 잠갔고 target_persona 옆에 나란히 병존, 마이그0·의존성0. step4 completed로 마감했어. 쏙이 금맥이 이제 구다리 목차로 흘러들어가네 — 헷갈린 지점은 풀 섹션으로, 아하는 훅으로. 다음은 step5 퀴즈 UI(에스더 투입)야. 맥스·조이 수고했어!

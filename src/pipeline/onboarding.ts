@@ -41,6 +41,22 @@ export async function loadOnboardingArc(supa: Supa, runId: string): Promise<Onbo
   return (first?.payload as OnboardingArc | undefined) ?? null;
 }
 
+/** onboarding proposal의 최신 stage_selection.edited_payload를 OnboardingGold로 반환(없으면 null). 얇은 전용 리더·throw 0. */
+export async function loadOnboardingGold(supa: Supa, runId: string): Promise<OnboardingGold | null> {
+  const proposalId = await latestOnboardingProposalId(supa, runId);
+  if (!proposalId) return null;
+  const { data } = await supa
+    .from("stage_selections")
+    .select("edited_payload")
+    .eq("proposal_id", proposalId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const payload = data?.edited_payload;
+  if (!payload) return null;
+  return payload as unknown as OnboardingGold;
+}
+
 /** 김짠부 응답에서 뽑은 금맥을 onboarding proposal에 붙는 stage_selection으로 저장. proposal 없으면 throw. */
 export async function saveOnboardingGold(supa: Supa, runId: string, gold: OnboardingGold): Promise<void> {
   const proposalId = await latestOnboardingProposalId(supa, runId);
