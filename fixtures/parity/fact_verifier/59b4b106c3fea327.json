@@ -1,0 +1,12 @@
+{
+  "promptHash": "59b4b106c3fea3271c3b807cd0591ea30e8be120ed36f1e1da47302d5218e09d",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"could_not_verify\",\"source_tier\":\"primary\",\"primary_source_url\":null,\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"claim은 '분배금을 재투자하지 않으면 복리효과가 사라져 장기 총자산이 줄어든다'는 일반적 재무 개념이나, 재투자를 안 하고 소비하더라도 소비된 현금 자체는 효용으로 실현된 것이므로 '총자산 감소'라는 표현은 총부(자산+소비)를 자산만으로 협소하게 본 오해 소지가 있음\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 검색결과는 한국은행 국제수지 강좌, 금통위 의사록, 협동조합 배당 정책, DART 펀드 분배 공시, 국세법령시스템 등으로 모두 claim(분배금 재투자와 복리효과·장기 총자산의 관계)과 직접적 관련이 없다. claim을 뒷받침하는 '그대로 실재하는' 문장이 어떤 결과에도 없으며, 서로 다른 발행처 2곳 이상의 일치 근거도 확인되지 않는다. 따라서 근거 부재로 could_not_verify로 판정하고, 발췌 인용 없음(citation_verified=false)으로 처리한다.\"}",
+  "usage": {
+    "inTok": 1830,
+    "outTok": 163,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:48.442Z"
+}

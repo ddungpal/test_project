@@ -1,0 +1,12 @@
+{
+  "promptHash": "b9952d2efa02d22b205c7847826693097d319ec733ff1574e5293f516954a42c",
+  "roleId": "topic_scout",
+  "model": "opus",
+  "rawJson": "{\"candidates\":[{\"title\":\"월배당 ETF, 매달 통장에 돈 꽂히는 게 진짜 이득일까 — 커버드콜 함정까지\",\"reason\":\"focus_keyword 'ETF 투자'의 구체 하위 주제. 지금 유튜브에서 '월배당·커버드콜 ETF'가 현금흐름 콘텐츠로 크게 반응하는 각도라 시의성이 높다. 시청자 후보에 '투자(tc:3238b00d)'·'주식(tc:e08fb0bd)' 수요가 이미 있어, 배당으로 매달 현금흐름을 원하는 니즈와 결합된다. 파킹통장·현금 굴리기(tc:73e03f0a, tc:7092c853)에 몰린 시청자에게 '현금 다음 단계=월배당 ETF'로 자연 연결.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:3238b00d\",\"tc:e08fb0bd\",\"tc:7092c853\"],\"audience_level\":\"novice\",\"audience_need\":\"배당 받고 싶은데 어떤 월배당 ETF가 좋은지, 커버드콜이 왜 위험한지 구분 못 하는 상태\",\"target_persona\":\"파킹통장으로 현금은 굴려봤고 이제 매달 배당 현금흐름 만들고 싶은 2030 직장인\"},{\"title\":\"ISA·연금계좌로 ETF 사면 세금이 이만큼 빠진다 — 2026년 절세 계좌 100% 활용법\",\"reason\":\"focus_keyword 'ETF 투자'를 '어디서 사느냐(계좌)'로 좁힌 각도. existing_candidates에 'isa(tc:4d6b1a28)'·'계좌(tc:65dd7e80)'가 잡혀 있어 절세계좌 수요가 실재한다. 지금 유튜브 재테크 트렌드가 '똑같은 ETF도 ISA/연금에서 사면 세금 아낀다'는 절세 프레이밍으로 조회수가 잘 나오는 시기라, 일반계좌로 그냥 ETF 사던 시청자에게 시의성 있는 업그레이드 주제.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:4d6b1a28\",\"tc:65dd7e80\",\"tc:3238b00d\"],\"audience_level\":\"intermediate\",\"audience_need\":\"이미 ETF를 사고 있지만 일반계좌라 세금을 다 내는지, ISA/연금으로 옮겨야 하는지 모르는 상태\",\"target_persona\":\"증권 일반계좌로 ETF 굴리는 중이지만 절세계좌를 안 써 세금이 아까운 30대 직장인\"},{\"title\":\"S&P500 vs 나스닥100 vs 국내 ETF — 2026년 지금, 뭘 얼마나 담아야 할까\",\"reason\":\"focus_keyword 'ETF 투자'의 핵심 실전 질문. 시청자 후보에 '주식(tc:e08fb0bd)'·'투자(tc:3238b00d)' 수요가 있고, 지금 유튜브에서 '미국 지수 ETF 비중·환율' 콘텐츠가 현재 시장 상황과 맞물려 반응이 큰 시기다. '어떤 ETF를 골라야 하나'는 초급 시청자의 가장 큰 막막함이라 구체적 포트폴리오 배분으로 답한다.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:e08fb0bd\",\"tc:3238b00d\"],\"audience_level\":\"novice\",\"audience_need\":\"ETF는 사기로 했는데 미국·국내·지수 중 뭘 얼마 비중으로 담을지 결정 못 하는 상태\",\"target_persona\":\"첫 ETF를 고르려는데 종목이 너무 많아 뭘 사야 할지 막막한 사회초년생 투자 입문자\"},{\"title\":\"목돈 한 번에 넣을까 나눠 넣을까 — 지금 같은 시장에서 ETF 적립식 vs 거치식\",\"reason\":\"focus_keyword 'ETF 투자'를 '매수 타이밍·방법'으로 좁힌 각도. 파킹통장으로 모은 목돈(tc:f924c7d5 '천만원 있으면')을 ETF로 옮길 때 시청자가 가장 고민하는 지점이다. 현재 시장 변동성이 큰 국면이라 '한 번에 넣기 무섭다'는 심리와 맞물려 적립식·분할매수 프레이밍이 지금 시의성 높은 주제.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:f924c7d5\",\"tc:3238b00d\"],\"audience_level\":\"beginner\",\"audience_need\":\"파킹통장에 모은 목돈을 ETF로 옮기고 싶은데 지금 사도 되는지, 한 번에 넣기 무서운 상태\",\"target_persona\":\"파킹통장에 천만원 모아둔 초보 투자자, 변동성 큰 시장에 목돈을 어떻게 넣을지 두려운 사람\"}]}",
+  "usage": {
+    "inTok": 1561,
+    "outTok": 527,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:35:24.153Z"
+}

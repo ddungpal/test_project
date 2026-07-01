@@ -1,0 +1,12 @@
+{
+  "promptHash": "cb827485f8271fc64ff0206d21077b3f6b1b143fbeb80a086418f773d55114a8",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://m.blog.naver.com/ksi0428/224013005934\",\"quote_excerpt\":\"ETF가 분배를 하면 순자산가치(NAV)에서 분배금 만큼 가격 하락이 발생한다. 이걸 '분배락'이라고 한다.\",\"citation_verified\":true,\"independent_origin_count\":3,\"misleading_check\":\"엄밀히는 '원금 자체'를 빼서 주는 것이 아니라 ETF에 쌓인 옵션 프리미엄·배당·매매차익을 분배하는 것이며(자산관리사 블로그가 '원금에서 빼서 준다'는 표현은 오해 소지가 있다고 지적), 다만 분배락으로 NAV가 분배금만큼 하락하는 것은 사실이므로 '분배금=순수익'이 아니라는 claim의 핵심은 성립한다.\",\"freshness\":\"fresh\",\"reasoning\":\"claim의 핵심(분배 시 분배락으로 NAV가 분배금만큼 하락하며 분배금이 곧 순수익은 아님)을 여러 출처가 일치되게 뒷받침한다. 네이버 블로그(ksi0428)에 '분배를 하면 NAV에서 분배금 만큼 가격 하락이 발생한다(분배락)'는 문장이 그대로 존재하고, 또 다른 블로그(bandl22)도 '분배금 받은만큼 가격이 하락하므로 제살 깎아먹기 같은 느낌'이라고 동일 메커니즘을 설명한다. 미래에셋 투자연금 PDF와 삼성 KODEX 공식 공지 역시 커버드콜 분배 재원(옵션 프리미엄·배당)과 분배락 개념을 확인해 메커니즘을 뒷받침한다. 서로 다른 도메인 3곳(naver.com, miraeasset.com, samsungfund.com)에서 정합적으로 확인되나 NAV 하락을 직접 진술한 발췌는 블로그 출처라 source_tier는 보수적으로 blog로 표기했다. [MOCK] 표식·더미 결과는 없었다.\"}",
+  "usage": {
+    "inTok": 3369,
+    "outTok": 234,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:48.134Z"
+}

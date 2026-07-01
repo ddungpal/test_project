@@ -1,0 +1,12 @@
+{
+  "promptHash": "561c41c3b0f6c57cde94c31db1bd631657bb864fdd8b74d38b8d7f9eda264d06",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://englishdart.fss.or.kr/dsbh001/main.do?rcpNo=20260317000197\",\"quote_excerpt\":\"분배금 지급 재원이 부족할 경우 일부 자산 매각을 통해 분배금을 마련할 수 있으며, 분배금 지급으로 인해 투자원금이 감소될 수 있습니다.\",\"citation_verified\":true,\"independent_origin_count\":3,\"misleading_check\":\"'원금 재원 지급'은 통상 분배락(분배금만큼 ETF 순자산가치/가격이 차감되는 현상)과 재원 부족 시 자산 매각으로 인한 원금 감소를 의미함. 정상적으로는 배당·이자 등 수익이 우선 재원이며 항상 원금에서 지급되는 것은 아니므로, '내 돈을 돌려받는다'는 표현을 일반화하면 오해 소지 있음.\",\"freshness\":\"fresh\",\"reasoning\":\"금융감독원 전자공시(FSS DART) 투자설명서에 '분배금 지급으로 인해 투자원금이 감소될 수 있습니다'라는 실재 문장이 있어 분배금이 원금을 잠식/재원으로 하는 경우가 있음을 뒷받침(primary). 네이버 TIGER 블로그도 '분배금을 지급하는 만큼 ETF 가격에서 동일한 금액이 차감'된다며 분배락(자기 자산 인출) 구조를 설명해 '내 돈을 돌려받는 형태'라는 취지를 지지하고, 전국투자자교육협의회 자료도 분배금이 보유 자산에서 인출되는 개념임을 뒷받침한다. 서로 다른 발행처(fss.or.kr, m.blog.naver.com, kcie.or.kr)가 취지에서 일치하여 verified로 판정. 다만 '원금 재원'은 재원 부족 시나 분배락 개념에 국한되므로 misleading 소지를 기재함.\"}",
+  "usage": {
+    "inTok": 2189,
+    "outTok": 227,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:48.656Z"
+}

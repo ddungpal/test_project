@@ -1,0 +1,12 @@
+{
+  "promptHash": "6cbeddc11b9b8c034750d8a9b5ab212967b8d8a0092e1c41f91081729b201cd2",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://investments.miraeasset.com/magi/upload/EBB3B5EBA6ACEC9D98ED9E9820090402-2_1.pdf\",\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":2,\"misleading_check\":\"핵심 변수는 '세금'이다. 분배(배당)를 받으면 그 시점에 배당소득세가 과세되어 재투자 원금이 줄지만, 토탈리턴(무분배 재투자)은 과세이연 효과로 복리에 유리할 수 있다는 것이 실제 논리다. 그러나 상품 유형·계좌(ISA/연금 등 절세계좌)·양도세 구조에 따라 결과가 달라지므로 '무조건 유리'로 단정하면 오해 소지가 있다.\",\"freshness\":\"unknown\",\"reasoning\":\"claim의 일반 논리(재투자·과세이연을 통한 복리 극대화)는 검색결과와 방향이 부합한다. 네이버 블로그(2025.9)는 '배당 재투자로 복리 가속화'를 언급하고, 미래에셋 PDF는 '세금은 이익을 갉아먹는 부(-)의 복리효과를 일으키며 장기투자에선 절세형 상품이 유리하다'고 서술해 과세가 복리를 저해한다는 점을 뒷받침한다. 그러나 어느 출처도 '분배 없이 재투자하는 토탈리턴 상품'을 직접 지칭해 복리상 유리하다고 명시하지 않았고, 블로그가 다룬 것은 '배당을 받아 재투자'하는 방식으로 토탈리턴(무분배)과 개념이 다르다. 따라서 서로 다른 2개 발행처가 동일 주장을 명시적으로 일치시켰다고 보기 어렵다. 나머지 결과(YouTube 좌담, moef·law.go.kr PDF)는 무관하거나 인덱스성 더미에 가깝다. 근거가 방향성만 있고 claim을 그대로 지지하는 문장이 없어 보수적으로 unverified로 판정한다.\"}",
+  "usage": {
+    "inTok": 4544,
+    "outTok": 236,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:49.397Z"
+}

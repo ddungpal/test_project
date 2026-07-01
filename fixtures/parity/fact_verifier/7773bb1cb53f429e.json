@@ -1,0 +1,12 @@
+{
+  "promptHash": "7773bb1cb53f429e57057d464cb0ea85f33dde7341b73fa5ed82ad88534b93e8",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://m.blog.naver.com/m_invest/223987898545\",\"quote_excerpt\":\"분배율은 ETF가 지급하는 분배금이 현재 ETF 가격 대비 어느 정도의 비율을 차지하는지 나타내는 지표입니다.\",\"citation_verified\":true,\"independent_origin_count\":1,\"misleading_check\":\"블로그 설명에 따르면 주가가 하락하면 분배율이 높아 보이는 착시(예: 최근 주가 8,900원 대비 12개월 분배금 1,200원=연분배율 13.48%)가 있어 claim의 취지와 일치하나, 광고 문구 자체를 검증한 1차 출처는 없음\",\"freshness\":\"unknown\",\"reasoning\":\"claim의 핵심 개념(분배율=분배금/현재가격, 총수익률=주가수익률+분배율로 별개)은 검색결과 네이버 블로그 2건의 본문에 그대로 뒷받침되며 '주가수익률 + 분배율 = 총수익률' 문구도 확인됨. 그러나 두 출처 모두 동일 도메인(m.blog.naver.com)의 개인 블로그로 독립 발행처가 1곳에 불과하고 tier가 낮으며, 정부/언론 등 1차·언론급 교차검증이 없음. 나머지 결과(fsc.go.kr, nts.go.kr, law.go.kr)는 깨진 텍스트이거나 규정 원문으로 claim과 무관. 따라서 개념은 타당하나 verified 기준(서로 다른 발행처 2곳 이상)을 못 채워 보수적으로 unverified로 판정.\"}",
+  "usage": {
+    "inTok": 2737,
+    "outTok": 199,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:48.805Z"
+}

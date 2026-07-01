@@ -1,0 +1,12 @@
+{
+  "promptHash": "2232f40c01291c03a410b1a981dc4ab6842b1404b64000b58c7eaa707cf9365c",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"secondary\",\"primary_source_url\":\"https://www.samsungpop.com/common.do?cmd=down&contentType=application%2Fpdf&inlineYn=Y&saveKey=research.pdf&fileName=1040%2F2025041713511314K_02_03.pdf\",\"quote_excerpt\":\"Call 옵션의 매도 프리미엄을 기초자산 가격하락에 대해 일정한 버퍼로 활용하는 동시(하락 방어)에\",\"citation_verified\":true,\"independent_origin_count\":3,\"misleading_check\":null,\"freshness\":\"fresh\",\"reasoning\":\"삼성증권 리서치 PDF(samsungpop.com)는 커버드콜이 옵션 프리미엄을 기초자산 가격하락에 대한 '일정한 버퍼'로 활용해 하방을 '일부' 방어한다고 명시하며, 이는 손실을 완전히 막는 것이 아니라 일부만 방어한다는 claim과 정확히 일치한다. 미래에셋 최창규 본부장 인터뷰(youtube 언더스탠딩)에서도 '밑이 뚫려 있다', '밑을 완벽하게 막을 방법은 없다'고 언급해 하락 자체는 막지 못한다는 부분을 뒷받침한다. 네이버 콘텐츠도 '손실 폭을 줄일 수 있다'며 부분 방어를 설명한다. 서로 다른 발행처(samsungpop.com, naver, youtube) 다수가 일치해 verified로 판정. MOCK 표식 없음. 삼성 리서치는 2025.4, 유튜브 자료는 2025~2026으로 비교적 최근이라 fresh.\"}",
+  "usage": {
+    "inTok": 2633,
+    "outTok": 207,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:48.757Z"
+}

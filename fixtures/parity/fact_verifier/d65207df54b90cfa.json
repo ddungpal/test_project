@@ -1,0 +1,12 @@
+{
+  "promptHash": "d65207df54b90cfaa942bd71e49affa28f289e6c49dea8fe56371947ee423053",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"secondary\",\"primary_source_url\":\"https://www.kcmi.re.kr/common/downloadw?fid=29001&fgu=002001&fty=004003\",\"quote_excerpt\":\"커버드콜 ETF는 기초자산 보유와 콜옵션 매도를 결합해 옵션 프리미엄을 확보하는 구조이나, 기초자산 가격 상승분에 대한 참여가 제한될 수 있고 분배금의 재원 역시 상품별로 다를 수 있다.\",\"citation_verified\":true,\"independent_origin_count\":4,\"misleading_check\":\"'상승분 포기'는 다소 강한 표현. KCMI 자료에 따르면 상승참여 제한은 '개별 옵션 계약의 만기 손익' 기준이며, 외가격 콜 활용·옵션 매도비중 조절(부분 커버드콜) 시 상승참여 여지를 일부 남길 수 있어 전면 포기가 아닌 '제한'에 가깝다.\",\"freshness\":\"fresh\",\"reasoning\":\"자본시장연구원(kcmi.re.kr) 보고서가 '기초자산 보유+콜옵션 매도로 옵션 프리미엄 확보, 대신 상승분 참여 제한'이라고 claim의 핵심 구조를 그대로 뒷받침한다. 나무위키, 네이버 블로그, 유튜브(삼성자산운용) 등 서로 다른 발행처들도 '콜옵션 매도 프리미엄을 분배 재원으로 쓰고 상승 시 제대로 오르지 못한다'는 동일 취지로 일치한다. 발췌 문장은 KCMI content에 그대로 존재해 인용 검증됨. 다만 '포기'라는 표현은 상품 설계(외가격·부분 커버드콜)에 따라 상승참여 여지가 달라져 '제한'이 더 정확하므로 misleading_check에 기재. MOCK 표식 없음.\"}",
+  "usage": {
+    "inTok": 3418,
+    "outTok": 214,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:46.838Z"
+}

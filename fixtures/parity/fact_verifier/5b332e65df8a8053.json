@@ -1,0 +1,12 @@
+{
+  "promptHash": "5b332e65df8a8053c66feac09409e64c6437d39eeff72aed2adb123d08349fbf",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"press\",\"primary_source_url\":\"https://kr.tradingview.com/news/hankyung:2cd7872ba65a7:0\",\"quote_excerpt\":\"총수익률을 따질 때도 배당 분배율이나 배당액만 봐선 안 된다. 월 배당 ETF의 수익은 기초자산 가격 변동과 배당 수익을 합한 결과다. 기초자산 가치가 오르지 않으면 실질적인 투자 성과가 떨어진다. 분배율이 높아 보여도 장기 총수익률은 낮을 수 있다는 뜻이다.\",\"citation_verified\":true,\"independent_origin_count\":6,\"misleading_check\":\"광고에 표기되는 '분배율/분배금'은 평가액(기초자산 가격) 하락을 반영하지 않은 명목 수치로, 실제 총손익(분배금+평가손익)과 괴리가 생기는 전형적 함정. TSLY 등 사례처럼 주가·분배금이 동반 하락해도 분배율은 높게 유지될 수 있음.\",\"freshness\":\"fresh\",\"reasoning\":\"claim은 '커버드콜 ETF의 실제 총손익=분배금+평가손익이 광고된 분배율(수익)과 다를 수 있다'는 취지로, 이를 실재 문장으로 뒷받침하는 근거가 복수 발행처에 존재한다. 한국경제(트레이딩뷰 재게재)는 '월 배당 ETF의 수익은 기초자산 가격 변동과 배당 수익을 합한 결과…분배율이 높아 보여도 장기 총수익률은 낮을 수 있다'고 명시했고, 다음/네이버 블로그·미래에셋·KIRI 자료도 커버드콜의 비대칭 손익구조와 분배금이 원금 반환에 불과할 수 있다는 점, 금감원 소비자경보(목표분배율은 확정치 아님)를 일관되게 지적한다. 서로 다른 도메인 다수가 동일 취지로 일치하므로 verified. 다만 대표 인용 출처는 언론(press)이며 시점 정보(published_at)는 부재하나 2025년 통계·자료 기준으로 최신성은 양호하다.\"}",
+  "usage": {
+    "inTok": 3649,
+    "outTok": 239,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:50.178Z"
+}

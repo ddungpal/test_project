@@ -1,0 +1,12 @@
+{
+  "promptHash": "e7beb8019600e2ababaedca8fef370ccb76c381d30941e5c86d2a34aef3abe01",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"blog\",\"primary_source_url\":\"https://blog.naver.com/how2invest/222039330808\",\"quote_excerpt\":\"연금저축계좌와 IRP/퇴직연금은 운용 중에는 세금을 과세하지 않습니다.\",\"citation_verified\":true,\"independent_origin_count\":4,\"misleading_check\":\"명목적으로는 맞지만 체리피킹/일반화 주의: 2025년 세법 개편으로 연금계좌 내 '해외 주식·펀드' 배당은 해외에서 원천징수된 뒤 지급되어 과세이연 대상에서 제외됨(KB캐피탈·토스뱅크·미래에셋 자료). 즉 국내 주식형 ETF 분배금 등은 여전히 과세이연되지만, 모든 배당·분배금에 일괄 적용된다고 보면 오해 소지가 있음.\",\"freshness\":\"fresh\",\"reasoning\":\"claim(연금계좌 내 배당·분배금 과세이연 등 세제 혜택)은 미래에셋증권 PDF, 미래에셋 네이버 블로그, KB캐피탈, 토스뱅크 등 서로 다른 발행처의 문장으로 뒷받침된다. 블로그 자료는 '운용 중에는 세금을 과세하지 않는다(과세이연)'고 명시하며, 미래에셋 PDF도 국내 주식형 ETF 분배금·인컴수익의 과세이연을 언급한다. 다만 국세청(nts.go.kr) 자료는 연금계좌 원천징수·저율과세 구조를 뒷받침하나 배당 과세이연을 직접 서술하진 않았고, 2025년 개편으로 해외 배당은 과세이연에서 제외되는 변화가 있어 misleading_check에 기재. 개념 자체는 복수 출처가 일치하여 verified. [MOCK] 표식 결과는 없음. 인용 문장은 제공된 content에 그대로 존재함.\"}",
+  "usage": {
+    "inTok": 3737,
+    "outTok": 215,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:47.071Z"
+}

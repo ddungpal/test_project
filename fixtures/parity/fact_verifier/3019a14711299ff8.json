@@ -1,0 +1,12 @@
+{
+  "promptHash": "3019a14711299ff8bc8033952682e201bbd12d6b437653939b15ed1e2b41e00f",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"primary\",\"primary_source_url\":\"https://www.law.go.kr/LSW/precInfoP.do?precSeq=138188\",\"quote_excerpt\":null,\"citation_verified\":false,\"independent_origin_count\":0,\"misleading_check\":\"검색결과는 '간접투자상품/금융투자상품은 예금자보호 대상이 아니고 원금손실이 가능하다'는 일반 원칙만 언급할 뿐, claim의 핵심 대상인 '파킹통장'과 '커버드콜 ETF'를 명시적으로 다룬 문장이 하나도 없음. 일반론을 특정 상품에 그대로 적용하는 확대해석 소지 주의(파킹통장은 통상 예금자보호 대상이나 상품 형태에 따라 다를 수 있음).\",\"freshness\":\"unknown\",\"reasoning\":\"제공된 결과는 모두 금융위·국가법령정보센터 등 primary 출처지만, '파킹통장' 또는 '커버드콜 ETF'라는 특정 상품을 뒷받침하는 실재 문장이 없다. law.go.kr에 '간접투자상품은 예금자보호대상이 아니고 실적배당상품으로서 투자원금의 손실이 발생할 수 있습니다'라는 일반 원칙 문장이 있으나, 이는 claim이 지목한 두 상품을 직접 검증하지 않는다. 서로 다른 발행처 2곳 이상이 '해당 claim'을 명시적으로 일치 지지하지 않으므로 verified 요건 미충족. 특정 상품명을 다룬 근거가 없어 quote_excerpt는 null, citation_verified=false로 보수 판정한다.\"}",
+  "usage": {
+    "inTok": 1521,
+    "outTok": 200,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:48.761Z"
+}

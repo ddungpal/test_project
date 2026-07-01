@@ -1,0 +1,12 @@
+{
+  "promptHash": "ac1deed6e8c17d4d1f9ebdcd484a6b602dcaead083a0045cdfda7a9636b7fd4f",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"unverified\",\"source_tier\":\"secondary\",\"primary_source_url\":\"https://story.pay.naver.com/content/1446_4_C1\",\"quote_excerpt\":\"커버드콜 ETF는 급락장에서 취약한 상품인데요.\",\"citation_verified\":true,\"independent_origin_count\":3,\"misleading_check\":\"검색결과는 커버드콜 ETF의 특성(하방 위험 노출, 상방 제한, 분배락으로 인한 원금 훼손 가능성 등)만 다수 발행처에서 다루고 있으며, '일반 배당 ETF'와 '파킹통장'에 대한 직접적 비교·언급은 사실상 없다. 따라서 3종 상품을 '원금 변동 위험·기대 수익·현금흐름 안정성' 세 축으로 비교하는 claim 전체를 뒷받침하는 근거는 부분적일 뿐이다.\",\"freshness\":\"aging\",\"reasoning\":\"claim은 세 가지 상품(일반 배당 ETF·커버드콜 ETF·파킹통장)의 특성 차이를 주장한다. 검색결과 중 미래에셋(youtube.com, investments.miraeasset.com)과 네이버페이 스토리(story.pay.naver.com)는 커버드콜 ETF가 하락은 열려있고 상방은 제한되는 비대칭 손익구조, 분배락에 따른 원금 훼손 가능성, 기초자산에 따른 수익·변동성 차이 등을 실재 문장으로 서술하고 있어 '커버드콜 ETF' 부분은 복수 발행처에서 일치한다. 그러나 '일반 배당 ETF'와 '파킹통장'에 대한 직접 서술이나 세 상품을 나란히 비교하는 근거는 제공된 결과에 없고, bok.or.kr·fsc.go.kr 결과는 무관하며 blog.naver.com은 본문이 사실상 비어있다. claim의 핵심인 3종 상품 간 비교가 온전히 뒷받침되지 않아 보수적으로 unverified로 판정한다. 발췌 문장은 제공 content에 그대로 존재함을 확인했다.\"}",
+  "usage": {
+    "inTok": 3289,
+    "outTok": 242,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:47.335Z"
+}

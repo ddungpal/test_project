@@ -1,0 +1,12 @@
+{
+  "promptHash": "90bae3354e71847cb29603a2a6cd340bdc95ad931e44f8ba75427d814342b383",
+  "roleId": "topic_scout",
+  "model": "opus",
+  "rawJson": "{\"candidates\":[{\"title\":\"ETF가 처음인 사람을 위한 'ETF가 대체 뭐예요?' — 주식·펀드와 뭐가 다른지 5분 정리\",\"reason\":\"focus_keyword 'ETF 투자'를 입문 각도로 쪼갠 후보. 질문 댓글 수요(question_comment_count=1)가 있고, 기존 후보에 '투자'(tc:3238...)·'주식'(tc:e08fb0bd...)이 신규로 잡혀 있어 아직 개념 자체가 낯선 시청자층이 존재함을 시사. 김짠부 채널의 재테크 입문 정체성에 맞는 개념 설명 롱폼.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:3238b00d-3176-4f45-8ed5-113442b74645\",\"tc:e08fb0bd-46d4-43cb-bc05-269e66ff9682\"],\"audience_level\":\"beginner\",\"audience_need\":\"ETF라는 단어는 들어봤지만 주식·펀드와 뭐가 다른지 몰라 시작을 못 하는 상태\",\"target_persona\":\"재테크 유튜브 이제 막 보기 시작한 2030 사회초년생, '투자는 해야 한다는데 ETF부터 무슨 말인지' 막막한 사람\"},{\"title\":\"첫 ETF 뭐 살까? 초보가 사도 되는 대표 ETF 종류와 고르는 기준\",\"reason\":\"focus_keyword 'ETF 투자'를 '종목 선택' 각도로 구체화. 기존 후보의 '투자'(tc:3238...)·'주식'(tc:e08fb0bd...) 키워드가 신규 상태라 개념은 알지만 무엇을 살지 모르는 초급 수요가 있음. 채널 정체성(투자 입문 정보형 롱폼)에 부합하는 '고르는 기준' 콘텐츠.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:3238b00d-3176-4f45-8ed5-113442b74645\"],\"audience_level\":\"novice\",\"audience_need\":\"ETF 계좌는 텄는데 수백 개 종목 중 첫 한 개를 뭘 골라야 할지 몰라 멈춰있는 상태\",\"target_persona\":\"증권계좌 만들고 ETF 매수 버튼 앞에서 멈춘 20·30대, '남들 다 산다는 S&P500 사도 되나' 고민하는 사람\"},{\"title\":\"ISA 계좌로 ETF 투자하면 세금 얼마나 아낄까 — 절세 셋팅 A to Z\",\"reason\":\"focus_keyword 'ETF 투자'와 기존 신규 후보 'isa'(tc:4d6b1a28...)를 결합한 절세 각도. ISA는 ETF 투자와 직결되는 절세 계좌라 시의성이 높고, 절약·절세를 강조하는 김짠부 채널 정체성과 정확히 맞는 심화 정보형 주제.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:4d6b1a28-8de2-4857-b71d-f60593934756\"],\"audience_level\":\"intermediate\",\"audience_need\":\"이미 ETF를 사고 있는데 일반계좌에서 그냥 굴려 세금을 새고 있는 건 아닌지 점검하고 싶은 상태\",\"target_persona\":\"ETF 몇 종목 이미 굴리는 30대 직장인, 'ISA·연금계좌로 옮기면 절세된다는데 어떻게 하는지' 헷갈리는 사람\"},{\"title\":\"매달 자동으로 ETF 사서 굴리는 적립식 셋팅 — 월급쟁이 현금흐름 만들기\",\"reason\":\"focus_keyword 'ETF 투자'를 고급(전략·자동화) 각도로 발굴. 기존 신규 후보 '주식'(tc:e08fb0bd...)·'투자'(tc:3238...) 수요를 '자동 적립·분배금 현금흐름'으로 고도화. 시청자 수요를 앞서가는 심화 주제로, 롱폼 정보형 채널에 적합.\",\"evidence_ids\":[\"focuskw:ETF 투자\",\"tc:e08fb0bd-46d4-43cb-bc05-269e66ff9682\",\"tc:3238b00d-3176-4f45-8ed5-113442b74645\"],\"audience_level\":\"advanced\",\"audience_need\":\"이미 ETF를 굴리며 매수 타이밍·분배금을 활용해 자동 현금흐름 시스템으로 만들고 싶은 상태\",\"target_persona\":\"ETF 투자 1년 넘은 30·40대 직장인, '매달 자동매수+분배금 재투자로 현금흐름 파이프라인' 만들고 싶은 사람\"}]}",
+  "usage": {
+    "inTok": 1482,
+    "outTok": 515,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:21:12.962Z"
+}

@@ -1,0 +1,12 @@
+{
+  "promptHash": "d16522644537cd1ef201ae1caf9023552e0ad6dedeebdafddb2a08d9e194b872",
+  "roleId": "fact_verifier",
+  "model": "opus",
+  "rawJson": "{\"verification_status\":\"verified\",\"source_tier\":\"secondary\",\"primary_source_url\":\"https://open.shinhansec.com/mobilealpha/html/CS/ETFGuide.html\",\"quote_excerpt\":\"ETF의 분배금은 배당소득세(15.4%, 지방소득세 포함)를 내요.   금융소득종합과세 대상 금액과 합산해서 2천만원을 넘으면 분배금도 금융소득종합과세 대상이 됩니다.\",\"citation_verified\":true,\"independent_origin_count\":5,\"misleading_check\":null,\"freshness\":\"fresh\",\"reasoning\":\"claim은 '국내 상장 ETF 분배금은 배당소득세 15.4% 과세 대상이며 금융소득 규모(연 2천만원 초과)에 따라 금융소득종합과세에 포함될 수 있다'는 내용이다. 신한투자증권(open.shinhansec.com), 전국투자자교육협의회(kcie.or.kr), KB캐피탈(m.kbcapital.co.kr), 삼일PwC(pwc.com), 네이버블로그 등 서로 다른 5개 발행처가 모두 '분배금=배당소득세 15.4%(지방세 포함)'와 '이자·배당소득 합산 연 2천만원 초과 시 금융소득종합과세 대상'을 일치되게 서술한다. 신한증권 결과에 claim을 뒷받침하는 문장이 그대로 존재해 발췌·인용을 확인했다. MOCK 표식 없음. 신한증권 준법감시 심사필 일자가 2026년으로 최신이라 freshness는 fresh. 다만 이 15.4% 과세와 종합과세 합산은 '분배금'에 한정되며 국내주식형 ETF의 매매차익은 비과세라는 점은 claim이 분배금만 다루므로 오해 소지는 없다.\"}",
+  "usage": {
+    "inTok": 4085,
+    "outTok": 215,
+    "cachedInTok": 0
+  },
+  "recordedAt": "2026-07-01T01:52:47.247Z"
+}
