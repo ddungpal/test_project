@@ -41,7 +41,11 @@
     {
       "step": 4,
       "name": "structure-gold-injection",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/1 PASS",
+      "started_at": "2026-07-01T16:45:52+0900",
+      "summary": "쏙이 금맥(OnboardingGold)을 구다리(structurer)에 조건부 주입 — target-persona 패턴 미러. (1) src/pipeline/onboarding.ts: loadOnboardingGold(supa,runId):Promise<OnboardingGold|null> 얇은 리더 추가 — 최신 onboarding proposal의 최신 stage_selection.edited_payload 읽기(latestOnboardingProposalId 재사용)·proposal 없거나 edited_payload falsy면 null·throw0. (2) src/agents/structurer/prepare.ts: StructurerInput에 optional onboardingGold?:{confusionPoints[],ahaPoints[],coreAngle,calibratedLevel} 추가, 금맥 있을 때만 4필드 명시 재구성해 세팅(없으면 키 자체 미주입 — target_persona line45와 동일 조건부). (3) STRUCTURER_SYSTEM에 금맥 지침 추가(confusion→풀어줄 섹션 우선배치·aha→훅/도입 후보·coreAngle→목차 전체 정렬 앵글·calibratedLevel→깊이 조절[audience_level 병존]·억지금지). ★불변식: 금맥 없으면 StructurerInput input 바이트 동일→promptHash 보존→기존 구다리 픽스처 무회귀(SYSTEM 지침은 target_persona처럼 항상 존재, 실제 값은 input onboardingGold 키 유무로만 갈림). structurer promptHash는 금맥 경로에서만 변함. tests/structureGoldInjection.test.ts 신규(4 tests: 금맥 있음→confusion/aha/coreAngle/level 주입+SYSTEM 지침 toContain / 케이스 B 금맥 없음→'onboardingGold' in input===false 바이트불변 회귀가드 / 케이스 B2 proposal 있고 selection.edited_payload=null 미저장 경로도 키 미주입). OnboardingGold 재정의0(step0 import). 구다리 상태전이·STRUCTURER_SCHEMA 섹션구조 무변경. AC: typecheck exit0 / test exit0(1076 passed,101파일·순증4) / build exit0. 마이그0·신규의존성0.",
+      "completed_at": "2026-07-01T16:56:28+0900"
     },
     {
       "step": 5,
