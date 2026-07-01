@@ -1,0 +1,10 @@
+{
+  "project": "produce script",
+  "phase": "structure-editing",
+  "steps": [
+    { "step": 0, "name": "structure-edit-backend", "status": "pending" },
+    { "step": 1, "name": "outline-editor", "status": "pending" },
+    { "step": 2, "name": "selector-integration", "status": "pending" },
+    { "step": 3, "name": "post-confirm-structure-ui", "status": "pending" }
+  ]
+}
