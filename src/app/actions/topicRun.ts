@@ -6,9 +6,9 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { inngest } from "../../inngest/client.js";
-import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, editSelectedTopic, type SelectInput } from "../../pipeline/gate.js";
+import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, editSelectedTopic, editSelectedStructure, type SelectInput } from "../../pipeline/gate.js";
 import { getSelectedStagePayload } from "../../pipeline/context.js";
-import type { TitlePayload, ThumbnailPayload, TopicPayload } from "../../lib/dashboard/proposalTypes.js";
+import type { TitlePayload, ThumbnailPayload, TopicPayload, StructurePayload } from "../../lib/dashboard/proposalTypes.js";
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
 import { transitionRun } from "../../pipeline/runState.js";
 import { enterResearchReview, approveResearch, listEscalatedFacts, type ResearchApproval } from "../../pipeline/researchGate.js";
@@ -196,18 +196,28 @@ export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]
   await editSelectedThumbnails(supa, runId, payloads, ownerId);
   await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
 }
+// 확정된 구성(approach+outline) 손편집 — 상태 전이 없이 새 selection으로 기록. editTitle 패턴 미러.
+//   edited_payload 우선 반환(context.ts) 덕에 편집한 구성이 짠펜·다운스트림에 자동 전파. editedBy=ownerId(감사필드 위조 차단).
+export async function editStructure(runId: string, payload: StructurePayload): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await editSelectedStructure(supa, runId, payload, ownerId);
+  await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "structure" } });
+}
 
 // 확정 후 AI 재생성 — Inngest로 새 proposal 생성(상태 전이 없음). 동기 callLLM 금지(185s 타임아웃 회피).
 //   force는 보내지 않는다 — postConfirm은 force와 독립 경로(selectedState 진입·낙관잠금 없음).
 //   reason은 비/공백이면 미포함(exactOptionalPropertyTypes — undefined 명시대입 금지).
 export async function regenerateAfterConfirm(
   runId: string,
-  component: "titles" | "thumbnail",
+  component: "titles" | "thumbnail" | "structure",
   reason?: string,
 ): Promise<void> {
   const ownerId = await requireOwner();
   const supa = createAdminClient();
-  const name = component === "titles" ? "run/titles.requested" : "run/thumbnails.requested";
+  const name = (
+    { titles: "run/titles.requested", thumbnail: "run/thumbnails.requested", structure: "run/structure.requested" } as const
+  )[component];
   await inngest.send({ name, data: { runId, postConfirm: true, ...(reason && reason.trim() ? { reason } : {}) } });
   await auditLog(supa, { actorId: ownerId, action: "stage_regenerated", targetType: "run", targetId: runId, detail: { component, postConfirm: true } });
 }

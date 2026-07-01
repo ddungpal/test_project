@@ -302,7 +302,12 @@
     },
     {
       "dir": "structure-editing",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (structure-edit-backend)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-07-01T11:16:47+0900"
     }
   ]
 }
