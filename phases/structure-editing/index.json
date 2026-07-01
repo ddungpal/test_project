@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "outline-editor",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-07-01T11:17:26+0900",
+      "team_round": "1/3 PASS",
+      "summary": "섹션 편집 공유 위젯. 순수 헬퍼 src/lib/outline/ops.ts — addSection(빈 섹션 {section,goal,why,format:'explain'} append)·removeSection(list,i)·moveSection(list,from,to)·patchSection(list,i,patch), 전부 입력 비변형·범위밖 방어. 공유 위젯 src/components/OutlineEditor.tsx('use client')는 제어형 Props {outline: StructureSection[]; onChange: (next)=>void} — @dnd-kit(core/sortable/utilities 3패키지 신규) 드래그 정렬, 드래그 id는 crypto.randomUUID 클라 임시 id(payload 미저장·onChange는 순수 StructureSection[]만 반환), 부모 outline 외부변경 시 재동기화. TRUS 3색·키보드 정렬 센서·aria-label. step2(ProposalSelector 교체)·step3(PostConfirmStructureEdit)가 이 위젯 소비. tests/outlineOps.test.ts 13건. AC: typecheck exit0·outlineOps 13/13·build exit0(npm test 전체 exit1은 무관한 선재 eval.test.ts).",
+      "completed_at": "2026-07-01T11:31:12+0900"
     },
     {
       "step": 2,
