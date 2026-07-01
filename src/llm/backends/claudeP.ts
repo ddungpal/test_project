@@ -44,6 +44,15 @@ function buildUserMessage(input: unknown): string {
   ].join("\n");
 }
 
+/** claude 자식 프로세스 env — ANTHROPIC_API_KEY/AUTH_TOKEN을 제거한다(순수).
+ *  이유: dev 서버가 .env의 ANTHROPIC_API_KEY(api 백엔드용)를 로드하는데, 그게 spawn된 claude에
+ *  상속되면 CLI가 구독($0)이 아니라 API로 과금한다 → API 크레딧 소진 시 "Credit balance is too low"
+ *  로 exit 1. claude-p의 존재 이유(구독 무료)를 지키려면 이 두 키를 반드시 자식 env에서 뺀다. */
+export function subscriptionEnv(env: Record<string, string | undefined>): Record<string, string | undefined> {
+  const { ANTHROPIC_API_KEY: _k, ANTHROPIC_AUTH_TOKEN: _t, ...rest } = env;
+  return rest;
+}
+
 export function extractJson(stdout: string): string {
   // CLI가 코드펜스나 잡텍스트를 붙여도 첫 균형 JSON 객체를 추출.
   // ★ 문자열·이스케이프 인지: 문자열 안의 { } 는 깊이 계산에서 제외해야 한다(아니면 조기 종료 버그).
@@ -109,15 +118,23 @@ export const claudePDriver: LlmBackendDriver = {
 function runClaude(args: string[], stdinMessage: string): Promise<string> {
   return new Promise((resolve, reject) => {
     // cwd = 중립 tmp: 프로젝트 CLAUDE.md auto-discovery 차단.
-    const child = spawn("claude", args, { stdio: ["pipe", "pipe", "pipe"], cwd: tmpdir() });
+    // env = ANTHROPIC_API_KEY 제거: claude-p는 구독($0)으로만 돌아야 한다(API 과금·크레딧 소진 방지).
+    const child = spawn("claude", args, { stdio: ["pipe", "pipe", "pipe"], cwd: tmpdir(), env: subscriptionEnv(process.env) as NodeJS.ProcessEnv });
     let out = "";
     let err = "";
     child.stdout.on("data", (d) => (out += d.toString()));
     child.stderr.on("data", (d) => (err += d.toString()));
     child.on("error", (e) => reject(new Error(`claude CLI 실행 실패: ${e.message}`)));
     child.on("close", (code) => {
-      if (code !== 0) reject(new Error(`claude CLI exit ${code}: ${err.slice(0, 500)}`));
-      else resolve(out);
+      if (code !== 0) {
+        // claude는 사용량 한도·거절 등을 stderr가 아니라 stdout에 찍고 exit 1 하는 경우가 있다 →
+        // 둘 다 표면화해야 원인이 사라지지 않는다(관측 사각지대).
+        const detail = [err.trim() && `stderr: ${err.trim()}`, out.trim() && `stdout: ${out.trim()}`]
+          .filter(Boolean)
+          .join(" | ")
+          .slice(0, 800);
+        reject(new Error(`claude CLI exit ${code}: ${detail || "(빈 출력)"}`));
+      } else resolve(out);
     });
     child.stdin.write(stdinMessage);
     child.stdin.end();
