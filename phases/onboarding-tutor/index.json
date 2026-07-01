@@ -50,7 +50,11 @@
     {
       "step": 5,
       "name": "onboarding-quiz-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/1 PASS",
+      "started_at": "2026-07-01T16:56:28+0900",
+      "summary": "쏙이 인터랙티브 퀴즈 UI + 구다리 입구 온디맨드 진입(강제 게이트 아님). ★순수 재생로직 src/lib/onboarding/playback.ts 신규(컴포넌트 밖·vitest @/ alias 함정 회피): PlaybackState{arc,questionIdx,revealed,answers:ArcAnswer[]} + initPlayback/currentQuestion/chooseAnswer(reveal on+응답누적 멱등)/next/isLast/isRevealed/isCorrect(chosenIdx===answerIdx)/isComplete/collectAnswers(:ArcAnswer[]) — 전부 순수·throw0·비변형·ArcAnswer는 arc.ts import(재정의0). src/components/OnboardingQuiz.tsx 신규(Esther·\"use client\"·props{runId,arc:OnboardingArc}): playback 순수함수 호출만(정오/누적 재구현0)로 한 문항씩 재생 — 보기 선택→즉시 ahaReveal 공개(좌측 border-l-2 border-l-trus-yellow)→cliffhanger 당김→다음, 마지막에 coreAngle '핵심 갈림길' 보여주고 submitOnboarding(runId,collectAnswers) 제출→router.refresh(). hookMode 라벨(반전/실용템 노랑보더 배지)·미검증 unverifiedNumbers '확인 필요' 배지(ScriptReview 미러)·TRUS 3색만(정오는 노랑강조 vs 흐린톤·관용 초록/빨강 안씀)·그라데이션/그림자/이모지남발0·포커스링·aria. src/components/RequestOnboardingButton.tsx 신규(RequestStageButton 미러·requestOnboarding 호출→대기표시). 배선: topicRun.ts requestOnboarding(runId)=requireOwner→inngest.send('run/onboarding.requested'){runId}(requestStructure 미러·새 이벤트 정의0), page.tsx는 run.state==='thumbnails_selected'일 때만 createAdminClient로 loadOnboardingArc(다른 상태 미호출·기존 Promise.all 패턴)→OnboardingSection 노출(아크 없으면 RequestOnboardingButton, 있으면 OnboardingQuiz). ★건너뛰기 가능: 구다리 fromState('thumbnails_selected') 불변·'구성 만들기' 버튼 병존 노출(강제 게이트 아님). tests/onboardingPlayback.test.ts 신규(11 tests·컴포넌트 import0·순수로직만: 진행·공개·정오·응답누적·마지막후 answers=ArcAnswer[]). AC: typecheck exit0 / test exit0(1087 passed,102파일·순증11 1076→1087) / build exit0. 마이그0·신규의존성0·새이벤트0(step3 재사용)·재정의0. ⚠️컴포넌트 인터랙티브 재생(찍기→아하→클리프행어→제출)·격동고딕2 렌더·포커스 대비는 브라우저 수동검증 대상(curl 불가).",
+      "completed_at": "2026-07-01T17:18:56+0900"
     }
   ],
   "created_at": "2026-07-01T15:45:23+0900"
