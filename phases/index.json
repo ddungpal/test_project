@@ -312,12 +312,8 @@
     },
     {
       "dir": "onboarding-tutor",
-      "status": "running",
-      "progress": "5/6",
-      "running_step": "5 (onboarding-quiz-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 1320,
-      "heartbeat_at": "2026-07-01T17:18:28+0900"
+      "status": "completed",
+      "completed_at": "2026-07-01T17:18:56+0900"
     }
   ]
 }
