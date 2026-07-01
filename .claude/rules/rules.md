@@ -16,6 +16,8 @@
 - 하네스 step 완료 시 코드뿐 아니라 `phases/<phase>/index.json`의 해당 step을 `completed` + `summary`로 갱신한다 (이유: status가 pending으로 남고 output이 stale 브리핑만 담는 실수 방지).
 - enum/CHECK 제약을 넓히는 마이그레이션을 추가하면 같은 커밋에서 `src/lib/supabase/database.types.ts`의 해당 Row 유니온 타입도 함께 넓힌다 (이유: 스키마-타입 드리프트는 소비 step의 `.eq(col, newVal)`이 타입 좁힘으로 다음 step에서 typecheck를 깨뜨린다 — 마이그 25/30/31 실제 사례).
 - `'use server'`/모듈 간 헬퍼를 추출·이동하면 원본 파일에 그 헬퍼만 쓰던 import(특히 `type X`)가 죽은 채 남지 않았는지 확인한다 (이유: tsconfig에 `noUnusedLocals`가 없어 죽은 import를 typecheck가 안 잡는 사각지대 — contentLifecycle.ts 추출 시 topicRun.ts에 죽은 `type Supa`가 남은 사례).
+- 클라이언트 컴포넌트에서 단위 테스트할 순수 헬퍼는 컴포넌트 파일이 아니라 `src/lib/**`에 두고 export한다(컴포넌트는 re-export만) (이유: vitest에 `@/` alias가 없어 컴포넌트를 테스트가 import하면 내부 `@/...` import까지 끌려와 스위트 전체가 "Failed to load url @/..."로 로드 실패 — PostConfirmStructureEdit의 `isStructureDownstreamStarted`를 `src/lib/outline/staleness.ts`로 분리해 해결한 사례).
+- 짠펜(scribe) 대본 세그먼트 품질을 검사할 때는 **kind로 갈라서** 검사한다 — 프로즈만 본문 길이(≥20자), 블록(table/case/visual)은 `payload` 존재로 (이유: 블록 세그먼트는 text가 짧은 제목이고 내용은 payload에 있음 — 모든 세그먼트에 프로즈 길이 검사를 걸면 블록 담은 정상 fixture가 eval을 밟는다. tests/eval.test.ts 실제 사례).
 
 ---
 

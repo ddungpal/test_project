@@ -1,1 +1,0 @@
-- 제안: 클라이언트 컴포넌트에서 단위 테스트할 순수 헬퍼는 컴포넌트 파일이 아니라 `src/lib/**`(예: `src/lib/outline/staleness.ts`)에 두고 export하라. vitest.config.ts에 `@/` alias가 없어 컴포넌트를 테스트에서 import하면 "Failed to load url @/..."로 스위트 전체가 로드 실패한다. 컴포넌트는 그 헬퍼를 re-export만 한다 (근거: PostConfirmStructureEdit의 isStructureDownstreamStarted를 컴포넌트에 두니 tests가 @/app/actions/topicRun 등 내부 alias import까지 끌고와 로드 실패 — 헬퍼 분리로 해결).
