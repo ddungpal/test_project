@@ -72,3 +72,38 @@
 
 [Joy] index.json 채워진 거 확인했어~ status=completed, summary에 의존성0(youtube-transcript 재사용)이랑 폴백동작 다 담겼고 step0·1이랑 형식도 똑같아. AC 3종 재확인도 다 exit0(회귀0). 통과야 🎉
 [리드] 좋아, round2에 PASS. step 2 completed로 마감했어. 쏙이가 이제 레퍼런스 영상 자막+미검증 사실까지 입력으로 받게 됐네 — 신규 의존성 0으로 깔끔하게. 다음은 step 3 온디맨드 스테이지 배선이야. 조이가 올린 vitest 스텁 규칙 제안은 사람 검토용으로 남겨뒀어. 둘 다 수고했어!
+
+=== Step 3: onboarding-stage-wiring ===
+
+[리드] 자 step3, 온디맨드 배선이야. 코드 다 훑고 저장 위치 결정했어 — 새 테이블 안 만들고 기존 stage_proposals 재사용. 아크는 proposal(candidates[0].payload), 금맥은 그 proposal의 selection.edited_payload로. 근데 stage_proposals.stage에 CHECK가 걸려있어서 'onboarding' 값 넣으려면 mig 하나가 불가피해(migration 23이 'thumbnail' 넣은 거랑 똑같이). 대신 Stage TS enum엔 절대 안 건드려 — PIPELINE·STANDALONE_DEPS Record<Stage> 안 흔들려고. 그래야 구다리 enters도 그대로고 standaloneDeps/pipeline 테스트도 안 깨져.
+[리드] 맥스, 이거 맡아줘. 핵심 가드레일 아래에 정리해뒀어. 작업하면서 네 말투로 chat.md에 한 줄씩 남겨줘.
+
+[Max] step3 배선 맡을게. 설계문서 C절이랑 researchStage 패턴, 기존 액션들 다 훑었어. 아크/금맥은 stage_proposals 재사용하고 stage="onboarding"만 CHECK 넓히는 마이그 1개(순번 32) 붙일 거야. Stage enum엔 안 넣고 database.types만 유니온 넓혀서 드리프트 막고. 테스트부터 쓸게.
+
+[Max] 배선 다 붙였어. onboarding.ts(아크/금맥 리더·저장·멱등 runOnboarding), Inngest 함수 onboardingStage, submitOnboarding 액션, auditLog에 onboarding_submitted 추가. captureStageFailure가 stage:string 받아서 "onboarding" 그대로 넘겼어 — Stage 캐스팅 안 했고. 테스트도 회귀가드+라운드트립+멱등 짰어. AC 돌려볼게.
+
+[Max] AC 3종 다 초록불이야. typecheck·test(1072개)·build 전부 통과. typecheck에서 하나 걸렸는데, database.types의 stage 유니온을 넓히니까 runDetail이 온보딩 proposal도 Map<Stage>에 넣으려다 터지더라. 온보딩은 선형 밖이라 거기선 그냥 continue로 건너뛰게 가드 넣었어. 마이그는 순번 32 하나(stage CHECK에 onboarding만 추가), Stage enum은 안 건드렸고 드리프트 방지로 database.types 유니온만 넓혔어. 놓친 거 있으면 봐줘.
+
+[리드] 나도 AC 3종 직접 돌렸어 — typecheck exit0, test exit0(1072 통과), build exit0. 마이그 32 순번 맞고 database.types 드리프트도 같이 넓혔네. 조이, 검수 부탁해. onboarding.ts·onboardingStage.ts·submitOnboarding·마이그·database.types 드리프트, 신규 테스트 — step3.md 기준으로. 특히 구다리 fromState 불변, Stage enum에 onboarding 안 넣었는지, 강제 게이트 아닌지, callLLM 경유했는지 봐줘.
+[Joy] 오 맥스 step3 왔다~ git status 먼저 봤는데 부산물 하나도 없이 딱 명세대로 신규4개 수정6개, 깔끔하네
+[Joy] onboarding.ts 읽었어. off-chain으로 stage_proposals 재사용하고 getSelectedStagePayload 대신 얇은 전용 리더 쓴 거 센스있다 굿굿
+[Joy] 마이그32 봤는데 CHECK만 넓히고 database.types도 Stage | "onboarding"으로 같이 넓혔네. 드리프트 규칙 지켰다 오키
+[Joy] 이제 참조패턴들(researchStage 미러·prepare/step 시그니처) 맞나 보고 AC 3종 돌려볼게
+[Joy] 시그니처 다 맞춰봤어 — prepareOnboarder(supa,runId)·extractGold(arc,answers)·captureStageFailure(string) 전부 정합. CallLLMDeps도 구조적으로 만족하네
+[Joy] 이제 진짜배기 AC 3종 돌린다 typecheck→test→build. 커피 한 모금 하고 올게 ☕
+[Joy] AC 3종 다 통과! typecheck exit0, test 1072개 전부 초록불(신규 onboardingWiring 9개 포함), build도 6/6 페이지 깔끔 🎉
+[Joy] 불변식도 하나하나 다 봤어 — STAGES enum에 onboarding 없고, structure.enters=thumbnails_selected 그대로, enums/stages/standalone 전부 무변경. off-chain 확정이야 굿굿
+[Joy] runDetail 파급도 onboarding이면 continue로 안전히 건너뛰고, 드리프트 규칙(database.types stage 유니온 확장)도 지켰네. 코드는 진짜 흠잡을 데 없다 맥스 👍
+[Joy] 근데 하나! phases index.json의 step3이 아직 status:pending이고 summary가 비어있어. step0~2는 다 채웠는데 이번만 빠졌네. rules.md에 "step 완료 시 index.json completed+summary 갱신" 규칙 있는 거 알지? 이것만 채워주면 바로 통과야, 거의 다 왔어!
+
+[Joy] 맥스 코드는 진짜 깔끔해~ off-chain 확정(STAGES에 onboarding 없음)·구다리 enters 불변·드리프트 규칙까지 다 지켰고 AC 3종 전부 exit0(1072통과)! 근데 딱 하나 — index.json step3가 아직 pending이고 summary가 비었어. step0~2는 completed로 마감됐는데 이번만이야
+[리드] 굿 캐치 조이 — 그건 내 몫(리드 duty)이야. 지금 채울게. 코드·AC 다 초록불이라니 맥스 수고했고, 채우고 재확인 받자.
+
+[Joy] 재검수 돌게~ 리드가 index.json step3 채워준 거 바로 볼게!
+[Joy] 오 status completed 됐고 summary도 step0~2랑 똑같이 빽빽하다ㅋㅋ 이벤트명 run/onboarding.requested, submitOnboarding 시그니처, 저장위치 아크=stage_proposals candidates0.payload 금맥=stage_selections.edited_payload, 마이그32 CHECK확장+database.types 동반, STAGES 미추가까지 다 적혀있네 굿굿
+[Joy] JSON도 파싱 잘 되고 team_round completed_at 필드 형식 다 동일해서 깔끔해
+[Joy] 회귀 확인차 AC 3종 다시 돌렸어 → typecheck exit0, test exit0(1072 passed 100파일), build exit0 전부 통과 🎉
+[Joy] 완벽하다 통과! 맥스 에스더 수고했어~ step4 가자 💪
+
+[Joy] index.json 재확인 끝~ step3 completed로 딱 찍혔고 summary에 off-chain 등록·이벤트명·submitOnboarding 시그니처·저장위치(아크 proposal/금맥 selection)·마이그32+드리프트까지 6개 다 담겼어. AC 3종 회귀도 전부 exit0(1072통과)! 완전 통과야 🎉
+[리드] 좋아, round2에 PASS. step3 completed로 마감했어. 쏙이가 이제 온디맨드로 파이프라인에 붙었네 — 버튼이 아크 생성, 액션이 금맥 저장까지. 구다리 선형체인은 손 하나 안 대고, 새 테이블 없이 stage_proposals 재사용으로 마이그 딱 1개(32)만. 다음은 step4 금맥→구다리 주입이야. 맥스·조이 둘 다 수고했어!

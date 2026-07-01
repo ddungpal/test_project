@@ -22,6 +22,7 @@ type PipelineEvents = {
   "run/thumbnail-slot.requested": { data: { runId: string; slotIdx: number; softAck?: boolean; reason?: string } };
   "run/structure.requested": { data: StageData };
   "run/research.requested": { data: StageData }; // 셜록 셀(fan-out/join)
+  "run/onboarding.requested": { data: StageData }; // 쏙이 궁금증 아크(온디맨드·게이트 아님·force로 재생성)
   "run/script.requested": { data: StageData }; // 짠펜(최종 합류)
   // 발굴 신선도(B): 매일 cron 외에 수동 트리거(개발 검증·"발굴 새로고침" 버튼)도 같은 함수로.
   "discovery/refresh.requested": { data: Record<string, never> };

@@ -20,6 +20,8 @@ import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
 import { deleteProducedContent } from "./contentLifecycle.js";
+import { loadOnboardingArc, saveOnboardingGold } from "../../pipeline/onboarding.js";
+import { extractGold, type ArcAnswer } from "../../lib/onboarding/arc.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 import type { SeedRunInput } from "../../lib/dashboard/seedTypes.js";
 
@@ -195,6 +197,20 @@ export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]
   const supa = createAdminClient();
   await editSelectedThumbnails(supa, runId, payloads, ownerId);
   await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
+}
+
+// 쏙이 온보딩 응답 제출 — 저장된 아크 로드 → extractGold(순수) → 금맥 저장(온디맨드·게이트 아님).
+//   requireOwner 게이트. 아크 없으면 throw(먼저 "이해하기" 실행 필요). audit best-effort.
+export async function submitOnboarding(runId: string, answers: ArcAnswer[]): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const arc = await loadOnboardingArc(supa, runId);
+  if (!arc) throw new Error("온보딩 아크가 없습니다 — 먼저 이해하기를 실행하세요.");
+
+  const gold = extractGold(arc, answers);
+  await saveOnboardingGold(supa, runId, gold);
+  await auditLog(supa, { actorId: ownerId, action: "onboarding_submitted", targetType: "run", targetId: runId, detail: { answers: answers.length } });
 }
 // 확정된 구성(approach+outline) 손편집 — 상태 전이 없이 새 selection으로 기록. editTitle 패턴 미러.
 //   edited_payload 우선 반환(context.ts) 덕에 편집한 구성이 짠펜·다운스트림에 자동 전파. editedBy=ownerId(감사필드 위조 차단).

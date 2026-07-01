@@ -6,9 +6,10 @@ import { thumbnailSlotStageFn } from "./thumbnailSlotStage.js";
 import { structureStageFn } from "./structureStage.js";
 import { researchStageFn } from "./researchStage.js";
 import { scriptStageFn } from "./scriptStage.js";
+import { onboardingStageFn } from "./onboardingStage.js";
 import { discoveryCronFn } from "./discoveryCron.js";
 import { retrospectiveCronFn } from "./retrospectiveCron.js";
 import { performanceCronFn } from "./performanceCron.js";
 import { styleRelearnCronFn } from "./styleRelearnCron.js";
 
-export const functions = [topicStageFn, hookStageFn, thumbnailStageFn, thumbnailSlotStageFn, structureStageFn, researchStageFn, scriptStageFn, discoveryCronFn, retrospectiveCronFn, performanceCronFn, styleRelearnCronFn];
+export const functions = [topicStageFn, hookStageFn, thumbnailStageFn, thumbnailSlotStageFn, structureStageFn, researchStageFn, scriptStageFn, onboardingStageFn, discoveryCronFn, retrospectiveCronFn, performanceCronFn, styleRelearnCronFn];

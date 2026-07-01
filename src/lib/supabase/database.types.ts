@@ -50,7 +50,7 @@ type CommentsRaw = { id: string; content_id: string | null; youtube_video_id: st
 type TopicInterviews = { id: string; content_id: string | null; question: string | null; answer: string; created_at: string };
 type SourceDocuments = { id: string; run_id: string | null; url: string; content_type: string | null; archived_copy: string | null; publisher: string | null; source_published_at: string | null; fetched_at: string };
 type SourceParses = { id: string; source_document_id: string; parse_status: ParseStatus | null; parsed_text: string | null; parser_version: string | null; created_at: string };
-type StageProposals = { id: string; run_id: string; stage: Stage; candidates: Json; sources: Json | null; prompt_run_ref: string | null; created_at: string }; // sources: migration 16
+type StageProposals = { id: string; run_id: string; stage: Stage | "onboarding"; candidates: Json; sources: Json | null; prompt_run_ref: string | null; created_at: string }; // sources: migration 16; migration 32: +'onboarding'(쏙이 아크 재사용 저장 — Stage enum엔 넣지 않음)
 type StageSelections = { id: string; proposal_id: string; chosen_idx: number | null; edited_payload: Json | null; edit_distance: number | null; selection_reason: string | null; selected_by: string | null; created_at: string };
 type ResearchFacts = {
   id: string; run_id: string; claim: string; verification_status: VerificationStatus; source_tier: SourceTier | null;

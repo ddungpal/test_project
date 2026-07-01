@@ -87,6 +87,7 @@ export async function getRunDetail(runId: string): Promise<RunDetail | null> {
 
   const latestByStage = new Map<Stage, { id: string; candidates: CandidateView[]; sources: ProposalSource[] }>();
   for (const p of proposals ?? []) {
+    if (p.stage === "onboarding") continue; // 온보딩은 선형 파이프라인 밖(off-chain) — 별도 UI에서 소비, 여기선 무시.
     if (latestByStage.has(p.stage)) continue; // 이미 최신(내림차순 첫 항목)
     latestByStage.set(p.stage, { id: p.id, candidates: (p.candidates as unknown as CandidateView[]) ?? [], sources: [] });
   }
