@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "onboarder-agent",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/1 PASS",
+      "started_at": "2026-07-01T15:55:10+0900",
+      "summary": "쏙이(onboarder) LLM 에이전트 생성(comparator 골격 미러). roles.ts에 onboarder role 추가(name 쏙이·defaultModel opus·tools:[] — 자체 웹검색 없음·입력은 prepare 공급·§10 도구경계). src/agents/onboarder/schema.ts 하단에 ONBOARDER_SYSTEM 추가(핵심6규칙: ①듀얼훅 reversal(위험·손해 반전)/practical(숨은혜택 실용템)·hookMode 표기 ②클리프행어 아크(랜덤금지·ahaReveal→다음 cliffhanger·마지막 아하 coreAngle 수렴) ③프리테스트 프레이밍(시험아닌 호기심체크·틀려도 좋음) ④난이도태그 basic/mid/deep ⑤money-safety(입력 transcript·videoFacts 근거·미검증수치 unverifiedNumbers·억지/날조금지·소재부족시 문항축소) ⑥말투 정중-탐문 종결 금지 hook_maker 정렬·prompt 도발단정형 허용). src/agents/onboarder/step.ts 신규: onboarderStep(llm,runId,input):Promise<OnboardingArc> — callLLM으로 ONBOARDER_SCHEMA forced tool_use(maxTokens 6000)→normalizeArc 방어→null시 {questions:[],coreAngle:\"\"} 폴백(크래시금지). step0 타입·normalizeArc·ONBOARDER_SCHEMA 재정의0(import만). tests/onboarderAgent.test.ts 신규(7 tests: SYSTEM 6규칙 toContain 잠금 + role 등록 확인). AC: typecheck exit0/test exit0(1045 passed,98파일)/build exit0(stale .next rm 후). 마이그0·신규의존성0·prepare·스테이지·UI 무변경. promptHash 신규(onboarder roleId).",
+      "completed_at": "2026-07-01T16:03:59+0900"
     },
     {
       "step": 2,
