@@ -32,7 +32,11 @@
     {
       "step": 3,
       "name": "onboarding-stage-wiring",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "2/3 PASS",
+      "started_at": "2026-07-01T16:25:34+0900",
+      "summary": "쏙이(onboarder) 온디맨드 배선 — 강제 게이트 아님·선형 상태체인 밖(off-chain). 아크 생성 이벤트 `run/onboarding.requested`(client.ts PipelineEvents에 StageData 재사용 추가) + Inngest 함수 onboardingStageFn(src/inngest/functions/onboardingStage.ts, researchStage 패턴 미러·withStageRuntime로 비용가드·captureStageFailure('onboarding')·concurrency runId 1). 파이프라인 로직 src/pipeline/onboarding.ts 신규: runOnboarding(runId,deps)(멱등 — 기존 onboarding proposal 있고 force 아니면 재생성0·skipped:true 반환$0, 없으면 prepareOnboarder→onboarderStep(callLLM 경유)→저장)·loadOnboardingArc(전용 얇은 리더, getSelectedStagePayload는 stage:Stage만 받아 재사용불가)·saveOnboardingGold. 응답 제출 액션 submitOnboarding(runId, answers: ArcAnswer[]) src/app/actions/topicRun.ts(requireOwner→loadOnboardingArc(없으면 throw)→extractGold(순수·step0)→saveOnboardingGold→auditLog 'onboarding_submitted'). auditLog.ts AuditAction 유니온에 'onboarding_submitted' 추가(audit_log.action은 free text·마이그 불필요·best-effort). ★저장 위치: 새 테이블/컬럼 0 — 아크=stage_proposals(stage='onboarding', candidates[0].payload), 금맥=그 proposal의 stage_selections.edited_payload(proposal=질문·selection=응답추출 이원성 정합). ★Stage TS enum(STAGES) 미변경 — PIPELINE/STANDALONE_DEPS Record<Stage> 불흔들·구다리 fromState/enters/produces('thumbnails_selected'/'structure_proposed') 불변(회귀테스트 잠금)·새 RunState 전이0. 마이그: 순번 32(supabase/migrations/20260703120032_stage_proposals_onboarding.sql) — stage_proposals CHECK에 'onboarding' 추가(migration 23 thumbnail 미러, 불가피). 드리프트 규칙 준수: 같은 커밋에서 database.types.ts StageProposals.stage를 Stage|'onboarding'으로 확장, 파급된 runDetail.ts는 Map<Stage> 순회에서 onboarding proposal을 continue로 안전 스킵(선형 UI 미표시). tests/onboardingWiring.test.ts 신규(9 tests: 구다리 enters 회귀가드·STAGES에 onboarding 없음·submitOnboarding 라운드트립(fake supa·requireOwner 경유)·runOnboarding 체인+멱등). AC: typecheck exit0 / test exit0(1072 passed,100파일·신규9) / build exit0. 셜록 검증 파이프라인 신설0·callLLM 우회0. ⚠️마이그 32는 DB 미적용(운영/하네스에서 apply 필요) — 로컬 AC는 타입만으로 통과.",
+      "completed_at": "2026-07-01T16:45:52+0900"
     },
     {
       "step": 4,
