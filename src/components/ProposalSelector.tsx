@@ -10,15 +10,12 @@ import {
   type TopicPayload,
   type TitlePayload,
   type StructurePayload,
-  type StructureSection,
-  type SectionFormat,
   type ProposalSource,
-  SECTION_FORMATS,
-  SECTION_FORMAT_LABEL,
 } from "@/lib/dashboard/proposalTypes";
 import { CandidateBody } from "./CandidateBody";
 import { CandidateSourceBadge } from "./CandidateSourceBadge";
 import { SourceLinks } from "./SourceLinks";
+import { OutlineEditor } from "./OutlineEditor";
 
 // 제안→선택(§8.1 사람 게이트) — 후보 라디오 선택 + (선택)수정 + 한 줄 이유 → select 액션(상태전환만, AI 0회).
 //   editedPayload는 원안과 다를 때만 전송(§8.4 학습: proposed↔selected 델타 + selection_reason).
@@ -204,11 +201,6 @@ function EditFields({
     );
   }
   const p = (draft ?? {}) as Partial<StructurePayload>;
-  const outline = Array.isArray(p.outline) ? p.outline : [];
-  const setSection = (i: number, patch: Partial<StructureSection>) => {
-    const next = outline.map((s, j) => (j === i ? { ...s, ...patch } : s));
-    setDraft({ ...p, outline: next });
-  };
   return (
     <div className="flex flex-col gap-3">
       <input
@@ -217,28 +209,10 @@ function EditFields({
         placeholder="구성 컨셉"
         className={inputCls}
       />
-      {outline.map((s, i) => (
-        <div key={i} className="flex flex-col gap-1 border-l border-trus-white/15 pl-2">
-          <div className="flex items-center gap-2">
-            <input value={s?.section ?? ""} onChange={(e) => setSection(i, { section: e.target.value })} placeholder="섹션" className={`flex-1 ${inputCls}`} />
-            <label className="sr-only" htmlFor={`section-format-${i}`}>{`섹션 ${i + 1} 형식`}</label>
-            <select
-              id={`section-format-${i}`}
-              value={s?.format ?? "explain"}
-              onChange={(e) => setSection(i, { format: e.target.value as SectionFormat })}
-              className="shrink-0 border border-trus-white/30 bg-trus-black px-2 py-1 text-sm text-trus-white focus:border-trus-yellow focus:outline-none"
-            >
-              {SECTION_FORMATS.map((f) => (
-                <option key={f} value={f}>
-                  {SECTION_FORMAT_LABEL[f]}
-                </option>
-              ))}
-            </select>
-          </div>
-          <input value={s?.goal ?? ""} onChange={(e) => setSection(i, { goal: e.target.value })} placeholder="목표" className={inputCls} />
-          <textarea value={s?.why ?? ""} onChange={(e) => setSection(i, { why: e.target.value })} placeholder="왜 이 순서" rows={2} className={inputCls} />
-        </div>
-      ))}
+      <OutlineEditor
+        outline={Array.isArray(p.outline) ? p.outline : []}
+        onChange={(next) => setDraft({ ...p, outline: next })}
+      />
     </div>
   );
 }

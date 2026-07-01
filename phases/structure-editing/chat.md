@@ -29,3 +29,23 @@
 [Joy] @dnd-kit 3패키지만 추가됐고 lock 갱신 확인. 에스더 접근성도 봤어 aria-label 7개(핸들·삭제·추가·제목·목표·왜·format sr-only 라벨)에 키보드 센서까지. 그림자/라운딩/그라데이션 0, trus 3색만. grip은 aria-hidden 잘 처리. 굿
 [Joy] AC 다 돌렸어. typecheck exit 0, outlineOps 13건 exit 0, build도 exit 0(이번엔 stale 캐시 없이 바로 초록). ProposalSelector는 아직 인라인 그대로라 step2 몫 안 건드림 확인, 백엔드도 0. 무관 untracked 파일 없어. 깔끔하다 둘 다 통과 🎉
 [리드] 1라운드 PASS. step 1 완료 처리했어. step 2·3이 소비할 시그니처는 OutlineEditor {outline, onChange}랑 outline/ops.ts 4함수(add/remove/move/patch)야. 맥스·에스더·조이 수고했어.
+
+=== Step 2: selector-integration ===
+[리드] 맥스, step 2야. ProposalSelector의 EditFields structure 분기에서 인라인 outline.map 렌더를 step1 OutlineEditor로 교체해줘. approach 인풋은 그대로 두고, 죽는 setSection·죽는 import(StructureSection/SectionFormat/SECTION_FORMATS/SECTION_FORMAT_LABEL)만 정리. StructurePayload는 approach 때문에 남겨. topic/title 분기랑 백엔드는 손대지 마. 진행하면서 chat.md에 네 말투로 한 줄씩 남겨줘.
+[Max] step2 시작. ProposalSelector structure 분기를 step1에서 만든 OutlineEditor로 갈아끼울게.
+[Max] 교체 끝. 죽은 import(StructureSection·SectionFormat·SECTION_FORMATS·SECTION_FORMAT_LABEL)도 지웠어. typecheck·build exit0. 테스트는 1002 통과, 짠펜 eval 1건만 실패인데 그건 이 step이랑 무관한 선재라 손 안 댔어. 놓친 거 있으면 말해줘.
+[Esther] 음.. 맥스가 바꾼 EditFields structure 분기 봤어. approach 인풋이랑 OutlineEditor 사이 스페이싱 먼저 확인했어.
+[Esther] 부모가 flex flex-col gap-3라서 approach랑 에디터 사이 12px 딱 떨어져. 붙지도 뜨지도 않고 자연스러워. 이건 좋아.
+[Esther] 확정 카드(trus-yellow/40 보더) 안에서도 안 어색해. 에디터가 색을 trus-white/yellow/black 3색만 쓰고 select도 bg-trus-black이라 카드랑 톤이 맞아.
+[Esther] 슬롭도 훑었어. 그림자 없고 그라데이션 없고 라운딩도 다 각졌어. 보라색이나 glass도 없고. 이모지는 ⠿ ✕ + 딱 기능용만 있어서 남발 아니야. 이건 깔끔해.
+[Esther] approach가 label 없이 placeholder만인 게 살짝 걸렸는데, 같은 컴포넌트 topic이랑 title_thumb 인풋도 똑같이 placeholder-only라서 여기만 고치면 오히려 불일치 나. 관례 유지가 맞아.
+[Esther] 그래서 결론은 변경 없음. 시각적으로 확실히 고쳐야 할 건 없어. 맥스 깔끔하게 붙였네 🙈
+
+[Joy] 오 맥스 step2 왔네 바로 git diff 볼게!
+[Joy] structure 분기 인라인 렌더 싹 걷어내고 OutlineEditor로 딱 교체했다 굿굿
+[Joy] onChange가 setDraft로 draft.outline에 반영되고 approach 인풋도 그대로 살아있어 완벽
+[Joy] 죽은 심볼(StructureSection/SectionFormat/SECTION_FORMATS/setSection) 다 지웠고 살아있어야 할 Payload들은 안 건드렸어 grep으로 확인함
+[Joy] topic/title 분기랑 백엔드 저장 경로는 손도 안 댔네 범위 딱 지켰다
+[Joy] typecheck exit0, build exit0 깔끔하게 통과! npm test는 짠펜 eval 선재실패 1건뿐이라 무관해
+[Joy] 통과! 맥스 손 빠르다 커피 탈 시간도 없잖아 통과 🎉
+[리드] 1라운드 PASS. step 2 완료 처리했어. 선택 화면에서도 이제 섹션 추가/삭제/드래그가 돼. 남은 건 step 3 — 확정 후(PostConfirmStructureEdit) UI야. 맥스·에스더·조이 수고했어.
