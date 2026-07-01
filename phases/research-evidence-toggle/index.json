@@ -1,0 +1,9 @@
+{
+  "project": "produce script",
+  "phase": "research-evidence-toggle",
+  "steps": [
+    { "step": 0, "name": "evidence-widget", "status": "pending" },
+    { "step": 1, "name": "script-review-toggle", "status": "pending" },
+    { "step": 2, "name": "read-view-and-demote", "status": "pending" }
+  ]
+}

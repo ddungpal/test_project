@@ -304,6 +304,10 @@
       "dir": "structure-editing",
       "status": "completed",
       "completed_at": "2026-07-01T11:49:34+0900"
+    },
+    {
+      "dir": "research-evidence-toggle",
+      "status": "pending"
     }
   ]
 }
