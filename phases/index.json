@@ -303,11 +303,11 @@
     {
       "dir": "structure-editing",
       "status": "running",
-      "progress": "2/4",
-      "running_step": "2 (selector-integration)",
+      "progress": "3/4",
+      "running_step": "3 (post-confirm-structure-ui)",
       "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-07-01T11:38:13+0900"
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-07-01T11:49:20+0900"
     }
   ]
 }

@@ -49,3 +49,19 @@
 [Joy] typecheck exit0, build exit0 깔끔하게 통과! npm test는 짠펜 eval 선재실패 1건뿐이라 무관해
 [Joy] 통과! 맥스 손 빠르다 커피 탈 시간도 없잖아 통과 🎉
 [리드] 1라운드 PASS. step 2 완료 처리했어. 선택 화면에서도 이제 섹션 추가/삭제/드래그가 돼. 남은 건 step 3 — 확정 후(PostConfirmStructureEdit) UI야. 맥스·에스더·조이 수고했어.
+
+=== Step 3: post-confirm-structure-ui ===
+[리드] 마지막 step이야. 확정된 구성도 제목처럼 손편집·AI 재생성 되게 붙이자. 맥스, PostConfirmTitleEdit 그대로 미러해서 PostConfirmStructureEdit 만들어줘. OutlineEditor 넣고, editStructure로 저장, regenerateAfterConfirm(runId,"structure")로 재생성, 그리고 구성 바꾸면 리서치/스크립트 다시 만들어야 한다는 staleness 경고 배너까지. 차단은 절대 하지 말고 경고만.
+
+=== Step 3: post-confirm-structure-ui ===
+[Max] 마지막 배선 차례네. 제목 확정 후 패널(PostConfirmTitleEdit) 정독했어. 이거 미러해서 구성용 PostConfirmStructureEdit 만들고, OutlineEditor 붙이고, page.tsx에 title_thumb랑 대칭으로 꽂으면 돼. staleness 경고 배너도 넣고.
+[Max] PostConfirmStructureEdit 만들었어. approach 인풋 + OutlineEditor 붙였고, 저장은 approach랑 outline 딱 두 필드만 보내. 재생성 폴링은 제목 패널 그대로 미러했고, staleness 경고 배너도 넣었어. page.tsx에도 title_thumb랑 대칭으로 꽂았고. 헬퍼 isStructureDownstreamStarted 경계 테스트도 짰어. AC 돌려볼게.
+[Max] AC 세 개 다 통과했어. typecheck 0, build 0, 내 테스트 6개 초록. 전체 test는 선재 eval.test 짠펜 1건만 빨간 거 그대로고 나머지 1008개 통과.
+[Max] 한 가지 짚어둘 게, staleness 판정 헬퍼는 컴포넌트 말고 src/lib/outline/staleness.ts로 뺐어. vitest가 @/ alias를 안 물어서 컴포넌트를 직접 import하면 테스트가 안 도네. 순수 헬퍼만 .js로 import하게 분리했고 컴포넌트는 거기서 re-export만 해. 조이, 검수 부탁해. 놓친 거 있으면 말해줘.
+[리드] AC 직접 돌렸어 — typecheck exit0, staleness 테스트 6/6, build exit0 다 통과. 조이 검수 부탁해.
+[Joy] 오 마지막 step 왔네 바로 git diff 봤어. PostConfirmStructureEdit이 PostConfirmTitleEdit 거의 판박이로 미러됐고 저장은 approach랑 outline 딱 두 필드만 보내네 굿굿
+[Joy] page.tsx도 title_thumb 옆에 structure 분기 대칭으로 딱 꽂았고 sv.selection 확정 요약 안에서만 떠. staleness는 경고 배너만이고 저장/재생성 버튼 항상 활성 확인
+[Joy] 헬퍼를 staleness.ts로 뺀 것도 좋아 vitest alias 문제 피한 거 이해했어. 이제 AC 세 개 직접 돌려볼게!
+[Joy] AC 다 돌렸어! typecheck exit0, structureDownstream 6/6 exit0, build도 exit0(copy-learn·runs 다 정상). 전체 test는 1008 passed에 eval.test 짠펜 1건만 빨간데, stash로 clean HEAD에서도 똑같이 빨간 거 확인했어. 맥스 변경이랑 무관한 선재라 회귀 0
+[Joy] 저장은 approach·outline 딱 두 필드만·다른 필드 안 덮어씀, 재생성은 proposalId 변경으로 완료 감지하고 draft만 채우고 editStructure 자동호출 안 해. staleness는 경고만이고 structure_selected는 false·다운스트림 true로 정확해. 미지원 주석도 갱신됐고 범위 딱 지켰어. 통과 맥스! 🎉
+[리드] 1라운드 PASS. step 3 완료 처리했어. 이제 확정된 구성도 제목처럼 손편집·AI 재생성 되고, 리서치/스크립트 시작 후엔 바꾸면 다시 만들어야 한다는 경고가 뜨되 막지는 않아. structure-editing phase 4 step(백엔드→위젯→선택화면→확정후 UI) 다 닫혔다. 맥스·에스더·조이 수고했어 🎉

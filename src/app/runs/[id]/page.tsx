@@ -6,7 +6,7 @@ import { getOutlierThumbnailRefs } from "@/lib/dashboard/outlierThumbnailsView";
 import type { OutlierThumbnailRef } from "@/agents/hook_maker/externalRefs";
 import { STAGE_DESCRIPTORS, type StageDescriptor } from "@/pipeline/stages";
 import { STATE_LABEL, runTone } from "@/lib/dashboard/labels";
-import { PROPOSAL_STAGES, STAGE_TITLE, type ProposalStage } from "@/lib/dashboard/proposalTypes";
+import { PROPOSAL_STAGES, STAGE_TITLE, type ProposalStage, type StructurePayload } from "@/lib/dashboard/proposalTypes";
 import { RELATION_LABEL } from "@/lib/dashboard/seedTypes";
 import { isDevBypass, requireOwnerPage } from "@/app/actions/auth";
 import { ProposalSelector } from "@/components/ProposalSelector";
@@ -15,6 +15,7 @@ import { CandidateBody } from "@/components/CandidateBody";
 import { RequestStageButton } from "@/components/RequestStageButton";
 import { ThumbnailStudio } from "@/components/ThumbnailStudio";
 import { PostConfirmTitleEdit } from "@/components/PostConfirmTitleEdit";
+import { PostConfirmStructureEdit } from "@/components/PostConfirmStructureEdit";
 import { PostConfirmTopicPersonaEdit } from "@/components/PostConfirmTopicPersonaEdit";
 import { PostConfirmThumbnailsEdit } from "@/components/PostConfirmThumbnailsEdit";
 import { RefreshButton } from "@/components/RefreshButton";
@@ -91,12 +92,22 @@ function StageSection({ runId, sv, runState, topic, outlierRefs }: { runId: stri
         <div className="mt-2">
           <CandidateBody stage={stage} payload={effective} />
         </div>
-        {/* 제목(title_thumb)은 확정 후 손편집 가능 — editTitle(상태 전이 없음). topic/structure는 미지원. */}
-        {/* proposalId·regenCandidate는 'AI로 다시 생성'(step1) 폴링 완료 감지·draft 채움용(최신 proposal 첫 후보). */}
+        {/* 제목(title_thumb)·구성(structure)은 확정 후 손편집 가능 — editTitle/editStructure(상태 전이 없음). topic은 페르소나만. */}
+        {/* proposalId·regenCandidate는 'AI로 다시 생성' 폴링 완료 감지·draft 채움용(최신 proposal 첫 후보). */}
         {stage === "title_thumb" && (
           <PostConfirmTitleEdit
             runId={runId}
             payload={effective}
+            proposalId={sv.proposal?.proposalId}
+            regenCandidate={sv.proposal?.candidates?.[0]?.payload}
+          />
+        )}
+        {/* 구성(structure) 확정 후 손편집 + AI 재생성 — title_thumb의 PostConfirmTitleEdit와 대칭. runState는 §F staleness 경고용. */}
+        {stage === "structure" && (
+          <PostConfirmStructureEdit
+            runId={runId}
+            payload={effective as StructurePayload}
+            runState={runState}
             proposalId={sv.proposal?.proposalId}
             regenCandidate={sv.proposal?.candidates?.[0]?.payload}
           />
