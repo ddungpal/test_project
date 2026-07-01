@@ -32,7 +32,8 @@ const HOOK_LABEL: Record<ArcHookMode, string> = {
   practical: "실용템",
 };
 
-export function OnboardingQuiz({ runId, arc }: { runId: string; arc: OnboardingArc }) {
+// mode: live=구성 직전(금맥이 구다리로 넘어감) / review=구성 이후 복습(자동 반영 안 됨). 완료 문구만 분기, 재생·제출 로직은 동일.
+export function OnboardingQuiz({ runId, arc, mode = "live" }: { runId: string; arc: OnboardingArc; mode?: "live" | "review" }) {
   const [state, setState] = useState<PlaybackState>(() => initPlayback(arc));
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,13 +57,15 @@ export function OnboardingQuiz({ runId, arc }: { runId: string; arc: OnboardingA
     });
   }
 
-  // 제출 완료 — 금맥이 구다리로 넘어갔음.
+  // 제출 완료 — live면 금맥이 구다리로 넘어갔음. review는 이미 구성 생성 후라 자동 반영 안 됨(정직 카피).
   if (done) {
     return (
       <div className="border border-trus-yellow px-4 py-3">
-        <p className="text-sm font-black text-trus-yellow">이해 완료</p>
+        <p className="text-sm font-black text-trus-yellow">{mode === "review" ? "복습 완료" : "이해 완료"}</p>
         <p className="mt-1 text-xs text-trus-white/60">
-          여기서 나온 헷갈린 지점·아하·핵심 갈림길이 구성(구다리)으로 넘어갔어요.
+          {mode === "review"
+            ? "이번 풀이는 이미 만든 구성엔 자동 반영되지 않아요 — 반영하려면 구성을 다시 생성하세요."
+            : "여기서 나온 헷갈린 지점·아하·핵심 갈림길이 구성(구다리)으로 넘어갔어요."}
         </p>
       </div>
     );

@@ -36,6 +36,7 @@ import { OnboardingQuiz } from "@/components/OnboardingQuiz";
 import { loadOnboardingArc } from "@/pipeline/onboarding";
 import type { OnboardingArc } from "@/agents/onboarder/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isOnboardingVisible } from "@/domain/enums";
 import type { RunState } from "@/domain/enums";
 
 export const dynamic = "force-dynamic";
@@ -379,19 +380,24 @@ function ScriptSection({
   );
 }
 
-// 쏙이 온보딩 진입(썸네일 확정 후·구다리 진입 전) — 온디맨드·눈에 띄게·건너뛰기 가능(구다리 버튼은 그대로 노출).
+// 쏙이 온보딩 진입 — 노출 창 전 구간(thumbnails_selected~published)에서 렌더. 온디맨드·건너뛰기 가능(구다리 버튼과 병존).
 //   아크 없으면 "먼저 이해하기" 버튼(requestOnboarding 발행), 있으면 OnboardingQuiz 인터랙티브 재생.
-//   ★ 강제 게이트 아님 — 이 섹션은 구다리 StageSection과 병존(선형 상태체인 밖). thumbnails_selected에서만 렌더.
-function OnboardingSection({ runId, arc }: { runId: string; arc: OnboardingArc | null }) {
+//   mode: live=구성 직전(금맥 주입) / review=구성 이후 복습(자동 반영 안 됨). 카피만 분기, 로직·버튼은 동일.
+function OnboardingSection({ runId, arc, mode }: { runId: string; arc: OnboardingArc | null; mode: "live" | "review" }) {
+  const review = mode === "review";
   return (
     <section className="mt-8 border border-trus-yellow/50 p-4">
-      <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">먼저 이해하기 (쏙이)</h2>
+      <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">
+        {review ? "다시 훑어보기 (쏙이)" : "먼저 이해하기 (쏙이)"}
+      </h2>
       <p className="mt-2 text-xs text-trus-white/60">
-        구성 전에 이 주제를 한 번 훑어보세요. 찍고 틀려도 좋아요 — 오히려 더 잘 남습니다. (건너뛰고 바로 구성해도 됩니다.)
+        {review
+          ? "구성은 이미 만들어졌어요. 복습으로 다시 풀어봐도 좋아요. (새로 풀어도 이미 만든 구성엔 자동 반영되진 않아요 — 반영하려면 구성을 다시 생성하세요.)"
+          : "구성 전에 이 주제를 한 번 훑어보세요. 찍고 틀려도 좋아요 — 오히려 더 잘 남습니다. (건너뛰고 바로 구성해도 됩니다.)"}
       </p>
       <div className="mt-3">
         {arc ? (
-          <OnboardingQuiz runId={runId} arc={arc} />
+          <OnboardingQuiz runId={runId} arc={arc} mode={mode} />
         ) : (
           <div className="flex flex-col gap-2">
             <RequestOnboardingButton runId={runId} />
@@ -426,16 +432,20 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
   // 상태에 따라 필요한 추가 조회(병렬). 비용은 항상.
   //   outlierRefs는 썸네일 제안 단계(thumbnails_proposed)에서만 — 게이트 off면 read가 즉시 []. 그 외 상태는 호출 안 함.
-  //   onboardingArc는 썸네일 확정 후(thumbnails_selected)에만 — 그 외 상태는 호출 안 함(getRunDetail과 같은 admin 클라 경로 재사용).
+  //   onboardingArc는 노출 창 전 구간(thumbnails_selected~published)에서 로드 — review 상태에서도 기존 아크를 복습 재생.
+  //   그 외 상태는 호출 안 함(getRunDetail과 같은 admin 클라 경로 재사용).
   const [rv, segments, cost, outlierRefs, onboardingArc] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
     run.state === "thumbnails_proposed" ? getOutlierThumbnailRefs(run.id) : Promise.resolve([]),
-    run.state === "thumbnails_selected"
+    isOnboardingVisible(run.state)
       ? loadOnboardingArc(createAdminClient(), run.id)
       : Promise.resolve(null),
   ]);
+
+  // 쏙이 모드 — thumbnails_selected = live(금맥 주입 시점), 그 이후 = review(복습·자동 반영 안 됨).
+  const onbMode = run.state === "thumbnails_selected" ? "live" : "review";
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -496,8 +506,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
         <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} outlierRefs={outlierRefs} />
       ))}
 
-      {/* 쏙이 온보딩 — 썸네일 확정 후 구다리(structure) 진입 전에만 노출. 게이트 아님(구다리 버튼과 병존). */}
-      {run.state === "thumbnails_selected" && <OnboardingSection runId={run.id} arc={onboardingArc} />}
+      {/* 쏙이 온보딩 — 노출 창 전 구간(thumbnails_selected~published)에서 노출. live=구성 직전 / review=구성 이후 복습. 게이트 아님. */}
+      {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} mode={onbMode} />}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
       <ScriptSection runId={run.id} runState={run.state} segments={segments} rv={rv} progressNote={run.progressNote} />

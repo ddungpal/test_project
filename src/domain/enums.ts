@@ -58,6 +58,18 @@ export function canTransition(from: RunState, to: RunState): boolean {
   return ALLOWED_TRANSITIONS[from].includes(to);
 }
 
+// 쏙이 온보딩 섹션 노출 창: thumbnails_selected(구성 직전) ~ published(파이프라인 끝) 전 구간.
+// thumbnails_selected = live(금맥 주입), 그 이후 = review(복습/뒤늦은 재생성). 카피 분기는 UI(step 1).
+// 구간을 상태 이름 나열로 하드코딩하지 않고 RUN_STATES 인덱스로 판정 → 배열이 단일 출처.
+// paused_soft_cap·aborted는 배열 끝(published 뒤)이라 상단 경계 밖 → 자연히 false.
+// 알 수 없는 문자열은 indexOf=-1로 하단 경계 밖 → 안전하게 false.
+export function isOnboardingVisible(state: RunState): boolean {
+  const lower = RUN_STATES.indexOf("thumbnails_selected");
+  const upper = RUN_STATES.indexOf("published");
+  const idx = RUN_STATES.indexOf(state);
+  return idx >= lower && idx <= upper;
+}
+
 // title_thumb = 역사적 이름, 현재 '제목 전용'(rename 금지 — 17파일·픽스처·eval 광역 파손). thumbnail은 신규 추가.
 export const STAGES = ["topic", "title_thumb", "thumbnail", "structure", "research", "script"] as const;
 export type Stage = (typeof STAGES)[number];
