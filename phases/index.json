@@ -307,7 +307,12 @@
     },
     {
       "dir": "research-evidence-toggle",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (evidence-widget)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-07-01T12:26:06+0900"
     }
   ]
 }
