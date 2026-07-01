@@ -115,11 +115,15 @@ describe("eval: 구다리(structurer) 구성 품질", () => {
 describe("eval: 짠펜(scribe) 대본 품질", () => {
   const fx = withArray(outputs("scribe"), "segments");
   it("골든셋 존재", () => expect(fx.length).toBeGreaterThan(0));
-  it("세그먼트 ≥3 · 각 본문 비자명(≥20자) · ord 보유", () => {
+  it("세그먼트 ≥3 · 프로즈 본문 비자명(≥20자)/블록은 payload 보유 · ord 보유", () => {
     for (const o of fx) {
       expect(o.segments.length).toBeGreaterThanOrEqual(3);
       for (const s of o.segments) {
-        expect(nonTrivial(s.text, 20)).toBe(true);
+        // 블록 세그먼트(table/case/visual·P1~P5)는 text가 짧은 제목이고 내용은 payload에 있다 →
+        // 프로즈에만 ≥20자 검사, 블록은 payload 존재로 품질 확인.
+        const kind = s.kind ?? "prose";
+        if (kind === "prose") expect(nonTrivial(s.text, 20)).toBe(true);
+        else expect(s.payload != null).toBe(true);
         expect(typeof s.ord).toBe("number");
       }
     }
