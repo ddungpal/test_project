@@ -313,11 +313,11 @@
     {
       "dir": "onboarding-tutor",
       "status": "running",
-      "progress": "1/6",
-      "running_step": "1 (onboarder-agent)",
+      "progress": "2/6",
+      "running_step": "2 (onboarding-transcript-input)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-01T16:03:11+0900"
+      "elapsed_seconds": 1260,
+      "heartbeat_at": "2026-07-01T16:25:00+0900"
     }
   ]
 }
