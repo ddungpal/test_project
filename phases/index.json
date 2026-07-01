@@ -303,11 +303,11 @@
     {
       "dir": "structure-editing",
       "status": "running",
-      "progress": "0/4",
-      "running_step": "0 (structure-edit-backend)",
+      "progress": "1/4",
+      "running_step": "1 (outline-editor)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-01T11:16:47+0900"
+      "elapsed_seconds": 780,
+      "heartbeat_at": "2026-07-01T11:30:26+0900"
     }
   ]
 }

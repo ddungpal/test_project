@@ -11,3 +11,21 @@
 [Joy] 역시! .next 지우고 다시 빌드하니까 exit 0에 /copy-learn도 멀쩡히 빌드됐어. stale 캐시 맞았네. 코드 문제 아님 확정.
 [Joy] 정리하면 gate/action/inngest 세 군데 제목 패턴 정확히 미러됐고, 확정 후에만 동작·상태전이 없음·chosen_idx 보존 전부 확인. 마이그 0, UI 0, 죽은 import도 없어. 깔끔하다 맥스 통과! 🎉
 [리드] 좋아, 1라운드 PASS. step 0 완료 처리했어. UI 소비점은 editStructure(runId, payload)랑 regenerateAfterConfirm(runId, "structure", reason?) — step 1~3에서 이거 물어다 쓰면 돼. 다들 수고했어.
+
+=== Step 1: outline-editor ===
+[리드] 이번엔 섹션 편집 위젯이야. 순수 헬퍼 outline/ops.ts(add/remove/move/patch, 전부 비변형)랑 공유 위젯 OutlineEditor(제어형·@dnd-kit 드래그 정렬)를 만든다. 맥스가 ops+위젯+의존성 깔고, 에스더가 TRUS 3색·접근성(키보드 정렬·aria) 다듬어줘. 드래그 id는 payload에 저장 금지 — 클라 임시 id만.
+[Max] 나야. 스펙이랑 ProposalSelector structure 인라인 렌더 다 봤어. ops 순수 헬퍼부터 짜고 OutlineEditor 얹을게. dnd-kit는 utilities 6.3.1, core 6.3.1, sortable 10.0.0이고 프로젝트가 pnpm이라 pnpm add로 깔 거야.
+[Max] ops.ts랑 테스트 먼저 짜놨어. add는 빈 섹션 format explain, remove/move/patch는 범위 밖이면 원본 복제 반환하게 방어 넣고, 전부 새 배열 반환이라 원본 비변형이야. 테스트는 toStrictEqual로 입력 스냅샷이랑 비교해서 변형 안 됐는지도 잠갔어. dnd-kit 3패키지는 pnpm add로 깔았어. utilities는 최신이 3.2.2더라(6.3.1은 없었음). 이제 OutlineEditor 얹는다.
+[Max] OutlineEditor 얹었어. 제어형이라 상태는 부모가 가지고, 내부엔 crypto.randomUUID로 만든 클라 임시 id 배열만 outline이랑 병렬로 들어. onChange 올릴 땐 id 벗겨서 순수 StructureSection[]만 넘겨. 부모 outline 길이 바뀌면 useEffect로 id 배열 재동기화하고, 렌더 시점에 잠깐 짧을 수 있어서 renderIds로 즉석 보강해뒀어. 드래그 핸들에만 listeners 붙여서 인풋 클릭은 드래그로 안 먹혀. 키보드 센서도 켜서 키보드로도 정렬돼. 삭제/추가/핸들 다 aria-label 붙였고.
+[Max] AC 세 개 결과 - typecheck exit 0, build exit 0, npm test는 outlineOps 13개 다 초록. 전체 test exit 1인 건 step0 때랑 같은 그 eval.test.ts 짠펜 1건이라 내 거 아니야. 중간에 noUncheckedIndexedAccess 때문에 splice 결과랑 ids[i]가 undefined로 잡혀서 방어 몇 군데 넣었어. dnd-kit 3패키지만 깔았고 git status도 봤는데 무관한 부산물 없어. 놓친 거 있으면 말해줘. …제어형이라 상태를 안 갖는데도 코드가 은근 길어지네.
+[Esther] 맥스 위젯 잘 봤어. 로직은 안 건드리고 시각이랑 접근성만 다듬을게. 제어형 id 배열이랑 onChange 시그니처 그대로 둘게.
+[Esther] 음 하나 조심스럽게 짚자면, 인풋은 focus:border-trus-yellow로 통일돼서 좋은데 버튼(핸들·삭제·추가)은 이 프로젝트 정본이 focus-visible outline 링이더라. 버튼 포커스 가시성 때문에 이건 링으로 맞추는 게 확실히 나아. 접근성이라 이건 자신 있어.
+[Esther] 다 다듬었어. 버튼 세 개(핸들·삭제·추가)는 정본 outline 링으로 바꿔서 키보드 포커스가 확실히 보여. 인풋이랑 select는 ProposalSelector 인라인이랑 톤 맞춰서 그대로 뒀어.
+[Esther] 드래그 핸들은 순서 번호(1~9)를 겸하게 했어. ≡ 대신 번호 크게 두고 옆에 옅은 grip(⠿) 하나만. 번호가 보이니까 어느 섹션인지 한눈에 들어와. grip은 aria-hidden이라 스크린리더는 핸들 aria-label로 순서 읽고.
+[Esther] 드래그 중엔 opacity 0.6에다 왼쪽 border만 노란색으로 절제되게. 그림자·스케일 없어. 잡힌 항목이 딱 보여.
+[Esther] 로직 하나도 안 건드렸어. id 배열·onChange 시그니처·ops 전부 그대로. typecheck 0, build 0 확인했어. 이모지 남발도 없고 3색만 썼어. 이건 자신 있어!
+[Joy] 오 이번엔 맥스랑 에스더 합작이네~ git diff부터 봤어. ops.ts 4함수 전부 새 배열 반환하고 remove/move/patch 범위 밖은 [...list]로 복제 반환, addSection 빈 섹션 format explain까지 스펙이랑 딱 맞아. 테스트도 toStrictEqual로 입력 비변형 잠갔고 굿굿
+[Joy] OutlineEditor 제어형 맞고 Props {outline,onChange} 정확해. 드래그 id는 crypto.randomUUID 클라 임시값이고 ops.ts엔 id 자체가 안 들어가서 payload 저장 0 확인. onChange는 순수 StructureSection[]만 올리고 부모 outline 길이 바뀌면 useEffect로 재동기화하네. 삭제/추가/드래그 다 setIds 직접 처리해서 stale 안 나. 꼼꼼하다
+[Joy] @dnd-kit 3패키지만 추가됐고 lock 갱신 확인. 에스더 접근성도 봤어 aria-label 7개(핸들·삭제·추가·제목·목표·왜·format sr-only 라벨)에 키보드 센서까지. 그림자/라운딩/그라데이션 0, trus 3색만. grip은 aria-hidden 잘 처리. 굿
+[Joy] AC 다 돌렸어. typecheck exit 0, outlineOps 13건 exit 0, build도 exit 0(이번엔 stale 캐시 없이 바로 초록). ProposalSelector는 아직 인라인 그대로라 step2 몫 안 건드림 확인, 백엔드도 0. 무관 untracked 파일 없어. 깔끔하다 둘 다 통과 🎉
+[리드] 1라운드 PASS. step 1 완료 처리했어. step 2·3이 소비할 시그니처는 OutlineEditor {outline, onChange}랑 outline/ops.ts 4함수(add/remove/move/patch)야. 맥스·에스더·조이 수고했어.
