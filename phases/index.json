@@ -307,12 +307,8 @@
     },
     {
       "dir": "research-evidence-toggle",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (read-view-and-demote)",
-      "attempt": 1,
-      "elapsed_seconds": 720,
-      "heartbeat_at": "2026-07-01T12:47:17+0900"
+      "status": "completed",
+      "completed_at": "2026-07-01T12:47:43+0900"
     }
   ]
 }
