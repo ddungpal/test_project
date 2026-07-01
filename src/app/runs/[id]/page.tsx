@@ -31,6 +31,11 @@ import { StageStepper } from "@/components/StageStepper";
 import { parseSubProgress } from "@/lib/dashboard/stageProgress";
 import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
+import { RequestOnboardingButton } from "@/components/RequestOnboardingButton";
+import { OnboardingQuiz } from "@/components/OnboardingQuiz";
+import { loadOnboardingArc } from "@/pipeline/onboarding";
+import type { OnboardingArc } from "@/agents/onboarder/schema";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { RunState } from "@/domain/enums";
 
 export const dynamic = "force-dynamic";
@@ -374,6 +379,30 @@ function ScriptSection({
   );
 }
 
+// 쏙이 온보딩 진입(썸네일 확정 후·구다리 진입 전) — 온디맨드·눈에 띄게·건너뛰기 가능(구다리 버튼은 그대로 노출).
+//   아크 없으면 "먼저 이해하기" 버튼(requestOnboarding 발행), 있으면 OnboardingQuiz 인터랙티브 재생.
+//   ★ 강제 게이트 아님 — 이 섹션은 구다리 StageSection과 병존(선형 상태체인 밖). thumbnails_selected에서만 렌더.
+function OnboardingSection({ runId, arc }: { runId: string; arc: OnboardingArc | null }) {
+  return (
+    <section className="mt-8 border border-trus-yellow/50 p-4">
+      <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">먼저 이해하기 (쏙이)</h2>
+      <p className="mt-2 text-xs text-trus-white/60">
+        구성 전에 이 주제를 한 번 훑어보세요. 찍고 틀려도 좋아요 — 오히려 더 잘 남습니다. (건너뛰고 바로 구성해도 됩니다.)
+      </p>
+      <div className="mt-3">
+        {arc ? (
+          <OnboardingQuiz runId={runId} arc={arc} />
+        ) : (
+          <div className="flex flex-col gap-2">
+            <RequestOnboardingButton runId={runId} />
+            <p className="text-xs text-trus-white/40">누르면 쏙이가 궁금증 아크를 만듭니다 — 잠시 후 새로고침하세요.</p>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
+
 // 편당 비용 — 엔트리가 있으면 항상 표시.
 function CostSection({ cost }: { cost: CostView }) {
   if (cost.entries.length === 0) return null;
@@ -397,11 +426,15 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
 
   // 상태에 따라 필요한 추가 조회(병렬). 비용은 항상.
   //   outlierRefs는 썸네일 제안 단계(thumbnails_proposed)에서만 — 게이트 off면 read가 즉시 []. 그 외 상태는 호출 안 함.
-  const [rv, segments, cost, outlierRefs] = await Promise.all([
+  //   onboardingArc는 썸네일 확정 후(thumbnails_selected)에만 — 그 외 상태는 호출 안 함(getRunDetail과 같은 admin 클라 경로 재사용).
+  const [rv, segments, cost, outlierRefs, onboardingArc] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
     run.state === "thumbnails_proposed" ? getOutlierThumbnailRefs(run.id) : Promise.resolve([]),
+    run.state === "thumbnails_selected"
+      ? loadOnboardingArc(createAdminClient(), run.id)
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -462,6 +495,9 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       {PROPOSAL_STAGES.map((stage) => (
         <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} outlierRefs={outlierRefs} />
       ))}
+
+      {/* 쏙이 온보딩 — 썸네일 확정 후 구다리(structure) 진입 전에만 노출. 게이트 아님(구다리 버튼과 병존). */}
+      {run.state === "thumbnails_selected" && <OnboardingSection runId={run.id} arc={onboardingArc} />}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
       <ScriptSection runId={run.id} runState={run.state} segments={segments} rv={rv} progressNote={run.progressNote} />

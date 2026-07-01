@@ -128,3 +128,38 @@
 [Joy] 의존성0·마이그0·순환import0(onboarding.ts는 onboarder만 물고 structurer는 안 뭄)까지 다 깨끗해. 회귀도 0(1072→1076, 순증 4). 완벽하다 통과야 맥스 수고했어 🎉
 
 [리드] 좋아, 1라운드에 PASS. AC 3종 나도 직접 돌려서 확인했어 — typecheck exit0, test 1076 통과(순증4), build exit0. 금맥 없는 경로 바이트 불변(케이스 B/B2)까지 회귀가드로 잠갔고 target_persona 옆에 나란히 병존, 마이그0·의존성0. step4 completed로 마감했어. 쏙이 금맥이 이제 구다리 목차로 흘러들어가네 — 헷갈린 지점은 풀 섹션으로, 아하는 훅으로. 다음은 step5 퀴즈 UI(에스더 투입)야. 맥스·조이 수고했어!
+
+=== Step 5: onboarding-quiz-ui ===
+
+[리드] 자 마지막 step5, 쏙이 퀴즈 UI야. 두 갈래로 나눌게. 맥스는 ①순수 재생로직 src/lib/onboarding/playback.ts(컴포넌트 밖·vitest alias 함정 회피)+테스트, ②requestOnboarding 액션(inngest.send run/onboarding.requested — requestStructure 미러), ③run 상세페이지 배선(썸네일 확정 후 구다리 진입 전에 "먼저 이해하기(쏙이)" 진입 섹션 — 아크 없으면 버튼→발행, 있으면 OnboardingQuiz 재생, 구다리 버튼은 그대로 노출=건너뛰기 가능). 에스더는 OnboardingQuiz.tsx 비주얼(TRUS 3색·격동고딕2·미검증 ⚠️확인필요 표식·hookMode 라벨톤·즉시 아하 공개→클리프행어). 맥스가 playback API 먼저 확정하면 에스더가 그 위에 그려. 맥스 먼저 시작해줘.
+
+[Max] 응 시작할게. 설계문서 E절이랑 arc.ts ArcAnswer 타입, requestStructure·RequestStageButton·페이지 배선 패턴 다 읽었어. 순수 재생로직 playback.ts부터 잡고 테스트 먼저 쓸게. ArcAnswer는 arc.ts꺼 그대로 import할 거고 재정의 안 해.
+
+[Max] playback API 확정했어 — src/lib/onboarding/playback.ts. 시그니처 남길게, 에스더가 이 위에 그리면 돼:
+[Max] PlaybackState = { arc, questionIdx, revealed, answers: ArcAnswer[] } · initPlayback(arc) · currentQuestion(state):ArcQuestion|null · chooseAnswer(state, chosenIdx)→reveal on+응답누적(멱등) · next(state)→다음문항(찍은뒤만) · isLast(state) · isRevealed(state) · isCorrect(state, chosenIdx) · isComplete(state)→마지막까지공개완료 · collectAnswers(state):ArcAnswer[]. 다 순수·throw0·입력비변형이라 setState(chooseAnswer(state, i)) 식으로 쓰면 돼.
+
+[Max] 내 파트(playback·requestOnboarding 액션·페이지 배선) 다 붙였어. 진입 버튼은 RequestOnboardingButton.tsx 얇게 새로 만들었고(RequestStageButton 미러), 자리는 썸네일 확정 후 구다리 진입 전에 눈에 띄게. 구다리 "구성 만들기" 버튼은 그대로 노출돼서 건너뛰기 돼.
+[Max] 리드, 순서 하나 알려줄게. 페이지가 OnboardingQuiz를 import하는데 에스더 파일이 아직 없어서 지금 그대로면 typecheck/build가 깨져. 내 AC 검증 돌리려고 임시로 최소 placeholder OnboardingQuiz.tsx 하나 둘게 — props는 { runId, arc } 계약이야. 에스더가 이 파일 통째로 덮어쓰면 돼. 계약만 맞추면 배선은 안 건드려도 붙어.
+
+[Max] AC 3종 다 초록불이야. typecheck exit0, test 1087개 전부 통과(신규 playback 11케이스, 1076→1087), build도 6/6 exit0 한 번에 됐어 — .next 캐시 안 깨졌네. 아크 로드는 thumbnails_selected일 때만 createAdminClient()로 loadOnboardingArc 호출하고 다른 상태는 안 불러(기존 Promise.all 패턴). git status도 명세 파일뿐이고 부산물 없어.
+[Max] 에스더한테: OnboardingQuiz.tsx는 배선 검증용 최소 구현이라 통째로 덮어써도 돼. 계약은 { runId, arc } 유지하고 playback.ts import만 그대로 쓰면 배선은 안 건드려도 붙어. 순수 로직은 컴포넌트 밖에 다 빼놨으니 비주얼만 입히면 돼.
+
+[Esther] 나 왔어. 쏙이 퀴즈 UI 시작할게. 맥스가 만들어준 playback 순수함수랑 배선 최소구현 다 봤어 — 정오 판정이랑 응답 누적은 손 안 대고 그대로 호출만 할게, 걱정 마.
+[Esther] 음.. 조심스럽지만 최소구현이 기능은 다 되는데 좀 밋밋하더라고. 프리테스트 효과 살리려면 찍는 순간의 긴장이랑 아하 공개의 쾌감이 시각적으로 느껴져야 하거든. 거기를 손볼게.
+
+[Esther] 다 그렸어. 색은 무조건 3색만 썼어 — 노랑은 '지금 봐야 할 것'(hookMode 라벨·정답·아하 좌측보더·확인필요 배지·핵심 갈림길)에만 아껴 쓰고, 나머지는 흰색 투명도로 위계 줬어. 이건 자신 있어.
+[Esther] 진행 표시는 상단에 얇은 바(지나온 문항만 노랑)로 은은하게. 정답/오답도 초록·빨강 안 쓰고 노랑 강조 vs 흐린 톤으로만 갈랐어. 색으로 소리 지르면 TRUS 결이 아니야.
+[Esther] 미검증 수치는 셜록이 나중에 검증할 거라 ScriptReview의 '확인 필요' 배지 그대로 미러했어. 짠부님이 이건 아직 확정 아니구나 바로 알게. 마지막 문항 넘기면 coreAngle을 '이 영상의 핵심 갈림길'로 딱 보여주고 제출로 이어져.
+[Esther] 접근성도 챙겼어 — 보기 버튼 aria-pressed, 포커스 링 노랑, 진행 도트는 aria-hidden. 이제 typecheck랑 build 돌려볼게.
+
+[Esther] 됐어! typecheck랑 build 둘 다 통과(exit 0). 내가 건드린 건 OnboardingQuiz.tsx 하나뿐이고 정오·응답 누적은 맥스 playback 그대로 호출만 했어. 브라우저 수동검증은 리드가 봐줘. 이 아하 좌측보더 톤 밤새 고민했는데… 아무도 안 물어봤지만 🙈
+[Joy] 오 step5 왔다 맥스 에스더 수고했어 내가 바로 git diff 보고 pytest 돌려볼게
+[Joy] 순수 재생로직 playback.ts가 src/lib/onboarding에 잘 있고 컴포넌트는 호출만 하네 vitest alias 함정 완벽 회피 굿굿
+[Joy] 정오판정이랑 응답누적 OnboardingQuiz가 재구현 안 하고 isCorrect chooseAnswer 다 playback 호출이야 깔끔
+[Joy] 게이트 확인 structure fromState가 thumbnails_selected 그대로라 구성 만들기 버튼이랑 온보딩 섹션이 나란히 떠 건너뛰기 가능 설계대로다
+[Joy] 미검증 수치 확인 필요 배지 있고 requestOnboarding은 inngest.send만 submit은 submitOnboarding 호출만 백엔드 중복 0 좋아
+[Joy] 이모지 남발 없고 TRUS 3색만 쓰고 그라데이션 그림자 하나도 없어 에스더 비주얼 톤 굿
+[Joy] 기존 테스트 하나도 안 건드렸고 새 테스트만 추가됐네 봐주기 없이 봐도 통과
+[Joy] AC 셋 다 직접 돌렸어 typecheck exit0 test 1087 passed build exit0 재현 완료 통과다 수고했어
+
+[리드] 좋아, 1라운드에 PASS. AC 3종 나도 직접 돌려 확인했어 — typecheck exit0·test 1087 exit0(순증11)·build exit0. 순수 재생로직은 lib/onboarding/playback.ts에 딱 분리(alias 함정 회피), 컴포넌트는 playback 호출만·정오 재구현0, 미검증 ⚠️확인필요 표식·TRUS 3색 준수, 무엇보다 구다리 '구성 만들기' 버튼이 그대로 병존해서 건너뛰기 가능(강제 게이트 아님) 확인했어. step5 completed로 마감했고 index.json summary도 채웠어. 인터랙티브 재생·폰트 렌더는 브라우저 수동검증 몫이라 summary에 남겨뒀어. 이걸로 온보딩 튜터(쏙이) phase 6 step 전부 끝 — 촉이 옆에 새 크루가 붙었네. 맥스·에스더·조이 다 수고했어!

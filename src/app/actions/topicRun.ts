@@ -199,6 +199,13 @@ export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]
   await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "thumbnail" } });
 }
 
+// 쏙이 온보딩 아크 생성 요청(온디맨드·게이트 아님) — requestStructure 미러(requireOwner → 이벤트 발행).
+//   버튼 트리거 → run/onboarding.requested → onboardingStage(prepare→step)가 아크를 stage_proposals에 저장. AI는 함수 안에서.
+export async function requestOnboarding(runId: string): Promise<void> {
+  await requireOwner();
+  await inngest.send({ name: "run/onboarding.requested", data: { runId } });
+}
+
 // 쏙이 온보딩 응답 제출 — 저장된 아크 로드 → extractGold(순수) → 금맥 저장(온디맨드·게이트 아님).
 //   requireOwner 게이트. 아크 없으면 throw(먼저 "이해하기" 실행 필요). audit best-effort.
 export async function submitOnboarding(runId: string, answers: ArcAnswer[]): Promise<void> {
