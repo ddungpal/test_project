@@ -22,8 +22,9 @@ import { RefreshButton } from "@/components/RefreshButton";
 import { FactCard } from "@/components/FactCard";
 import { ScriptReview } from "@/components/ScriptReview";
 import { SegmentList } from "@/components/SegmentList";
-import { ComparisonAssetTable } from "@/components/ComparisonAssetTable";
-import { CaseAssetView } from "@/components/CaseAssetView";
+import { ResearchAssetList } from "@/components/ResearchAssetList";
+import { UnusedResearch } from "@/components/UnusedResearch";
+import { unusedResearch } from "@/lib/research/evidence";
 import { CostPanel } from "@/components/CostPanel";
 import { RunControls } from "@/components/RunControls";
 import { StageStepper } from "@/components/StageStepper";
@@ -249,42 +250,7 @@ function ResearchPanel({ rv }: { rv: ResearchView }) {
       {rv.assets.length > 0 && (
         <div>
           <h3 className="text-xs font-bold text-trus-white/60">쉬운 설명 자산 ({rv.assets.length})</h3>
-          <div className="mt-2 flex flex-col gap-1.5">
-            {rv.assets.map((a) =>
-              // comparison 자산(정규화 성공)은 표로 렌더 — 미검증 칸은 ComparisonAssetTable이 '확인 필요'로 강조.
-              //   정규화 실패(comparison=null)면 빈 표 박제 방지를 위해 이 자산은 표시 제외(드랍).
-              a.kind === "comparison" ? (
-                a.comparison && (
-                  <div key={a.id} className="border border-trus-white/15 px-3 py-2 text-xs">
-                    <span className="text-trus-yellow font-bold">비교</span>
-                    <span className="text-trus-white/50"> · {a.concept}</span>
-                    <div className="mt-2">
-                      <ComparisonAssetTable payload={a.comparison} />
-                    </div>
-                  </div>
-                )
-              ) : a.kind === "case" ? (
-                // case 자산(정규화 성공·분기≥2)은 '조건 → 결과' 분기 목록 — 미검증 분기는 CaseAssetView가 '확인 필요'로 강조.
-                //   정규화 실패(caseAsset=null)면 표시 제외(드랍).
-                a.caseAsset && (
-                  <div key={a.id} className="border border-trus-white/15 px-3 py-2 text-xs">
-                    <span className="text-trus-yellow font-bold">분기</span>
-                    <span className="text-trus-white/50"> · {a.concept}</span>
-                    <div className="mt-2">
-                      <CaseAssetView payload={a.caseAsset} />
-                    </div>
-                  </div>
-                )
-              ) : (
-                // number/analogy — 기존 마크업 그대로(회귀 0).
-                <div key={a.id} className="border border-trus-white/15 px-3 py-2 text-xs">
-                  <span className="text-trus-yellow font-bold">{a.kind === "number" ? "숫자" : "비유"}</span>
-                  <span className="text-trus-white/50"> · {a.concept}</span>
-                  <div className="mt-1 text-trus-white/70">{a.numericExample || a.analogy}</div>
-                </div>
-              ),
-            )}
-          </div>
+          <ResearchAssetList assets={rv.assets} />
         </div>
       )}
     </div>
@@ -320,7 +286,9 @@ function ResearchSection({ runId, runState, rv, progressNote }: { runId: string;
   } else if (runState === "research_review") {
     // 고위험 사실 검수는 스크립트 완성 후 최종 검수로 운반 — 여기선 멈추지 않고 자동 통과.
     body = <WaitingNote text="검수 준비 중… 새로고침하세요." />;
-  } else if (RESEARCH_LOADED.includes(runState) && rv) {
+  } else if (RESEARCH_LOADED.includes(runState) && !SCRIPT_LOADED.includes(runState) && rv) {
+    // script 이전 리서치 상태에서만 평면 패널 노출. script 상태(script_ready~published)에서는
+    //   상단 덤프를 걷고, 세그먼트별 토글 + 하단 UnusedResearch(ScriptSection)로 강등 → null.
     body = <ResearchPanel rv={rv} />;
   } else {
     return null;
@@ -342,11 +310,13 @@ function ScriptSection({
   runId,
   runState,
   segments,
+  rv,
   progressNote,
 }: {
   runId: string;
   runState: RunState;
   segments: SegmentView[] | null;
+  rv: ResearchView | null;
   progressNote: string | null;
 }) {
   let body: React.ReactNode;
@@ -386,10 +356,20 @@ function ScriptSection({
     return null;
   }
 
+  // 하단 "안 쓰인 리서치" — 어느 세그먼트에도 안 쓰인 fact·자산을 접힌 토글로 강등(0건이면 null).
+  let unused: React.ReactNode = null;
+  if (rv && segments) {
+    const { factIds, assetIds } = unusedResearch(rv, segments);
+    const uFacts = rv.facts.filter((f) => factIds.has(f.id));
+    const uAssets = rv.assets.filter((a) => assetIds.has(a.id));
+    unused = <UnusedResearch facts={uFacts} assets={uAssets} />;
+  }
+
   return (
     <section className="mt-8">
       <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">스크립트 (짠펜) · lineage</h2>
       <div className="mt-3">{body}</div>
+      {unused}
     </section>
   );
 }
@@ -484,7 +464,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       ))}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
-      <ScriptSection runId={run.id} runState={run.state} segments={segments} progressNote={run.progressNote} />
+      <ScriptSection runId={run.id} runState={run.state} segments={segments} rv={rv} progressNote={run.progressNote} />
       <CostSection cost={cost} />
     </main>
   );

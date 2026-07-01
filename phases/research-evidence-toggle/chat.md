@@ -34,3 +34,28 @@
 [Joy] 핵심 불변식부터 봤어. decisions state랑 setDecisions랑 pendingFacts랑 rejectFactIds 수집이랑 최종승인 submit이 전부 컴포넌트 최상위에 그대로 살아있고, EvidenceToggle은 FactChip이랑 AssetLabel을 children으로만 받는 순수 셸이야. 결정 로직이 details 안으로 안 들어갔으니 접었다 펴도 승인반려 안 날아가. 통과!
 [Joy] AC 셋 다 직접 돌렸어. typecheck exit0, test 1019개 exit0, build exit0. TRUS 3색만에 마이그도 0. SegmentView.assets 타입이랑 AssetLabel props도 딱 맞고 근거 0건 세그먼트는 total===0이라 null로 토글 생략돼. 완벽하다 맥스 에스더 수고했어 🎉
 [리드] 1라운드 PASS로 종료. Step 1 completed 처리했어. 검수 화면에 근거 토글 붙었고 자산도 노출되고 pending 결정은 접어도 안 날아가. 다음은 step2 — 읽기뷰(SegmentList/page)랑 안 쓰인 리서치 강등. 다들 수고했어!
+
+=== Step 2: read-view-and-demote ===
+
+[리드] 이번이 이 phase 마지막이야. 세 가지: ①읽기뷰(SegmentList)도 LineageFooter를 EvidenceToggle로 접이식 교체, ②안 쓰인 리서치를 하단 UnusedResearch 접힌 토글로 강등, ③page.tsx 배선(script 상태에서 상단 ResearchPanel 평면덤프 제거 + ScriptSection에 rv 넘겨 unused 렌더). 핵심 함정은 ResearchPanel 자산 렌더 복붙 금지 — 공유 컴포넌트로 추출해야 해.
+[리드] 맥스, 이거 맡아줘. 자산 분기 렌더(comparison/case/number/analogy)를 ResearchAssetList로 뽑아서 ResearchPanel이랑 UnusedResearch가 같이 쓰게. 추출하면 page.tsx에서 죽은 import(ComparisonAssetTable·CaseAssetView) 남지 않게 정리하고. 마이그·백엔드·조회 변경 0. 다 되면 에스더가 시각 검수할 거야.
+[Max] step2 맡을게. 스펙이랑 SegmentList, page.tsx, 뷰 타입 다 읽었어. 순서는 자산 렌더를 ResearchAssetList로 먼저 뽑고, UnusedResearch 만들고, SegmentList 토글 교체하고, 마지막에 page 배선할게. ScriptReview는 안 건드림.
+[Max] 다 붙였어. ResearchAssetList로 자산 렌더 통째 이동하고 page는 그걸 호출만 하게 했어. UnusedResearch는 EvidenceToggle 톤 그대로 접힌 details고 0건이면 null. SegmentList는 LineageFooter 지우고 토글로 교체했어. page에서 ResearchSection은 script 상태에선 null 반환하게 강등했고 ComparisonAssetTable·CaseAssetView 죽은 import도 뺐어. 이제 AC 돌려볼게.
+[Max] AC 셋 다 통과했어. typecheck 0, test 1019개 그대로 통과, build 0. page.tsx에 ComparisonAssetTable·CaseAssetView·LineageFooter 잔재 없는 거 grep으로 확인했고 ScriptReview는 손도 안 댔어. 에스더 시각 검수 넘길게. 놓친 거 있으면 말해줘.
+[Esther] 나 검수 시작할게. 네 파일 다 읽었고 page diff도 봤어. 순수 시각만 볼 거니까 로직은 안 건드릴게.
+[Esther] 먼저 UnusedResearch 톤부터 봤어. summary가 EvidenceToggle이랑 거의 판박이야 — ▸ 마커, webkit 마커 숨김, focus-visible 노랑 링, list-none, 화이트/60 텍스트 다 똑같아. 다른 건 딱 두 개, mt-6 pt-3(세그먼트 토글의 mt-3 pt-2보다 큼)이랑 노랑 확인필요 배지 없는 거. 이건 오히려 의도대로 맞아 — 하단 강등 섹션이라 위쪽이랑 더 크게 떨어뜨려서 세그먼트 토글들과 위계가 자연스럽게 갈려. 이건 자신 있어.
+[Esther] SegmentList 읽기 토글도 봤어. fact는 사방 보더 화이트 칩(근거 라벨+claim truncate), asset은 AssetLabel 노랑 배지 라인. step1 ScriptReview 토글이랑 fact 먼저/asset 아래 순서, 무게감 다 똑같아. pendingCount=0 고정이라 요약이 근거 N건만 담백하게 나오고. 일관적이야.
+[Esther] 이전 LineageFooter 마크업이랑 대조해봤는데, fact 칩은 text-[10px] text-trus-white/50에 근거 라벨까지 글자 하나 안 바뀌고 그대로 옮겨졌어. asset만 인라인 숫자/비유 칩에서 AssetLabel로 바뀌어서 이제 비교표·케이스까지 4종 kind 다 보여. 이건 설계대로 의도된 개선이야.
+[Esther] fact 10px랑 asset 11px 1px 차이 잠깐 걸려서 봤는데, 이전엔 둘 다 한 줄에 wrap되는 칩이었고 지금은 토글 래퍼가 flex-col이라 세로로 갈려서 나란히 안 붙어. 눈에 안 걸려. 게다가 asset 11px는 step1 AssetLabel이랑 똑같은 공유 컴포넌트라 화면 간 일관성이 오히려 맞아. fact를 억지로 11px 올리면 이전 대비 회귀 생겨서 안 건드리는 게 맞아.
+[Esther] page diff도 봤어. 자산 렌더가 ResearchAssetList로 통째 옮겨졌는데 comparison/case/number/analogy 분기랑 래퍼 mt-2 flex flex-col gap-1.5까지 바이트 동일이야. ResearchPanel 리서치 상태 렌더는 시각 완전 불변. 깔끔하게 추출했네.
+[Esther] TRUS 3색만 쓰였고 그라데이션·그림자 하나도 없어. 결론은 손댈 데 없음이야 — 순수 시각 문제 하나도 안 보이고 근거 없이 억지로 고치면 오히려 나빠질 상황이라 이번에도 확인만 하고 통과시킬게. 맥스 배치 정확하게 잘했어!
+[Esther] 아 참, 안 쓰인 리서치 토글 이름 진짜 오래 고민했는데… 결국 맥스가 붙인 게 제일 담백해서 그냥 뒀어 🙈
+[리드] 내가 AC 직접 재실행했어 — typecheck exit0, test 1019개 통과, build exit0(/runs/[id] 30.4kB 생성). 깨끗해.
+[리드] 조이, 검수 부탁해. 맥스 diff 전체(SegmentList·UnusedResearch·ResearchAssetList·page)랑 AC 재실행으로. 특히 ①자산 렌더 복붙 아니라 공유추출인지 ②page에 죽은 import(ComparisonAssetTable·CaseAssetView·LineageFooter) 잔재 없는지 ③script 상태에서 상단 평면덤프 제거됐는지 봐줘.
+[Joy] 오 이번 diff 알차다~ 신규 두 개(ResearchAssetList·UnusedResearch)랑 SegmentList·page 수정 다 봤어. 먼저 복붙 검사 통과! 자산 분기(comparison/case/number/analogy)가 ResearchAssetList 한 군데로만 있고 page랑 UnusedResearch 둘 다 그걸 호출만 해. 복붙 0건이야.
+[Joy] 죽은 코드도 grep으로 싹 훑었어. page.tsx에 ComparisonAssetTable·CaseAssetView·LineageFooter 잔재 하나도 없고 SegmentList도 LineageFooter 함수 통째로 사라졌어. import도 딱 맞게 갈아꼈네 맥스 깔끔해.
+[Joy] 강등 정확성도 좋아. ResearchSection이 RESEARCH_LOADED면서 SCRIPT_LOADED 아닐 때만 평면 패널 열고 script 상태(ready~published)에선 null 반환이라 상단 덤프가 확실히 걷혔어. 안 쓰인 리서치는 ScriptSection 하단에 붙고 rv나 segments 없으면 null이라 빈 껍데기도 안 생겨.
+[Joy] 백엔드 불변식 완벽. lib/actions/pipeline/supabase/ScriptReview 전부 변경 0이고 evidence.ts만 step0에서 온 거 그대로야. unusedResearch로 차집합 필터해서 unused만 UnusedResearch에 넘기고 total 0이면 null. 마이그도 0.
+[Joy] AC 셋 다 직접 돌렸어 — typecheck exit0, test 1019개 exit0, build exit0(/runs/[id] 30.4kB 생성, PageNotFound·MODULE_NOT_FOUND 없음). TRUS 3색만이고 그림자·그라데이션 없어. 이 phase 마지막 step 완벽하게 착지했다 맥스 에스더 수고했어 🎉
+[Joy] 6개 항목 다 통과했어! 자산 렌더는 ResearchAssetList 한 곳에만 있고 page엔 죽은 import·LineageFooter 잔재 0. script 상태 평면덤프도 확실히 사라졌고 UnusedResearch는 안 쓰인 것만·0건이면 null. AC 셋 다 exit0(test 1019). 봐주기 없이 봤는데 손댈 데 없어 🎉
+[리드] 1라운드 PASS로 종료. Step 2 completed 처리했어. 이걸로 research-evidence-toggle phase 끝 — 읽기뷰까지 근거 토글 일관 적용, 안 쓰인 리서치는 하단으로 강등, script 상태 이중노출 제거. 세그먼트 중심으로 깔끔해졌어. 맥스·에스더·조이 다들 수고했어!

@@ -1,5 +1,7 @@
 import type { SegmentView } from "@/lib/dashboard/scriptView";
 import type { TablePayload, CasePayload, VisualPayload, VisualCueType } from "@/pipeline/segmentBlock";
+import { EvidenceToggle } from "./EvidenceToggle";
+import { AssetLabel } from "./AssetLabel";
 
 // 대본 세그먼트 + lineage(이 단락이 어떤 fact/asset에 근거하는지). 순수 표시.
 //   kind별 분기 렌더(prose/table/case/visual). prose는 기존 마크업 불변(회귀 0 — 실 런은 전부 prose).
@@ -14,7 +16,22 @@ export function SegmentList({ segments }: { segments: SegmentView[] }) {
             <span className="text-trus-yellow shrink-0 text-sm font-black">{s.ord + 1}</span>
             <SegmentBody segment={s} />
           </div>
-          <LineageFooter facts={s.facts} assets={s.assets} />
+          {/* 읽기 뷰 — 근거를 접이식 토글로. 승인/반려 없고(이미 확정) pendingCount=0 고정 → 요약은 "근거 N건"만. */}
+          <EvidenceToggle factCount={s.facts.length} assetCount={s.assets.length} pendingCount={0}>
+            {s.facts.map((f) => (
+              <span
+                key={f.id}
+                title={f.claim}
+                className="flex max-w-[16rem] items-baseline gap-1 truncate border border-trus-white/20 px-1.5 py-0.5 text-[10px] text-trus-white/50"
+              >
+                <span className="shrink-0 font-bold tracking-wider text-trus-white/40 uppercase">근거</span>
+                <span className="truncate">{f.claim}</span>
+              </span>
+            ))}
+            {s.assets.map((a) => (
+              <AssetLabel key={a.id} asset={a} />
+            ))}
+          </EvidenceToggle>
         </div>
       ))}
     </div>
@@ -126,36 +143,6 @@ function VisualBlock({ text, payload }: { text: string; payload: VisualPayload }
         <p className="text-sm leading-relaxed text-trus-white">{payload.cue}</p>
       </div>
       {payload.note && <p className="text-xs leading-relaxed text-trus-white/50">{payload.note}</p>}
-    </div>
-  );
-}
-
-// lineage 칩 푸터 — 모든 kind 공통. fact="근거" 라벨, asset="숫자"/"비유" 구분.
-function LineageFooter({
-  facts,
-  assets,
-}: {
-  facts: SegmentView["facts"];
-  assets: SegmentView["assets"];
-}) {
-  if (facts.length === 0 && assets.length === 0) return null;
-  return (
-    <div className="mt-3 flex flex-wrap gap-1 border-t border-trus-white/10 pt-2">
-      {facts.map((f) => (
-        <span
-          key={f.id}
-          title={f.claim}
-          className="flex max-w-[16rem] items-baseline gap-1 truncate border border-trus-white/20 px-1.5 py-0.5 text-[10px] text-trus-white/50"
-        >
-          <span className="shrink-0 font-bold tracking-wider text-trus-white/40 uppercase">근거</span>
-          <span className="truncate">{f.claim}</span>
-        </span>
-      ))}
-      {assets.map((a) => (
-        <span key={a.id} className="border border-trus-yellow/40 px-1.5 py-0.5 text-[10px] text-trus-yellow/80">
-          {a.kind === "number" ? "숫자" : "비유"}: {a.concept}
-        </span>
-      ))}
     </div>
   );
 }
