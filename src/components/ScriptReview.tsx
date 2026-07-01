@@ -7,6 +7,9 @@ import type { SegmentView, SegmentFactView } from "@/lib/dashboard/scriptView";
 import { VERIFICATION_LABEL } from "@/lib/dashboard/labels";
 import { SegmentBody } from "./SegmentList";
 import { safeHref } from "./FactCard";
+import { EvidenceToggle } from "./EvidenceToggle";
+import { AssetLabel } from "./AssetLabel";
+import { pendingFactCount } from "@/lib/research/evidence";
 
 // 대본 최종 게이트(autoflow §D) — 본문 + 인라인 fact 칩으로 한 화면에서 검수한다.
 //   보류(pending) fact만 승인/반려 토글(기본=승인) — ResearchReview decisions 패턴 미러.
@@ -71,13 +74,18 @@ export function ScriptReview({ runId, segments }: { runId: string; segments: Seg
               <span className="text-trus-yellow shrink-0 text-sm font-black">{s.ord + 1}</span>
               <SegmentBody segment={s} />
             </div>
-            {s.facts.length > 0 && (
-              <div className="mt-3 flex flex-col gap-1.5 border-t border-trus-white/10 pt-2">
-                {s.facts.map((f) => (
-                  <FactChip key={f.id} fact={f} decision={decisions[f.id]} onDecision={setDecision} />
-                ))}
-              </div>
-            )}
+            <EvidenceToggle
+              factCount={s.facts.length}
+              assetCount={s.assets.length}
+              pendingCount={pendingFactCount(s.facts)}
+            >
+              {s.facts.map((f) => (
+                <FactChip key={f.id} fact={f} decision={decisions[f.id]} onDecision={setDecision} />
+              ))}
+              {s.assets.map((a) => (
+                <AssetLabel key={a.id} asset={a} />
+              ))}
+            </EvidenceToggle>
           </div>
         ))}
       </div>

@@ -308,11 +308,11 @@
     {
       "dir": "research-evidence-toggle",
       "status": "running",
-      "progress": "0/3",
-      "running_step": "0 (evidence-widget)",
+      "progress": "1/3",
+      "running_step": "1 (script-review-toggle)",
       "attempt": 1,
-      "elapsed_seconds": 420,
-      "heartbeat_at": "2026-07-01T12:26:06+0900"
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-07-01T12:35:09+0900"
     }
   ]
 }
