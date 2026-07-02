@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "downstream-context-injection",
+  "steps": [
+    {
+      "step": 0,
+      "name": "hook-persona",
+      "status": "completed",
+      "started_at": "2026-07-02T14:05:56+0900",
+      "team_round": "1/3 PASS",
+      "summary": "target_persona를 훅이(hook_maker) 프롬프트에 조건부 주입(방식 B·짠펜 미러). schema.ts에 HOOK_PERSONA_DIRECTIVE 상수 신설(HOOK_MAKER_SYSTEM 본문 무변경)+HookMakerInput.target_persona? 추가. prepare.ts는 topic payload에서 persona 추출(별도 조회 X)해 truthy일 때만 input 키+system 뒤 지시문 append(appendTitleStyle/appendLearnedInsights 체인 순서 불변). persona 없으면 input·system 바이트 동일→promptHash 보존. 신규 tests/hookPersonaWiring.test.ts 3케이스(A 주입/B 회귀 바이트동일/C 별도상수). typecheck·test(1092→1095)·build 전부 통과. 마이그0·의존성0.",
+      "completed_at": "2026-07-02T14:14:38+0900"
+    },
+    {
+      "step": 1,
+      "name": "thumbnail-persona",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "research-context",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-07-02T14:05:56+0900"
+}
