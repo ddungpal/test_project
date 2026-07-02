@@ -39,5 +39,6 @@
       "summary": "파트별 재생성 UI + staleness 경고 배너: EditableSegment에 재생성 배선 추가 — !editable(published)면 SegmentBody만 조기 return(회귀0), editable(script_review/approved)이면 프로즈=[수정]+[재생성]·블록=[재생성]만. 재생성 UX는 PostConfirmStructureEdit 미러(사유 textarea border-trus-yellow/40·window.confirm·startTransition·requestSegmentRegen(runId,segment.id,reason.trim())·router.refresh·LiveRefresh 폴링). 사유 필수: 빈/공백이면 버튼 disabled(reasonEmpty)+onRegenerate 내부 이중 가드(액션 시그니처 reason?이지만 UI가 non-empty 강제). 완료 감지=proposalId 대신 segment.text prop이 제출 시점 startText와 달라지면 폴링 종료(step2가 그 행만 update)·POLL_LIMIT_MS 5분 timedOut 안전망·진행 중 '짠펜이 이 파트 다시 쓰는 중…' 안내. 신규 SegmentStaleBanner(isScriptDownstreamStarted 재사용·approved/published만 노란보더 경고·차단X·자동재실행X)를 SegmentList/ScriptReview 상단 한 번만(세그먼트 반복X). 배선: SegmentList/ScriptReview에 runState prop 추가·page.tsx에서 runState 전달(script_review는 stale=false라 배너 안 뜸·approved에서만). 백엔드 무변경(requestSegmentRegen 호출만·regenerateSegment/이벤트 UI 재구현 0). Joy 1라운드 PASS. typecheck/test(1151)/build 전부 exit 0(리드·Joy 각자 재실행 일치). TRUS 3색만·마이그0·의존성0. ⚠️브라우저 라이브검증 필요(재생성 발행→짠펜 Inngest→그 행만 갱신→text prop 변화로 폴링 종료·approved에서 배너 노출·프로즈=수정+재생성/블록=재생성만·published 읽기전용). 참고: published엔 편집영역이 없어 배너 문구가 다소 붕 뜸(명세상 approved/published 둘 다 배너 대상이라 위반 아님·라이브 때 눈으로 확인)."
     }
   ],
-  "created_at": "2026-07-02T21:38:01+0900"
+  "created_at": "2026-07-02T21:38:01+0900",
+  "completed_at": "2026-07-02T23:25:24+0900"
 }
