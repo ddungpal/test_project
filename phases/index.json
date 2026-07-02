@@ -347,7 +347,8 @@
     },
     {
       "dir": "onboarding-quota-resilience",
-      "status": "pending"
+      "status": "completed",
+      "completed_at": "2026-07-03T01:53:20+0900"
     }
   ]
 }

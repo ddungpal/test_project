@@ -7,10 +7,19 @@
 //   ★ 조건부 주입(픽스처 보존): 값 없으면 키 자체를 넣지 않는다(undefined 필드 생략).
 import type { Supa } from "../../pipeline/runState.js";
 import { getSelectedStagePayload } from "../../pipeline/context.js";
-import { gatherExternalSignals, rankExternalByMultiplier, type ExternalItem } from "../topic_scout/externalSignals.js";
+import { gatherExternalSignals, rankExternalByMultiplier, YouTubeQuotaError, type ExternalItem } from "../topic_scout/externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { fetchTranscript } from "../../lib/onboarding/transcript.js";
 import type { OnboarderInput, OnboarderReference, ArcReference } from "./schema.js";
+
+// 온보딩 재시도 가능 에러 — YouTube quota(429)/rate-limit 같은 일시적 인프라 실패 전용.
+//   "레퍼런스 영상을 찾지 못해 온보딩 불가"(진짜 0개·영구 블록)와 구분해, UI가 "잠시 후 다시 시도" 안내로 표면화한다(step2).
+export class OnboardingRetryableError extends Error {
+  constructor(message = "유튜브 검색 한도 초과 — 잠시 후 다시 시도하세요") {
+    super(message);
+    this.name = "OnboardingRetryableError";
+  }
+}
 
 /** 유튜브 watch URL(...watch?v=<id>) 또는 youtu.be 단축 URL에서 videoId 추출. 못 뽑으면 null(순수·throw 0). */
 export function extractVideoId(url: string | undefined | null): string | null {
@@ -69,7 +78,7 @@ function relaxQuery(topic: string): string {
  *     (b) viewCount 필터 제거: eligible = youtube 전부(viewCount null 포함) 재랭킹 — 재검색 없음.
  *     (c) 검색어 완화: relaxQuery(topic)로 재검색 → viewCount 필터만(floorSubs=0)로 랭킹.
  */
-async function gatherReferences(topic: string): Promise<ExternalItem[]> {
+export async function gatherReferences(topic: string): Promise<ExternalItem[]> {
   if (!topic.trim()) return [];
 
   // 0) 기본 수집.
@@ -80,8 +89,11 @@ async function gatherReferences(topic: string): Promise<ExternalItem[]> {
       ytQuery: topic,
       maxPerQuery: 10,
       volatility: "slow",
+      throwOnYtQuota: true, // 온보더는 429를 삼키지 않는다 — "레퍼런스 없음" 오인 방지(콜러가 재시도 안내로 승격).
     });
   } catch (e) {
+    // quota(429)는 일시적 인프라 실패 → 삼키지 말고 전파(빈 []로 폴백 금지). prepareOnboarder가 OnboardingRetryableError로 승격.
+    if (e instanceof YouTubeQuotaError) throw e;
     console.warn(`[쏙이 prep] 레퍼런스 수집 실패(무시):`, e instanceof Error ? e.message : e);
     // items는 []로 유지 — 아래 완화 단계가 [] 위에서 도니 무해(재검색은 (c)에서).
   }
@@ -108,6 +120,7 @@ async function gatherReferences(topic: string): Promise<ExternalItem[]> {
         ytQuery: relaxed,
         maxPerQuery: 10,
         volatility: "slow",
+        throwOnYtQuota: true, // 완화 재검색도 429는 전파 대상.
       });
       // url 기준 dedup(같은 영상이 원 검색·완화 검색 양쪽에 잡힐 수 있음 — 먼저 들어온 것 유지).
       const seen = new Set<string>();
@@ -120,6 +133,9 @@ async function gatherReferences(topic: string): Promise<ExternalItem[]> {
       }
       refs = rankExternalByMultiplier(merged, REF_TARGET, 0);
     } catch (e) {
+      // (c)는 이미 (0)에서 refs를 일부 모았을 수 있다 — quota여도 손에 든 refs가 있으면 그걸 반환(재시도 승격 대신).
+      //   진짜 "0개인데 quota"일 때만 신호를 살려 전파(콜러가 재시도 안내로 승격).
+      if (e instanceof YouTubeQuotaError && refs.length === 0) throw e;
       console.warn(`[쏙이 prep] 레퍼런스 완화 재수집 실패(무시):`, e instanceof Error ? e.message : e);
     }
   }
@@ -142,9 +158,16 @@ export async function prepareOnboarder(supa: Supa, runId: string): Promise<Onboa
   // topic 없으면 best-effort — 수집 시도 없이 빈 references(throw 안 함).
   if (!topic.trim()) return { topic, references: [] };
 
-  const items = await gatherReferences(topic);
+  let items: ExternalItem[];
+  try {
+    items = await gatherReferences(topic);
+  } catch (e) {
+    // quota(429)는 재시도 가능 — 영구 "온보딩 불가"와 분리해 승격. 그 외 에러는 원형 그대로 전파.
+    if (e instanceof YouTubeQuotaError) throw new OnboardingRetryableError();
+    throw e;
+  }
   if (items.length === 0) {
-    // topic은 있는데 레퍼런스 0개 → 온보딩 블록(설계 A+B: refs 없이 아크 생성 안 함).
+    // topic은 있는데 레퍼런스 0개(비-quota) → 영구 블록(설계 A+B: refs 없이 아크 생성 안 함).
     throw new Error("레퍼런스 영상을 찾지 못해 온보딩 불가");
   }
 

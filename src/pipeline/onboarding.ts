@@ -9,6 +9,7 @@ import type { Json } from "../lib/supabase/database.types.js";
 import { prepareOnboarder, prepareOnboarderFromRefs } from "../agents/onboarder/prepare.js";
 import { onboarderStep, onboarderMoreStep } from "../agents/onboarder/step.js";
 import type { OnboardingArc, OnboardingGold, ArcReference, ArcDifficulty } from "../agents/onboarder/schema.js";
+import { buildRetryFailureMarker, readRetryFailureMessage } from "../lib/onboarding/failureMarker.js";
 
 const ONBOARDING_STAGE = "onboarding" as const;
 
@@ -38,7 +39,35 @@ export async function loadOnboardingArc(supa: Supa, runId: string): Promise<Onbo
   if (!data) return null;
   const cands = (data.candidates as unknown as { idx: number; payload: unknown }[]) ?? [];
   const first = cands.find((c) => c.idx === 0) ?? cands[0];
-  return (first?.payload as OnboardingArc | undefined) ?? null;
+  const payload = first?.payload;
+  // 실패 마커가 최신 proposal이 되면 아크로 오인해 렌더하지 않게 null 반환(마커는 loadOnboardingFailure로 읽는다).
+  if (readRetryFailureMessage(payload) != null) return null;
+  return (payload as OnboardingArc | undefined) ?? null;
+}
+
+/** 최신 onboarding proposal candidates[0].payload가 재시도 실패 마커면 그 안내 메시지를, 아니면 null 반환. loadOnboardingArc 리더 미러·throw 0. */
+export async function loadOnboardingFailure(supa: Supa, runId: string): Promise<string | null> {
+  const { data } = await supa
+    .from("stage_proposals")
+    .select("candidates")
+    .eq("run_id", runId)
+    .eq("stage", ONBOARDING_STAGE)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!data) return null;
+  const cands = (data.candidates as unknown as { idx: number; payload: unknown }[]) ?? [];
+  const first = cands.find((c) => c.idx === 0) ?? cands[0];
+  return readRetryFailureMessage(first?.payload);
+}
+
+/** 재시도 가능한 온보딩 실패(quota 등)를 아크와 같은 슬롯(stage_proposals)에 마커로 저장. runOnboarding insert 미러. */
+export async function saveOnboardingFailure(supa: Supa, runId: string, message: string): Promise<void> {
+  const candidates = [{ idx: 0, payload: buildRetryFailureMarker(message), reason: "온보딩 재시도", evidence_ids: [] as string[] }];
+  const { error } = await supa
+    .from("stage_proposals")
+    .insert({ run_id: runId, stage: ONBOARDING_STAGE, candidates: candidates as unknown as Json });
+  if (error) throw new Error(`온보딩 실패 마커 저장 실패: ${error.message}`);
 }
 
 /** 최신 onboarding 아크 payload의 경량 references(title/url/videoId)를 반환. loadOnboardingArc 미러·없으면 [](throw 0·하위호환). */

@@ -2,7 +2,7 @@
 //   pickSpreadYoutube: 테마(sourceQuery)별 라운드로빈 분산(순수·결정적).
 //   gatherExternalSignals: 여러 ytQueries → videoId 전역 dedup + sourceQuery 태깅(fetch는 fake로 분리).
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { gatherExternalSignals, pickSpreadYoutube, type ExternalItem } from "../src/agents/topic_scout/externalSignals.js";
 
 const FLOOR = 1000;
@@ -110,9 +110,17 @@ describe("pickSpreadYoutube — 테마별 분산 선택", () => {
 
 // gatherExternalSignals 가공부(여러 ytQueries → dedup·태깅). fetch를 fake로 분리(URL 분기).
 describe("gatherExternalSignals — 다중 ytQuery dedup·sourceQuery 태깅", () => {
+  // fetch 레벨(dedup·태깅) 검증이 목적 → youtubeFixture 레이어를 우회(off=항상 라이브)해야 fetch 스텁이
+  //   그대로 관통한다. 안 그러면 record가 레포 fixtures/youtube에 파일을 남기고 캐시가 fetch 카운트를 흐린다.
+  const OLD_YT_FIX = process.env.YOUTUBE_FIXTURES;
+  beforeEach(() => {
+    process.env.YOUTUBE_FIXTURES = "off";
+  });
   afterEach(() => {
     vi.unstubAllGlobals();
     delete process.env.YOUTUBE_API_KEY;
+    if (OLD_YT_FIX === undefined) delete process.env.YOUTUBE_FIXTURES;
+    else process.env.YOUTUBE_FIXTURES = OLD_YT_FIX;
   });
 
   // search.list만 videoId를 반환하는 fake. videos/channels.list는 빈 응답(stats 보강 best-effort 생략).

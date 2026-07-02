@@ -4,6 +4,16 @@
 //   ★ best-effort: 일부 소스가 실패(할당량·키)해도 나머지로 진행(throw 안 함).
 
 import { search } from "../../search/search.js";
+import { searchYouTubeCached } from "./youtubeFixture.js";
+
+// YouTube Data API 일일 quota 소진(429) 전용 에러 — "레퍼런스 없음"(콘텐츠 판정)과 "한도 초과"(일시적 인프라)를 구분.
+//   촉이는 429를 삼켜도 정상(웹 신호로 충분)이지만, 온보더는 이 타입을 잡아 재시도 안내로 표면화한다.
+export class YouTubeQuotaError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "YouTubeQuotaError";
+  }
+}
 
 export interface ExternalItem {
   id: string; // "web:0" | "yt:1" — 촉이 evidence_ids 링크용
@@ -240,12 +250,17 @@ async function searchPass(query: string, max: number, order: "relevance" | "view
     relevanceLanguage: "ko", order, key,
   });
   const res = await fetch(`${YT_API}/search?${p.toString()}`);
-  if (!res.ok) throw new Error(`youtube search.list(${order}) ${res.status}: ${(await res.text()).slice(0, 200)}`);
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 200);
+    // 429 = 일일 quota 소진/rate-limit(일시적) → 전용 타입으로 구분. 그 외 상태는 기존 generic Error 유지.
+    if (res.status === 429) throw new YouTubeQuotaError(`youtube search.list(${order}) ${res.status}: ${body}`);
+    throw new Error(`youtube search.list(${order}) ${res.status}: ${body}`);
+  }
   const data = (await res.json()) as { items?: YtSearchItem[] };
   return (data.items ?? []).filter((it) => it.id?.videoId);
 }
 
-async function searchYouTube(query: string, max: number): Promise<Omit<ExternalItem, "id">[]> {
+export async function searchYouTube(query: string, max: number): Promise<Omit<ExternalItem, "id">[]> {
   const key = process.env.YOUTUBE_API_KEY;
   if (!key) return [];
 
@@ -310,6 +325,8 @@ export async function gatherExternalSignals(opts: {
   ytQueries?: string[] | undefined;
   maxPerQuery?: number;
   volatility?: "static" | "slow" | "fast";
+  // 온보더 전용: YouTube quota(429) 에러를 삼키지 않고 re-throw. 미지정(기본 false)이면 촉이 동작 바이트 동일(현행대로 warn+삼킴).
+  throwOnYtQuota?: boolean | undefined;
 }): Promise<ExternalItem[]> {
   const max = opts.maxPerQuery ?? 5;
   const webRaw: Omit<ExternalItem, "id">[] = [];
@@ -343,7 +360,8 @@ export async function gatherExternalSignals(opts: {
     if (ytSeenQ.has(q)) continue;
     ytSeenQ.add(q);
     try {
-      const rows = await searchYouTube(q, max);
+      // fixture 래퍼 경유 — dev record/replay($0·quota 무소모). YOUTUBE_FIXTURES=off거나 키 없으면 라이브로 흘러 현행 동일.
+      const rows = await searchYouTubeCached(q, max);
       for (const r of rows) {
         // url = .../watch?v=<videoId> — videoId 추출해 전역 dedup.
         const vid = r.url.split("v=")[1] ?? r.url;
@@ -352,6 +370,9 @@ export async function gatherExternalSignals(opts: {
         ytRaw.push(r);
       }
     } catch (e) {
+      // 온보더 경로(throwOnYtQuota=true)에서만 quota(429)를 전파 — "레퍼런스 없음" 오인 방지.
+      //   그 외(옵션 미지정/false거나 non-quota 에러)는 현행대로 warn+삼킴(촉이 정상 동작).
+      if (e instanceof YouTubeQuotaError && opts.throwOnYtQuota === true) throw e;
       console.warn(`[촉이 외부신호] YouTube 검색 실패(무시) q="${q}":`, e instanceof Error ? e.message : e);
     }
   }
