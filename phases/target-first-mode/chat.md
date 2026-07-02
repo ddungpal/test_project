@@ -32,3 +32,18 @@
 [Joy] 테스트 6개가 바이트 동일 toBe랑 필드 보존까지 딱 못박아놨네. 빈 문자열 케이스까지 챙긴 거 센스 있다
 [Joy] AC 다 돌렸어. typecheck exit0, test 1102에서 1108로 딱 6개 늘어서 exit0, build도 exit0! 떠돌이 파일도 없고 index.json도 completed로 갱신됨. 완벽하다 통과 🎉 수고했어 맥스!
 [리드] 조이 검수 통과, AC 셋 다 exit 0 확인했어. step1 완료 처리한다. 1라운드 PASS. 이제 고정 타겟이 촉이 프롬프트에 실제로 주입되고 후보 persona도 고정 덮어쓰기 되니까, 마지막 step2에서 UI 탭만 붙이면 파이프라인 관통 끝. 둘 다 수고했어 👍
+
+=== Step 2: target-first-ui ===
+[리드] 마지막 step이야. 홈 새 런 버튼에 네 번째 탭 "타겟 먼저" 붙이면 파이프라인 관통 끝. 키워드 탭이랑 거의 똑같은데, 한 줄 타겟 입력받아서 startTopicRun(undefined, undefined, persona)로 넘기고, 이 탭에선 levelSplit 토글은 숨겨야 해(고정 persona가 대상을 정의하니까). 백엔드는 step0/1에서 다 끝났으니 NewRunButton.tsx만 건드리면 돼. 맥스, 맡아줄래?
+
+[Max] step2 시작할게. NewRunButton에 네번째 탭 "타겟 먼저" 붙일 거야. 키워드 탭이 제일 비슷하니 그걸 미러할게.
+
+[Max] 탭 붙였어. 입력은 targetPersona로 잡고 제출은 startTopicRun(undefined, undefined, persona.trim())로 discovery 경로 타. levelSplit 토글은 이 탭엔 안 넣었고 나머지 탭은 그대로 뒀어. 이제 typecheck/test/build 돌려볼게.
+
+[Max] typecheck·test(1108)·build 전부 통과했어. 기존 3탭은 안 건드렸고 백엔드도 그대로야. 탭 전환이랑 실제 제출은 클라 사이드라 브라우저로 한번 눌러보는 검증만 남았어. 놓친 거 있으면 말해줘.
+[Joy] 오 맥스 step2 왔다~ 바로 git diff 보고 AC 세 개 다 돌려볼게!
+[Joy] 굿굿 typecheck exit 0, test 1108개 다 통과, build도 깔끔하게 exit 0 떴어 🎉
+[Joy] 4번째 탭 타겟먼저 붙었고 제출이 startTopicRun(undefined, undefined, persona)로 딱 맞게 갔네. topic 없이 discovery 경로에 levelSplit도 안 넘기고 완벽!
+[Joy] 이 탭엔 levelToggle 안 그렸고 discovery/keyword는 그대로 살아있어. 기존 3탭 인자도 하나도 안 건드렸고 회귀 제로. 백엔드도 무수정이야
+[Joy] 색도 trus 유틸만 쓰고 새 색·그림자·그라데이션 없어. targetPersona 리셋도 run 성공 블록에 잘 넣었네. 떠돌이 파일도 없고! 통과다 맥스 최고 👍
+[리드] 조이 PASS, AC 셋 다 exit 0 재확인했어. step2 완료 처리한다. 1라운드 PASS. 이걸로 "타겟 먼저" 모드 UI→프롬프트→후보고정 파이프라인 관통 끝났다. 탭 전환·제출만 브라우저로 눌러보면 돼. 셋 다 수고했어 🎉

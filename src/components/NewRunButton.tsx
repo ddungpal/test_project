@@ -10,13 +10,15 @@ import { RELATION_LABEL, type ContentRelation } from "@/lib/dashboard/seedTypes"
 //   발굴: 촉이가 댓글+외부검색 신호로 주제 제안(입력 없음).
 //   키워드: 키워드 1개 → 그 키워드 댓글 군집 + 외부검색으로 구체 주제 발굴(촉이 생성).
 //   씨앗: 사용자가 준 주제를 확정으로 시작 + 참조 기존편(참고|이어보기) + 연결 의도. 촉이 건너뜀.
-type Mode = "discovery" | "keyword" | "seed";
+//   타겟먼저: 타겟 한 줄 고정 → 촉이가 그 타겟용 주제만 발굴(discovery 경로 + persona 제약, levelSplit 미사용).
+type Mode = "discovery" | "keyword" | "seed" | "targetFirst";
 
 export function NewRunButton({ references }: { references: ReferenceEdition[] }) {
   const [mode, setMode] = useState<Mode>("discovery");
   const [topic, setTopic] = useState("");
   const [keyword, setKeyword] = useState("");
   const [intent, setIntent] = useState("");
+  const [targetPersona, setTargetPersona] = useState(""); // 타겟먼저 모드 — 고정 타겟 한 줄
   const [levelSplit, setLevelSplit] = useState(false); // 촉이 수준 분해 토글(입문~고급)
   const [refs, setRefs] = useState<Record<string, ContentRelation>>({}); // contentId → 관계
   const [error, setError] = useState<string | null>(null);
@@ -43,6 +45,7 @@ export function NewRunButton({ references }: { references: ReferenceEdition[] })
         setTopic("");
         setKeyword("");
         setIntent("");
+        setTargetPersona("");
         setRefs({});
         router.refresh();
       } catch (e) {
@@ -72,6 +75,7 @@ export function NewRunButton({ references }: { references: ReferenceEdition[] })
         <button onClick={() => setMode("discovery")} className={tabCls("discovery")}>주제 발굴받기</button>
         <button onClick={() => setMode("keyword")} className={tabCls("keyword")}>키워드로 발굴</button>
         <button onClick={() => setMode("seed")} className={tabCls("seed")}>내 주제로 시작</button>
+        <button onClick={() => setMode("targetFirst")} className={tabCls("targetFirst")}>타겟 먼저</button>
       </div>
 
       {mode === "discovery" ? (
@@ -108,7 +112,7 @@ export function NewRunButton({ references }: { references: ReferenceEdition[] })
           </div>
           {levelToggle}
         </div>
-      ) : (
+      ) : mode === "seed" ? (
         <div className="mt-3 flex flex-col gap-3">
           <input
             value={topic}
@@ -177,6 +181,27 @@ export function NewRunButton({ references }: { references: ReferenceEdition[] })
           >
             {pending ? "시작 중…" : "이 주제로 시작"}
           </button>
+        </div>
+      ) : (
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-xs text-trus-white/50">이 타겟에게 맞는 주제만 촉이가 발굴합니다.</p>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              value={targetPersona}
+              onChange={(e) => setTargetPersona(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && !pending && targetPersona.trim() && run(() => startTopicRun(undefined, undefined, targetPersona.trim()))}
+              placeholder="타겟 (예: 2030 사회초년생, 목돈 굴리기 막막한 사람)"
+              disabled={pending}
+              className={inputCls}
+            />
+            <button
+              onClick={() => run(() => startTopicRun(undefined, undefined, targetPersona.trim()))}
+              disabled={pending || !targetPersona.trim()}
+              className="shrink-0 bg-trus-yellow px-5 py-2 text-sm font-black text-trus-black disabled:opacity-50"
+            >
+              {pending ? "시작 중…" : "발굴 시작"}
+            </button>
+          </div>
         </div>
       )}
 
