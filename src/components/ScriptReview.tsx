@@ -4,18 +4,20 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { reviewScriptAction, requestScriptReworkAction } from "@/app/actions/topicRun";
 import type { SegmentView, SegmentFactView } from "@/lib/dashboard/scriptView";
+import type { RunState } from "@/domain/enums";
 import { VERIFICATION_LABEL } from "@/lib/dashboard/labels";
 import { safeHref } from "./FactCard";
 import { EvidenceToggle } from "./EvidenceToggle";
 import { AssetLabel } from "./AssetLabel";
 import { EditableSegment } from "./EditableSegment";
+import { SegmentStaleBanner } from "./SegmentStaleBanner";
 import { pendingFactCount } from "@/lib/research/evidence";
 
 // 대본 최종 게이트(autoflow §D) — 본문 + 인라인 fact 칩으로 한 화면에서 검수한다.
 //   보류(pending) fact만 승인/반려 토글(기본=승인) — ResearchReview decisions 패턴 미러.
 //   verified는 출처만, 그 외 비보류는 '미검증' 가벼운 표식. 반려는 전체 재작성(step0 백엔드 정책).
 //   주 동선: reviewScriptAction(rejectFactIds). 보조: requestScriptReworkAction(통째 재작성).
-export function ScriptReview({ runId, segments }: { runId: string; segments: SegmentView[] }): React.JSX.Element {
+export function ScriptReview({ runId, segments, runState }: { runId: string; segments: SegmentView[]; runState: RunState }): React.JSX.Element {
   // 보류 fact id → 결정(승인/반려). 기본=승인.
   const pendingFacts = segments.flatMap((s) => s.facts.filter((f) => f.pending));
   const [decisions, setDecisions] = useState<Record<string, "approve" | "reject">>(
@@ -61,6 +63,7 @@ export function ScriptReview({ runId, segments }: { runId: string; segments: Seg
 
   return (
     <div className="flex flex-col gap-4">
+      <SegmentStaleBanner runState={runState} />
       <p className="text-xs text-trus-white/60">
         완성된 대본입니다. 본문에 쓰인 사실의 출처를 확인하세요. {pendingFacts.length > 0
           ? `확인 필요 ${pendingFacts.length}건은 기본 승인 — 반려하면 그 사실을 뺀 대본으로 다시 씁니다.`

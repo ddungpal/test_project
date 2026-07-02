@@ -1,17 +1,21 @@
 import type { SegmentView } from "@/lib/dashboard/scriptView";
 import type { TablePayload, CasePayload, VisualPayload, VisualCueType } from "@/pipeline/segmentBlock";
+import type { RunState } from "@/domain/enums";
 import { EvidenceToggle } from "./EvidenceToggle";
 import { AssetLabel } from "./AssetLabel";
 import { EditableSegment } from "./EditableSegment";
+import { SegmentStaleBanner } from "./SegmentStaleBanner";
 
 // 대본 세그먼트 + lineage(이 단락이 어떤 fact/asset에 근거하는지). 순수 표시.
 //   kind별 분기 렌더(prose/table/case/visual). prose는 기존 마크업 불변(회귀 0 — 실 런은 전부 prose).
 //   payload가 null인데 kind!=prose면 방어적으로 prose 폴백(빈 화면 금지).
 //   lineage 칩 푸터는 모든 kind 공통(prose 전용 아님).
 //   editable=true(approved)면 프로즈 세그먼트에 인라인 수정 노출(EditableSegment). published는 editable=false로 읽기전용.
-export function SegmentList({ runId, segments, editable }: { runId: string; segments: SegmentView[]; editable: boolean }) {
+//   runState=배너 판정용 — approved면 리스트 상단에 staleness 경고 한 번(세그먼트마다 반복 금지).
+export function SegmentList({ runId, segments, editable, runState }: { runId: string; segments: SegmentView[]; editable: boolean; runState: RunState }) {
   return (
     <div className="flex flex-col gap-3">
+      <SegmentStaleBanner runState={runState} />
       {segments.map((s) => (
         <div key={s.id} className="border border-trus-white/15 p-4">
           <div className="flex items-start gap-3">
