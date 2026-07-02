@@ -342,7 +342,12 @@
     },
     {
       "dir": "segment-edit",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/4",
+      "running_step": "0 (segment-edit-backend)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-07-02T21:46:01+0900"
     }
   ]
 }

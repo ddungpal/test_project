@@ -6,7 +6,7 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { inngest } from "../../inngest/client.js";
-import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, editSelectedTopic, editSelectedStructure, type SelectInput } from "../../pipeline/gate.js";
+import { selectProposal, confirmThumbnailSet, editSelectedTitle, editSelectedThumbnails, editSelectedTopic, editSelectedStructure, editSegmentText, type SelectInput } from "../../pipeline/gate.js";
 import { getSelectedStagePayload } from "../../pipeline/context.js";
 import type { TitlePayload, ThumbnailPayload, TopicPayload, StructurePayload } from "../../lib/dashboard/proposalTypes.js";
 import { STAGE_DESCRIPTORS } from "../../pipeline/stages.js";
@@ -230,6 +230,16 @@ export async function editStructure(runId: string, payload: StructurePayload): P
   const supa = createAdminClient();
   await editSelectedStructure(supa, runId, payload, ownerId);
   await auditLog(supa, { actorId: ownerId, action: "stage_edited", targetType: "run", targetId: runId, detail: { stage: "structure" } });
+}
+
+// 짠펜 대본 세그먼트 프로즈 텍스트 직접 수정 — editStructure 미러(requireOwner·auditLog·상태 전이 0·AI 0).
+//   ★ 구성편집은 edited_payload 한 방 전파지만 세그먼트는 script_segments 행 직접 update(정규화 저장·전파 경로 없음).
+//   ★ 프로즈(kind=prose/null)만 — 블록은 내용이 payload에 있어 text 직접수정 무의미(editSegmentText가 거부). run 스코프 필수.
+export async function editSegment(runId: string, segmentId: string, text: string): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await editSegmentText(supa, runId, segmentId, text);
+  await auditLog(supa, { actorId: ownerId, action: "segment_edited", targetType: "run", targetId: runId, detail: { segmentId } });
 }
 
 // 확정 후 AI 재생성 — Inngest로 새 proposal 생성(상태 전이 없음). 동기 callLLM 금지(185s 타임아웃 회피).

@@ -28,7 +28,8 @@ export type AuditAction =
   | "content_upload_date_updated"
   | "correction_saved"
   | "correction_analyzed"
-  | "onboarding_submitted";
+  | "onboarding_submitted"
+  | "segment_edited";
 
 export interface AuditEntry {
   actorId: string;

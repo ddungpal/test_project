@@ -303,3 +303,33 @@ export async function editSelectedThumbnails(
   if (se) throw new Error(`stage_selections insert 실패: ${se.message}`);
   return { selectionId: selection.id };
 }
+
+// 짠펜 대본 세그먼트 프로즈 텍스트 직접 수정(상태 전이 0·AI 0). editSelectedStructure 미러지만 구성과 달리
+//   edited_payload 한 방 전파가 아니라 script_segments 행을 직접 update한다(세그먼트는 정규화 저장·전파 경로 없음).
+//   ★ 프로즈(kind=prose/null)만 — 블록(table/case/visual)은 내용이 payload에 있어 text 직접수정이 무의미(재생성으로).
+//   ★ run_id+id 스코프 필수(.eq run_id) — 스코프 누락 시 다른 run의 세그먼트 오염 가능.
+export async function editSegmentText(supa: Supa, runId: string, segmentId: string, text: string): Promise<void> {
+  const next = text.trim();
+  if (!next) throw new Error("빈 세그먼트 텍스트는 저장할 수 없습니다.");
+
+  // kind 확인(run·segment 스코프) — 블록은 프로즈 직접수정 거부.
+  const { data: seg, error: qe } = await supa
+    .from("script_segments")
+    .select("kind")
+    .eq("run_id", runId)
+    .eq("id", segmentId)
+    .single();
+  if (qe) throw new Error(`세그먼트 조회 실패: ${qe.message}`);
+  const kind = (seg as { kind: string | null }).kind;
+  if (kind === "table" || kind === "case" || kind === "visual") {
+    throw new Error("블록 세그먼트는 재생성으로 수정하세요(프로즈만 직접 수정 가능).");
+  }
+
+  // trim된 텍스트만 update — run_id+id 두 스코프(타 run 오염 금지).
+  const { error: ue } = await supa
+    .from("script_segments")
+    .update({ text: next })
+    .eq("run_id", runId)
+    .eq("id", segmentId);
+  if (ue) throw new Error(`세그먼트 수정 실패: ${ue.message}`);
+}
