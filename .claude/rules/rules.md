@@ -20,6 +20,7 @@
 - 짠펜(scribe) 대본 세그먼트 품질을 검사할 때는 **kind로 갈라서** 검사한다 — 프로즈만 본문 길이(≥20자), 블록(table/case/visual)은 `payload` 존재로 (이유: 블록 세그먼트는 text가 짧은 제목이고 내용은 payload에 있음 — 모든 세그먼트에 프로즈 길이 검사를 걸면 블록 담은 정상 fixture가 eval을 밟는다. tests/eval.test.ts 실제 사례).
 - catch로 rejected promise를 삼키는(best-effort) 함수를 vitest로 테스트할 때는 `vi.fn` 스텁 대신 교체 가능한 impl 함수 + 별도 호출 카운터로 스텁한다 (이유: `vi.fn`은 rejected promise를 `mock.results`에 붙들어 unhandled rejection으로 감지 → 실제로 catch해 정상 동작하는 코드도 테스트 실패로 승격. vitest 2.1.8 · onboardingTranscript.test.ts에서 fetchTranscript/prepareOnboarder의 throw 삼킴 검증 시 impl+카운터로 우회한 사례).
 - rework/재진입으로 런을 이전 stage 상태(예: `script_review`→`scripting`)로 되돌리는 **액션은 그 stage의 Inngest 이벤트(예: `run/script.requested`)를 반드시 재발행**한다 (이유: `scriptStageFn` 등 stage 함수는 이벤트로만 실행 — 상태만 되돌리고 이벤트를 안 쏘면 UI는 "작성 중" 안내만 뜬 채 영원히 stuck. `reviewScriptAction` 반려경로·`requestScriptReworkAction`가 게이트 자동화 후 이벤트 재발행이 빠져 멈췄던 실제 버그. 초기 실행은 상위 stage가 자동 발행하지만 rework 재진입엔 그 발행이 없다).
+- 여러 번의 `gatherExternalSignals` 결과(원검색 + 완화/폴백 재검색)를 합칠 때는 `url`(또는 `videoId`) 기준으로 dedup한다 (이유: 같은 영상이 두 검색에 모두 잡혀 references가 중복 증식 — 단일 gather 내부 dedup만 믿고 병합하면 `pickTopReferences`가 같은 영상을 여러 슬롯에 넣는다. onboarder prepare 완화 (c) 병합에서 실제로 1개 item이 2개로 불어난 사례).
 
 ---
 
