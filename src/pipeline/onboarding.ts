@@ -8,7 +8,7 @@ import type { StageRuntimeDeps } from "./stageRuntime.js";
 import type { Json } from "../lib/supabase/database.types.js";
 import { prepareOnboarder } from "../agents/onboarder/prepare.js";
 import { onboarderStep } from "../agents/onboarder/step.js";
-import type { OnboardingArc, OnboardingGold } from "../agents/onboarder/schema.js";
+import type { OnboardingArc, OnboardingGold, ArcReference } from "../agents/onboarder/schema.js";
 
 const ONBOARDING_STAGE = "onboarding" as const;
 
@@ -39,6 +39,12 @@ export async function loadOnboardingArc(supa: Supa, runId: string): Promise<Onbo
   const cands = (data.candidates as unknown as { idx: number; payload: unknown }[]) ?? [];
   const first = cands.find((c) => c.idx === 0) ?? cands[0];
   return (first?.payload as OnboardingArc | undefined) ?? null;
+}
+
+/** 최신 onboarding 아크 payload의 경량 references(title/url/videoId)를 반환. loadOnboardingArc 미러·없으면 [](throw 0·하위호환). */
+export async function loadOnboardingReferences(supa: Supa, runId: string): Promise<ArcReference[]> {
+  const arc = await loadOnboardingArc(supa, runId);
+  return arc?.references ?? [];
 }
 
 /** onboarding proposal의 최신 stage_selection.edited_payload를 OnboardingGold로 반환(없으면 null). 얇은 전용 리더·throw 0. */
@@ -88,7 +94,11 @@ export async function runOnboarding(
   }
 
   const input = await prepareOnboarder(supa, runId);
-  const arc = await onboarderStep(deps, runId, input);
+  const generated = await onboarderStep(deps, runId, input);
+
+  // 경량 references(title/url/videoId만)를 아크 payload에 병합해 저장 — 자막 전문·videoFacts는 저장 안 함(용량·입력 전용).
+  const references: ArcReference[] = (input.references ?? []).map((r) => ({ title: r.title, url: r.url, videoId: r.videoId }));
+  const arc: OnboardingArc = { ...generated, references };
 
   const candidates = [{ idx: 0, payload: arc, reason: "온보딩 아크", evidence_ids: [] as string[] }];
   const { error } = await supa

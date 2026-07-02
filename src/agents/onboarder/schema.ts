@@ -18,7 +18,11 @@ export type ArcQuestion = {
   cliffhanger?: string; // 이 아하가 다음 문항을 여는 한 줄
 };
 
-export type OnboardingArc = { questions: ArcQuestion[]; coreAngle: string };
+// 아크 payload에 저장하는 경량 레퍼런스(필수 시청 영상 표시용). 자막 전문·videoFacts는 저장 안 함(용량·입력 전용).
+export type ArcReference = { title: string; url: string; videoId: string };
+
+// references는 optional·하위호환(step1 이전 아크엔 없음 — 로드 시 references ?? []).
+export type OnboardingArc = { questions: ArcQuestion[]; coreAngle: string; references?: ArcReference[] };
 
 // 개별 레퍼런스 영상(자막·미검증 사실은 각 영상별로). transcript/videoFacts는 값 없으면 키 생략(조건부 주입).
 export type OnboarderReference = {

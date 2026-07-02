@@ -17,3 +17,19 @@
 [Joy] SYSTEM은 단일→복수 문구만 바뀌고 money-safety(unverifiedNumbers)·듀얼훅·클리프행어·난이도 규칙 다 그대로야. 마이그 0, 의존성 0, onboarding.ts·page.tsx·step.ts 전부 무변경. 불변식 완벽해.
 [Joy] 테스트도 알맹이 있어. 상위3 순서·null 후순위·2개면2개·완화 c 재검색어 검증·0개 throw까지 실체로 커버했고, 통과만 하는 껍데기 아냐. step.ts input.references랑 topicRun의 SeedRunInput.references는 우연히 이름만 같은 딴 거라 shape 충돌도 없어. 통과! 수고했어 맥스 🩷
 [리드] 좋아, PASS. step0 완료로 기록하고 index.json 갱신했어. 저장(payload)이랑 필수시청 UI는 step1/step2에서 이어가자. 다들 수고했어.
+
+=== Step 1: store-references ===
+
+=== Step 1: store-references ===
+[리드] 맥스, 이번엔 step0에서 모은 레퍼런스 3개를 아크 payload에 경량으로 저장하고 리더 하나 만드는 거야. 마이그 0, jsonb 확장으로만. 자막 전문은 저장하지 말고 title/url/videoId만. UI는 건드리지 말고. 부탁해.
+[Max] 알겠어. spec step1 섹션이랑 onboarding.ts, schema.ts 다 읽었어. 기존 onboardingWiring.test 모킹 구조도 확인했고. loadOnboardingArc/runOnboarding 테스트 그대로 미러할게.
+[Max] schema에 OnboarderReference는 이미 step0에서 생겼네. OnboardingArc에 경량 references 3필드만 optional로 얹을게. 하위호환이라 기존 아크엔 없어도 돼.
+[Max] 테스트 먼저 썼어. loadOnboardingReferences 있으면/없으면/옛아크 하위호환, runOnboarding INSERT에 경량 refs만(transcript 제외) 저장까지. 구현은 input.references에서 title/url/videoId만 map으로 뽑아 arc에 병합했어. 리더는 loadOnboardingArc 미러라 arc?.references ?? []. AC 돌려볼게.
+[Max] AC 3개 다 통과. typecheck 0, test 1120 전부 통과(1115→1120·신규 5개), build 0. UI는 안 건드렸고 마이그·의존성 0이야. 변경은 schema·onboarding.ts·신규 테스트뿐. 범위 외 파일 안 섞였어. 놓친 거 있으면 말해줘.
+[리드] 맥스 빠르네. AC 직접 돌려봤는데 typecheck/test/build 전부 exit 0, test 1120개 통과. 조이, 검수 부탁해.
+[Joy] 오케이 diff부터 봤어! schema는 ArcReference 3필드 optional로 딱 얹었고 onboarding.ts는 input.references에서 title/url/videoId만 map으로 뽑아 저장하네. 자막·videoFacts 안 딸려가는 거 확인. 이제 AC 직접 돌려볼게~
+[Joy] typecheck 0, test 1120 전부 통과(신규 onboardingReferences 5개 확인), build는 처음에 PageNotFoundError 났는데 이건 stale .next 캐시라 rm -rf .next 하고 재빌드하니 깨끗하게 exit 0. 코드 문제 아니야.
+[Joy] 불변식 체크 다 통과! 마이그 0·의존성 0·page.tsx 무변경(UI는 step2 몫), schema는 references optional로 하위호환, 리더는 arc?.references ?? []로 옛 아크도 안 깨져. loadOnboardingArc 미러 맞고 throw 0.
+[Joy] 테스트 알맹이도 좋아. transcript/videoFacts undefined 명시 검증에 Object.keys가 딱 title/url/videoId 3개인지까지 봐서 껍데기 아냐. 경량 저장 실체로 증명됨. 통과! 맥스 이번에도 깔끔하다 🎉
+[Joy] 검수 끝! diff 깔끔하고 신규 테스트도 3필드만 저장되는 거 Object.keys까지 정확히 검증하더라. build는 stale .next 캐시라 rm -rf .next 후 exit 0. 통과 🎉
+[리드] 좋아, step1 완료. 경량 저장 + 리더까지 됐으니 step2에서 이걸 읽어 "필수 시청 영상" 패널만 붙이면 돼. 수고했어 팀!
