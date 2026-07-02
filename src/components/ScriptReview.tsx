@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 import { reviewScriptAction, requestScriptReworkAction } from "@/app/actions/topicRun";
 import type { SegmentView, SegmentFactView } from "@/lib/dashboard/scriptView";
 import { VERIFICATION_LABEL } from "@/lib/dashboard/labels";
-import { SegmentBody } from "./SegmentList";
 import { safeHref } from "./FactCard";
 import { EvidenceToggle } from "./EvidenceToggle";
 import { AssetLabel } from "./AssetLabel";
+import { EditableSegment } from "./EditableSegment";
 import { pendingFactCount } from "@/lib/research/evidence";
 
 // 대본 최종 게이트(autoflow §D) — 본문 + 인라인 fact 칩으로 한 화면에서 검수한다.
@@ -72,7 +72,7 @@ export function ScriptReview({ runId, segments }: { runId: string; segments: Seg
           <div key={s.id} className="border border-trus-white/15 p-4">
             <div className="flex items-start gap-3">
               <span className="text-trus-yellow shrink-0 text-sm font-black">{s.ord + 1}</span>
-              <SegmentBody segment={s} />
+              <EditableSegment runId={runId} segment={s} editable />
             </div>
             <EvidenceToggle
               factCount={s.facts.length}

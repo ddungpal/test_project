@@ -343,11 +343,11 @@
     {
       "dir": "segment-edit",
       "status": "running",
-      "progress": "0/4",
-      "running_step": "0 (segment-edit-backend)",
+      "progress": "1/4",
+      "running_step": "1 (segment-edit-ui)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-02T21:46:01+0900"
+      "elapsed_seconds": 600,
+      "heartbeat_at": "2026-07-02T21:56:46+0900"
     }
   ]
 }

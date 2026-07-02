@@ -2,19 +2,21 @@ import type { SegmentView } from "@/lib/dashboard/scriptView";
 import type { TablePayload, CasePayload, VisualPayload, VisualCueType } from "@/pipeline/segmentBlock";
 import { EvidenceToggle } from "./EvidenceToggle";
 import { AssetLabel } from "./AssetLabel";
+import { EditableSegment } from "./EditableSegment";
 
 // 대본 세그먼트 + lineage(이 단락이 어떤 fact/asset에 근거하는지). 순수 표시.
 //   kind별 분기 렌더(prose/table/case/visual). prose는 기존 마크업 불변(회귀 0 — 실 런은 전부 prose).
 //   payload가 null인데 kind!=prose면 방어적으로 prose 폴백(빈 화면 금지).
 //   lineage 칩 푸터는 모든 kind 공통(prose 전용 아님).
-export function SegmentList({ segments }: { segments: SegmentView[] }) {
+//   editable=true(approved)면 프로즈 세그먼트에 인라인 수정 노출(EditableSegment). published는 editable=false로 읽기전용.
+export function SegmentList({ runId, segments, editable }: { runId: string; segments: SegmentView[]; editable: boolean }) {
   return (
     <div className="flex flex-col gap-3">
       {segments.map((s) => (
         <div key={s.id} className="border border-trus-white/15 p-4">
           <div className="flex items-start gap-3">
             <span className="text-trus-yellow shrink-0 text-sm font-black">{s.ord + 1}</span>
-            <SegmentBody segment={s} />
+            <EditableSegment runId={runId} segment={s} editable={editable} />
           </div>
           {/* 읽기 뷰 — 근거를 접이식 토글로. 승인/반려 없고(이미 확정) pendingCount=0 고정 → 요약은 "근거 N건"만. */}
           <EvidenceToggle factCount={s.facts.length} assetCount={s.assets.length} pendingCount={0}>

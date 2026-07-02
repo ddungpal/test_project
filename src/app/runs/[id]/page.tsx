@@ -356,7 +356,7 @@ function ScriptSection({
         <p className="border border-trus-yellow px-4 py-2 text-sm font-bold text-trus-yellow">
           {STATE_LABEL[runState]} — 대본 완성 ({segments.length}단락).
         </p>
-        <SegmentList segments={segments} />
+        <SegmentList runId={runId} segments={segments} editable={runState === "approved"} />
       </div>
     );
   } else {

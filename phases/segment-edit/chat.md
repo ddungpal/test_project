@@ -12,3 +12,16 @@
 [Joy] AC 3종 다 돌렸어 — typecheck exit0, test 1137 all pass(신규 scriptStaleness 3 editSegment 5 포함), build exit0. 깔끔하다 맥스 🎉
 [Joy] 블록 거부 빈text 거부 run_id 스코프 전부 코드에도 테스트에도 있고 runScriptStage는 손도 안 댔네. 상태전이 AI 호출 0도 확인. 통과!
 [리드] 좋아, 조이 PASS·AC 셋 다 exit 0 확정. step0 completed로 마감한다. 수고했어 둘 다 👍
+
+=== Step 1: segment-edit-ui ===
+[리드] 맥스, step1은 프론트야. step0에서 만든 editSegment 액션을 UI에 얹는 거. 프로즈 세그먼트에만 "수정" 버튼→textarea→저장. 블록(table/case/visual)은 버튼 미노출, script_review랑 approved에서만(published 제외). PostConfirmStructureEdit 제어 패턴 미러하고 TRUS 3색만. 백엔드는 절대 건드리지 마.
+[Max] step1 시작할게. step0 editSegment 액션이랑 PostConfirmStructureEdit 제어 패턴 먼저 읽고, 재사용할 EditableSegment 하나 만들 생각이야.
+[Max] EditableSegment 하나 만들어서 SegmentList랑 ScriptReview 양쪽에 끼웠어. 프로즈일 때만 수정 버튼 뜨고 블록은 그냥 기존대로 보여. published는 editable=false로 읽기전용 유지했고. isProse 판정은 lib로 빼서 vitest 경계도 하나 붙였어.
+[Max] 이제 AC 셋 돌려볼게.
+[Max] 셋 다 초록불이야. typecheck 0, test 1140개 통과(신규 isProse 3개 포함), build 0. 블록엔 버튼 안 달았고 published는 읽기전용 그대로야. 백엔드는 손 안 댔고. 놓친 거 있으면 봐줘.
+[리드] 나도 AC 셋 직접 돌렸어 — typecheck 0, test 0(1140), build 0. 무관 부산물도 없고 딱 범위 파일만이야. 조이, 독립 검수 부탁해.
+
+[Joy] 오케이 나 검수 들어간다~ 스펙이랑 step1 명세 먼저 읽었고, 이제 git diff랑 신규 파일 훑어볼게!
+[Joy] 코드 다 봤어~ 게이팅 approved면 editable·published 읽기전용 깔끔하고, isProseSegment가 SegmentBody 렌더분기랑 정확히 일치해서 회귀 0! 백엔드도 안 건드렸네. 이제 AC 돌린다.
+[Joy] AC 세 개 다 초록불이야! typecheck exit0·test 1140개 전부 통과(신규 segmentIsProse 3개 포함)·build exit0. 프로즈만 편집·published 읽기전용·백엔드 무변경·TRUS 3색 전부 확인. 브라우저 수동검증만 남았고 코드는 완벽. 통과! 맥스 굿굿 이거 깔끔하다 진짜 🎉
+[리드] 조이 PASS·AC build exit 0 확정. 나도 셋 다 exit 0 재확인했고 diff도 딱 범위 파일만이야. step1 completed로 마감한다 — 실 브라우저 검증(프로즈 수정→저장→refresh, 블록 버튼 미노출)은 사람 몫으로 남겨둘게. 둘 다 수고했어 👍
