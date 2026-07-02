@@ -33,7 +33,8 @@ import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
 import { RequestOnboardingButton } from "@/components/RequestOnboardingButton";
 import { OnboardingQuiz } from "@/components/OnboardingQuiz";
-import { loadOnboardingArc } from "@/pipeline/onboarding";
+import { loadOnboardingArc, loadOnboardingReferences } from "@/pipeline/onboarding";
+import { MustWatchReferences } from "@/components/MustWatchReferences";
 import type { OnboardingArc } from "@/agents/onboarder/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isOnboardingVisible } from "@/domain/enums";
@@ -434,7 +435,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   //   outlierRefs는 썸네일 제안 단계(thumbnails_proposed)에서만 — 게이트 off면 read가 즉시 []. 그 외 상태는 호출 안 함.
   //   onboardingArc는 노출 창 전 구간(thumbnails_selected~published)에서 로드 — review 상태에서도 기존 아크를 복습 재생.
   //   그 외 상태는 호출 안 함(getRunDetail과 같은 admin 클라 경로 재사용).
-  const [rv, segments, cost, outlierRefs, onboardingArc] = await Promise.all([
+  //   mustWatchRefs는 스크립트가 보이는 상태(SCRIPT_LOADED)에서만 로드 — 아크 payload의 경량 references(없으면 []).
+  const [rv, segments, cost, outlierRefs, onboardingArc, mustWatchRefs] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
@@ -442,6 +444,9 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
     isOnboardingVisible(run.state)
       ? loadOnboardingArc(createAdminClient(), run.id)
       : Promise.resolve(null),
+    SCRIPT_LOADED.includes(run.state)
+      ? loadOnboardingReferences(createAdminClient(), run.id)
+      : Promise.resolve([]),
   ]);
 
   // 쏙이 모드 — thumbnails_selected = live(금맥 주입 시점), 그 이후 = review(복습·자동 반영 안 됨).
@@ -510,6 +515,8 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} mode={onbMode} />}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
+      {/* 필수 시청 유튜브 영상 — 쏙이 아크 근거 3개(스크립트 위). refs 없으면 컴포넌트가 null 반환(패널 숨김). */}
+      <MustWatchReferences refs={mustWatchRefs} />
       <ScriptSection runId={run.id} runState={run.state} segments={segments} rv={rv} progressNote={run.progressNote} />
       <CostSection cost={cost} />
     </main>

@@ -33,3 +33,21 @@
 [Joy] 테스트 알맹이도 좋아. transcript/videoFacts undefined 명시 검증에 Object.keys가 딱 title/url/videoId 3개인지까지 봐서 껍데기 아냐. 경량 저장 실체로 증명됨. 통과! 맥스 이번에도 깔끔하다 🎉
 [Joy] 검수 끝! diff 깔끔하고 신규 테스트도 3필드만 저장되는 거 Object.keys까지 정확히 검증하더라. build는 stale .next 캐시라 rm -rf .next 후 exit 0. 통과 🎉
 [리드] 좋아, step1 완료. 경량 저장 + 리더까지 됐으니 step2에서 이걸 읽어 "필수 시청 영상" 패널만 붙이면 돼. 수고했어 팀!
+
+=== Step 2: must-watch-ui ===
+[리드] 자 마지막 step이야. step1에서 저장한 레퍼런스 3개를 "필수 시청 유튜브 영상" 패널로 스크립트 위에 띄우는 거. 순수 프론트라 백엔드(onboarding.ts·prepare·schema)는 절대 건드리지 마. loadOnboardingReferences 리더 이미 있고 safeHref도 FactCard에서 export돼 있어. 디자인은 TRUS 3색·기존 border 패턴 그대로라 새로 정할 게 없어서 맥스 혼자 가자. 에스더는 이번엔 쉬어.
+[리드] 맥스, 포인트만 짚을게. ① MustWatchReferences({refs}) — refs 비면 null(패널 자체 안 그림). ② 링크는 safeHref로 감싸고 target=_blank rel="noopener noreferrer". ③ 썸네일 img는 i.ytimg.com/vi/{videoId}/mqdefault.jpg, onError로 숨김 방어. ④ page.tsx는 스크립트 보이는 상태에서 loadOnboardingReferences 로드해 ScriptSection 위에 렌더. 작업하며 chat.md에 네 말투로 한 줄씩 남겨줘.
+[Max] 알겠어. spec step2 섹션이랑 page.tsx 배선부분, FactCard safeHref, schema ArcReference 다 읽었어. onError 핸들러 때문에 page.tsx(서버 컴포넌트)에 못 넣으니 MustWatchReferences만 "use client" 별도 파일로 뺄게. 썸네일 URL 빌더는 순수 헬퍼로 src/lib에 두고 컴포넌트는 그거 import만 하게. vitest @/ alias 함정 피하려고.
+[Max] src/lib/onboarding에 이미 arc/playback/transcript 있길래 거기에 references.ts로 ytThumbUrl 헬퍼 하나만 뒀어. MustWatchReferences는 refs 비면 null, safeHref로 링크 감싸고 target=_blank rel=noopener, 썸네일 onError로 숨김 처리했어. OnboardingSection이랑 같은 border 패턴 그대로 썼고.
+[Max] page.tsx는 SCRIPT_LOADED 상태에서만 loadOnboardingReferences 로드(그 외는 Promise.resolve([]))해서 ScriptSection 바로 위에 렌더했어. 백엔드는 안 건드렸고 리더 읽기만 붙였어.
+[Max] AC 3개 다 통과. typecheck 0, test 1120 전부 통과(UI라 신규 테스트는 없어), build 0. git status도 봤는데 범위 외 untracked는 없고 신규는 컴포넌트랑 lib 헬퍼 둘 뿐이야. 놓친 거 있으면 말해줘.
+[리드] 나도 AC 직접 돌렸어. typecheck 0, test 1120 pass, build 0. git 범위도 page.tsx+신규 2개+메타뿐이라 깔끔해. 조이, 검수 부탁해. 특히 refs 0이면 패널 null인지, safeHref로 js: 차단 지켰는지, 백엔드 진짜 무변경인지 봐줘.
+
+[Joy] 오케이 맥스 step2 왔다~ 내가 바로 git diff 정독 들어갈게 👀
+[Joy] 오 깔끔하다! MustWatchReferences는 refs 0이면 null로 빠지고, 썸네일 URL 빌더는 lib/onboarding/references.ts로 잘 뺐네. vitest @/ alias 함정 피한 거 굿굿 👍
+[Joy] safeHref 재사용에 target=_blank rel=noopener noreferrer도 있고, img onError로 깨진 썸네일 숨김 방어까지. 백엔드 3파일은 손도 안 댔고. 이제 AC 3개 돌려볼게 ☕
+
+[Joy] 오케이 결과 나왔다! typecheck exit 0, test 1120개 전부 통과, build도 6/6 깔끔(/audit 같은 stale 캐시 에러 없음). AC 3개 다 초록불 🎉
+[Joy] 체크리스트도 다 봤어. 백엔드 3파일 무변경, refs 0이면 null, safeHref+noopener, 썸네일 onError 방어, SCRIPT_LOADED에서만 로드해서 ScriptSection 바로 위 렌더(script_review·approved·published 다 커버), TRUS 3색만, 순수헬퍼는 lib에. 범위 외 파일도 없고 index.json도 completed로 잘 갱신됐네.
+[Joy] 맥스 이번엔 진짜 교과서처럼 했다ㅋㅋ 순수헬퍼 lib에 빼는 규칙까지 알아서 지켰어. 통과! 판정 PASS 🩷
+[리드] 좋아 PASS. step2 완료로 확정했어. 이걸로 onboarding-references phase 3 step(다중레퍼런스→저장→필수시청UI) 전부 끝났다. UI는 브라우저 수동검증만 남았고 코드는 깔끔해. 다들 수고했어! 🎬
