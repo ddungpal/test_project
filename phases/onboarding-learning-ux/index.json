@@ -23,7 +23,11 @@
     {
       "step": 2,
       "name": "additional-questions-ui",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-07-02T21:23:57+0900",
+      "team_round": "1/3 PASS",
+      "summary": "완료(done) 화면에 '더 풀어보기' 난이도 3버튼(입문 basic·중급 mid·심화 deep) + 폴링 + resume UI. requestOnboarding(topicRun.ts)를 more?:{difficulty} optional 인자로 후방호환 확장(조건부 스프레드→more 없으면 이벤트 data {runId} 바이트 동일·기존 RequestOnboardingButton 호출부 무영향)→step1의 run/onboarding.requested more 분기(appendOnboardingQuestions) 발동. OnboardingQuiz done 분기: requestMore(difficulty)→requestOnboarding(runId,{difficulty})→moreSubmitted 폴링(RequestOnboardingButton 미러·MORE_POLL_LIMIT_MS 180000·LiveRefresh active fallbackMs3000·timedOut·error). resume useEffect(done && arc.questions 증가 시 prevLenRef부터 이어재생·기존 answers 보존→재제출 시 확장 아크 전체 submitOnboarding→extractGold 금맥갱신·초기마운트는 done 게이트로 미발동). 백엔드/금맥 로직 UI 중복0(step1 경로 호출만)·난이도 없는 발동 경로 0. Esther 비주얼: 섹션 라벨 위계 낮춤(노랑→white/40)·선택 배지·3버튼 flex-1 균등·disabled hover 억제·TRUS 3색만. 마이그0·의존성0·기존 테스트 무손상. AC typecheck/test(1129)/build 전부 exit0(리드·Joy 각각 재실행 확인). ⚠️브라우저 라이브 검증 필요: 추가문제 발행→아크 append→resume 재생→재제출 금맥갱신은 dev+inngest 띄워 확인(미완).",
+      "completed_at": "2026-07-02T21:36:44+0900"
     }
   ],
   "created_at": "2026-07-02T21:00:50+0900"
