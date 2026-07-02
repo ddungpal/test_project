@@ -1,0 +1,9 @@
+{
+  "project": "produce script",
+  "phase": "onboarding-learning-ux",
+  "steps": [
+    { "step": 0, "name": "gold-display", "status": "pending" },
+    { "step": 1, "name": "onboarder-difficulty-more", "status": "pending" },
+    { "step": 2, "name": "additional-questions-ui", "status": "pending" }
+  ]
+}

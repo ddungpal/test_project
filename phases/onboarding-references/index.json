@@ -1,0 +1,9 @@
+{
+  "project": "produce script",
+  "phase": "onboarding-references",
+  "steps": [
+    { "step": 0, "name": "onboarder-multi-ref", "status": "pending" },
+    { "step": 1, "name": "store-references", "status": "pending" },
+    { "step": 2, "name": "must-watch-ui", "status": "pending" }
+  ]
+}

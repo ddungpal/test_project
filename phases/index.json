@@ -329,6 +329,18 @@
       "dir": "target-first-mode",
       "status": "completed",
       "completed_at": "2026-07-02T15:48:27+0900"
+    },
+    {
+      "dir": "onboarding-references",
+      "status": "pending"
+    },
+    {
+      "dir": "onboarding-learning-ux",
+      "status": "pending"
+    },
+    {
+      "dir": "segment-edit",
+      "status": "pending"
     }
   ]
 }

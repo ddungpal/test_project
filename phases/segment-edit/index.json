@@ -1,0 +1,10 @@
+{
+  "project": "produce script",
+  "phase": "segment-edit",
+  "steps": [
+    { "step": 0, "name": "segment-edit-backend", "status": "pending" },
+    { "step": 1, "name": "segment-edit-ui", "status": "pending" },
+    { "step": 2, "name": "segment-regen-backend", "status": "pending" },
+    { "step": 3, "name": "segment-regen-ui", "status": "pending" }
+  ]
+}
