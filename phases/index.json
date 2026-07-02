@@ -332,12 +332,8 @@
     },
     {
       "dir": "onboarding-references",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (must-watch-ui)",
-      "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-02T20:50:44+0900"
+      "status": "completed",
+      "completed_at": "2026-07-02T20:51:14+0900"
     },
     {
       "dir": "onboarding-learning-ux",
