@@ -27,6 +27,8 @@ type PipelineEvents = {
   "run/research.requested": { data: StageData }; // 셜록 셀(fan-out/join)
   "run/onboarding.requested": { data: StageData }; // 쏙이 궁금증 아크(온디맨드·게이트 아님·force로 재생성)
   "run/script.requested": { data: StageData }; // 짠펜(최종 합류)
+  // 단일 세그먼트 재생성 — 그 세그먼트 하나만 짠펜 부분 모드로 다시 씀(무전이·그 행만 update). segmentId 필요라 StageData와 별도 shape.
+  "run/segment.regen.requested": { data: { runId: string; segmentId: string; reason?: string; softAck?: boolean } };
   // 발굴 신선도(B): 매일 cron 외에 수동 트리거(개발 검증·"발굴 새로고침" 버튼)도 같은 함수로.
   "discovery/refresh.requested": { data: Record<string, never> };
   // 운영 자동화(①): 성과가 적재되면 발행(수집 Cron/스크립트) → 회고 sweep을 깨운다. contentId는 최적화용(없으면 전체 sweep).

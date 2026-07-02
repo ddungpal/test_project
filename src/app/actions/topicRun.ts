@@ -242,6 +242,18 @@ export async function editSegment(runId: string, segmentId: string, text: string
   await auditLog(supa, { actorId: ownerId, action: "segment_edited", targetType: "run", targetId: runId, detail: { segmentId } });
 }
 
+// 짠펜 단일 세그먼트 재생성 요청 — Inngest 발행(그 세그먼트 하나만 다시 씀·무전이). 동기 callLLM 금지(185s 타임아웃 회피).
+//   reason은 비/공백이면 미포함(exactOptionalPropertyTypes — undefined 명시대입 금지).
+export async function requestSegmentRegen(runId: string, segmentId: string, reason?: string): Promise<void> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  await inngest.send({
+    name: "run/segment.regen.requested",
+    data: { runId, segmentId, ...(reason && reason.trim() ? { reason } : {}) },
+  });
+  await auditLog(supa, { actorId: ownerId, action: "segment_regenerated", targetType: "run", targetId: runId, detail: { segmentId } });
+}
+
 // 확정 후 AI 재생성 — Inngest로 새 proposal 생성(상태 전이 없음). 동기 callLLM 금지(185s 타임아웃 회피).
 //   force는 보내지 않는다 — postConfirm은 force와 독립 경로(selectedState 진입·낙관잠금 없음).
 //   reason은 비/공백이면 미포함(exactOptionalPropertyTypes — undefined 명시대입 금지).

@@ -14,6 +14,15 @@ export interface ScribeOutput {
   segments: ScriptSegmentOut[];
 }
 
+// 단일 세그먼트 재생성(부분 모드) — 출력은 세그먼트 1개(ord 없음). 나머지는 ScriptSegmentOut과 동일.
+export interface ScribeSegmentOutput {
+  text: string;
+  used_fact_idxs: number[];
+  used_asset_idxs: number[];
+  kind?: string;
+  payload?: unknown;
+}
+
 export const SCRIBE_SCHEMA: JsonSchema = {
   type: "object",
   additionalProperties: false,
@@ -39,6 +48,21 @@ export const SCRIBE_SCHEMA: JsonSchema = {
         },
       },
     },
+  },
+};
+
+// 단일 세그먼트 재생성 스키마 — ScriptSegmentOut에서 ord를 뺀 세그먼트 1개 객체.
+//   required=text/used_fact_idxs/used_asset_idxs. kind enum·payload loose object는 SCRIBE_SCHEMA와 동일.
+export const SCRIBE_SEGMENT_SCHEMA: JsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["text", "used_fact_idxs", "used_asset_idxs"],
+  properties: {
+    text: { type: "string", minLength: 1 },
+    used_fact_idxs: { type: "array", items: { type: "integer", minimum: 0 } },
+    used_asset_idxs: { type: "array", items: { type: "integer", minimum: 0 } },
+    kind: { type: "string", enum: ["prose", "table", "case", "visual"] },
+    payload: { type: "object" },
   },
 };
 
@@ -100,4 +124,13 @@ export const SCRIBE_PERSONA_DIRECTIVE = [
   "  - 예: target_persona가 '자녀계좌 만들려는 30·40대 부모'면 자녀·증여 맥락(증여세·자녀명의 절차)으로 예시·어휘를 든다.",
   "  - 단 말투(tone) 규칙·money-safety·형식 블록(table/case/visual)·lineage 규칙은 그대로 유지하고 덮어쓰지 않는다 — persona는 대상 맥락만 더하는 보조 신호다.",
   "  - 억지 금지: 대상에 안 맞는 예시를 무리하게 끼우지 말고, 자연스러운 지점에서만 그 맥락을 반영한다.",
+].join("\n");
+
+// 단일 세그먼트 재생성 지시(별도 상수) — 부분 모드에서만 SCRIBE_SYSTEM 뒤에 append한다.
+//   ★ SCRIBE_SYSTEM 본문은 절대 늘리지 않는다(full-mode scribeStep의 system은 기존과 바이트 동일 → promptHash 보존).
+export const SCRIBE_SEGMENT_DIRECTIVE = [
+  "■ 단일 세그먼트 재작성(부분 모드): 이번엔 전체 대본이 아니라 이 세그먼트 하나(target)만 사유(reason)를 반영해 다시 쓴다.",
+  "  - 입력: reason(수정 사유) · target(현재 이 세그먼트 텍스트) · neighbors(앞뒤 세그먼트 prev/next 맥락) · facts · assets.",
+  "  - 앞뒤 맥락(neighbors)과 자연스럽게 이어지게 쓰되, tone·money-safety·lineage(used_fact_idxs/used_asset_idxs) 규칙은 그대로 지킨다.",
+  "  - 전체 대본을 다시 쓰지 말고 이 한 덩어리만 출력한다(세그먼트 1개 객체). ord는 출력하지 않는다.",
 ].join("\n");

@@ -25,3 +25,22 @@
 [Joy] 코드 다 봤어~ 게이팅 approved면 editable·published 읽기전용 깔끔하고, isProseSegment가 SegmentBody 렌더분기랑 정확히 일치해서 회귀 0! 백엔드도 안 건드렸네. 이제 AC 돌린다.
 [Joy] AC 세 개 다 초록불이야! typecheck exit0·test 1140개 전부 통과(신규 segmentIsProse 3개 포함)·build exit0. 프로즈만 편집·published 읽기전용·백엔드 무변경·TRUS 3색 전부 확인. 브라우저 수동검증만 남았고 코드는 완벽. 통과! 맥스 굿굿 이거 깔끔하다 진짜 🎉
 [리드] 조이 PASS·AC build exit 0 확정. 나도 셋 다 exit 0 재확인했고 diff도 딱 범위 파일만이야. step1 completed로 마감한다 — 실 브라우저 검증(프로즈 수정→저장→refresh, 블록 버튼 미노출)은 사람 몫으로 남겨둘게. 둘 다 수고했어 👍
+
+=== Step 2: segment-regen-backend ===
+
+=== Step 2: segment-regen-backend ===
+[리드] 맥스, 이번엔 단일 세그먼트 재생성 백엔드야. 짠펜 부분 모드 + Inngest 비동기. 핵심은 그 세그먼트 행만 update고 전량 delete-insert 절대 금지. 액션은 동기 callLLM 금지하고 이벤트만 쏴야 해(regenerateAfterConfirm 패턴). SCRIBE_SYSTEM 본문은 못 늘리니까 SCRIBE_PERSONA_DIRECTIVE처럼 전용 지시 상수 조건부 append로 가자.
+
+[Max] step2 세그먼트 재생성 백엔드 시작할게. 참조 코드(scriptCell, scribe step, thumbnailSlot) 다 읽었고, 짠펜 부분 모드부터 손대려고. 전량 delete-insert 안 건드리고 그 행 하나만 update하는 방향으로 갈게.
+
+[Max] 짠펜 부분 모드(scribeSegmentStep)랑 regenerateSegment 파이프라인 짰어. 그 행만 update하고 lineage도 그 세그먼트 것만 재설정하게 했고. Inngest 이벤트·함수·액션까지 배선 끝. 이제 테스트 쓸게.
+
+[Max] step2 다 됐어. 테스트 11개 새로 넣었고(그 행만 update·lineage segment_id 스코프·이웃 맥락·SCRIBE_SYSTEM 바이트 불변) typecheck·test 1151·build 셋 다 통과. 전량 delete-insert랑 표절검사는 안 건드렸어. 놓친 거 있으면 말해줘.
+[리드] AC 셋 다 직접 돌려봤어 — typecheck 0, test 0(1151개, +11), build 0. 조이, 독립 검수 부탁해. 특히 그 행만 update하는지·lineage segment_id 스코프·동기 callLLM 안 쓰는지·SCRIBE_SYSTEM 바이트 불변 이 네 개 중점으로 봐줘.
+
+[Joy] 나 step2 검수 들어간다~ 스펙 step2랑 불변식 다시 읽었어. git diff부터 통째로 볼게. 그 행만 update, lineage segment_id 스코프, 동기 callLLM 금지, SCRIBE_SYSTEM 바이트 불변 이 네 개 정조준할게!
+[Joy] 코어 다 봤어~ regenerateSegment가 그 행만 update(.eq run_id .eq id 두 스코프)고 lineage도 segment_id로만 delete·insert네. runScriptStage 전량 delete 경로는 손도 안 댔고 import도 없어. requestSegmentRegen은 inngest.send만 하고 callLLM 동기호출 0. SCRIBE_SYSTEM 배열 본문은 diff에서 한 줄도 안 바뀌었어(추가만). 굿굿 이제 테스트 진정성 볼게
+[Joy] AC 3종 다 돌렸어! typecheck exit0·test 1151 all pass(신규 segmentRegen 6+타입1·scribeSegmentMode 5 = 12개 포함)·build는 처음에 PageNotFoundError 떴는데 이거 rules.md에 있는 stale .next 캐시 함정이라 rm -rf .next 하고 재빌드하니 exit0. 코드 무관 캐시 오류였어
+[Joy] 불변식 다 통과야. 그 행만 update(updatedTables=[script_segments]로 잠금)·lineage segment_id 스코프 delete+insert·requestSegmentRegen은 send만(callLLM 동기 0)·SCRIBE_SYSTEM 바이트동일(toBe 회귀가드)·마이그0 의존성0 전이0. 테스트도 형식적이 아니라 스코프 진짜 잠갔어. 맥스 이번거 진짜 깔끔하다 통과! 🎉
+[Joy] 불변식 7개 코드랑 테스트에서 직접 다 확인했어 — 그 행만 update, lineage segment_id 스코프, 동기 callLLM 없음, SCRIBE_SYSTEM 바이트 불변까지 전부 잠겨있어. build 첫판은 stale .next 캐시 함정이라 rm -rf 후 초록불. exit 0 셋 다! 통과 🎉
+[리드] 좋아, 1라운드 PASS. step2 완료 처리할게. 다들 수고했어!
