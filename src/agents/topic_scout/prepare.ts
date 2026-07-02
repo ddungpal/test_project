@@ -5,7 +5,7 @@
 import { setProgress, type Supa } from "../../pipeline/runState.js";
 import type { JsonSchema } from "../../llm/types.js";
 import type { ProposalSource } from "../../lib/dashboard/proposalTypes.js";
-import { TOPIC_SCOUT_SCHEMA, TOPIC_SCOUT_SYSTEM, appendLevelDirective } from "./schema.js";
+import { TOPIC_SCOUT_SCHEMA, TOPIC_SCOUT_SYSTEM, appendLevelDirective, appendPersonaDirective } from "./schema.js";
 import { gatherExternalSignals, pickSpreadYoutube, type ExternalItem } from "./externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
@@ -115,6 +115,10 @@ export async function prepareTopicScout(
   const learned = await loadApprovedInsights(supa, ["topic"], run?.as_of_date ? { asOf: run.as_of_date } : {});
   if (learned.length) input.learned_insights = learned;
   // 수준(audience_level) 지시 — 토글에 따라 분해/라벨. 정의는 항상 포함.
-  const system = appendLevelDirective(appendLearnedInsights(TOPIC_SCOUT_SYSTEM, learned), !!opts?.levelSplit);
+  //   + 타겟 먼저 모드: targetPersona 있으면 고정 타겟 지시 추가(없으면 바이트 동일 → promptHash 보존).
+  const system = appendPersonaDirective(
+    appendLevelDirective(appendLearnedInsights(TOPIC_SCOUT_SYSTEM, learned), !!opts?.levelSplit),
+    opts?.targetPersona,
+  );
   return { system, input, schema: TOPIC_SCOUT_SCHEMA, sources };
 }

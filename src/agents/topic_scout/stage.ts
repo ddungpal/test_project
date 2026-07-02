@@ -7,6 +7,8 @@ import { prepareTopicScout } from "./prepare.js";
 import type { TopicScoutOutput } from "./schema.js";
 
 export function topicStageSpec(runId: string, opts?: { levelSplit?: boolean; targetPersona?: string }): ProposalStageSpec<TopicScoutOutput> {
+  // 타겟 먼저 모드: 고정 타겟이 있으면 LLM 드리프트 방지 위해 후보 persona를 이 값으로 통일(있을 때만).
+  const fixedPersona = opts?.targetPersona?.trim();
   return {
     runId,
     descriptor: STAGE_DESCRIPTORS.topic,
@@ -16,7 +18,13 @@ export function topicStageSpec(runId: string, opts?: { levelSplit?: boolean; tar
         idx,
         // audience_level/need/target_persona를 payload에 보존 → 선택 시 저장(다운스트림이 읽음)·대시보드 표시.
         // target_persona를 빼면 LLM이 생성해도 payload에 안 실려 구다리·짠펜 전파가 끊긴다.
-        payload: { title: c.title, audience_level: c.audience_level, audience_need: c.audience_need, target_persona: c.target_persona },
+        // 고정 타겟이 있으면 persona만 그 값으로 덮어쓴다(title/audience_level/audience_need는 촉이 출력 보존).
+        payload: {
+          title: c.title,
+          audience_level: c.audience_level,
+          audience_need: c.audience_need,
+          target_persona: fixedPersona || c.target_persona,
+        },
         reason: c.reason,
         evidence_ids: c.evidence_ids,
       })),

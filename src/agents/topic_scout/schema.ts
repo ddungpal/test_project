@@ -65,6 +65,20 @@ export function appendLevelDirective(system: string, levelSplit: boolean): strin
   return `${system}\n\n${LEVEL_DEFINITIONS}\n${directive}`;
 }
 
+/** 타겟 먼저 모드 — targetPersona가 고정됐으면 그 타겟용 주제만 발굴하도록 지시(없으면 system 그대로). */
+export function appendPersonaDirective(system: string, targetPersona?: string): string {
+  const persona = targetPersona?.trim();
+  if (!persona) return system; // 없으면 바이트 동일(promptHash 보존).
+  const directive = [
+    "★ 타겟 먼저 모드(ON): 이번 발굴의 타겟은 다음 '한 사람'으로 고정됐다.",
+    `  고정 타겟: "${persona}"`,
+    "  - 이 타겟이 지금 유튜브에서 검색·시청할 만한 주제만 발굴한다(타겟 밖 주제 금지).",
+    "  - 모든 후보의 target_persona는 위 고정 타겟 값으로 통일한다(후보마다 다르게 만들지 말 것).",
+    "  - audience_level(전문성 수준)·audience_need(욕구)는 여전히 후보별로 정확히 채운다 — 고정되는 건 '사람(target_persona)'뿐이다.",
+  ].join("\n");
+  return `${system}\n\n${directive}`;
+}
+
 export const TOPIC_SCOUT_SYSTEM = [
   "너는 유튜브 재테크 채널 '김짠부'의 주제 발굴가 '촉이'다.",
   "입력으로 두 종류의 신호를 받는다(원문 비전송·집계만):",
