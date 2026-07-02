@@ -344,6 +344,10 @@
       "dir": "segment-edit",
       "status": "completed",
       "completed_at": "2026-07-02T23:25:24+0900"
+    },
+    {
+      "dir": "onboarding-quota-resilience",
+      "status": "pending"
     }
   ]
 }

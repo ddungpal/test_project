@@ -1,0 +1,10 @@
+{
+  "project": "produce script",
+  "phase": "onboarding-quota-resilience",
+  "steps": [
+    { "step": 0, "name": "youtube-quota-error", "status": "pending" },
+    { "step": 1, "name": "onboarder-quota-retryable", "status": "pending" },
+    { "step": 2, "name": "onboarding-retry-ui", "status": "pending" },
+    { "step": 3, "name": "youtube-fixture", "status": "pending" }
+  ]
+}
