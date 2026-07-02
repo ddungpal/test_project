@@ -322,12 +322,8 @@
     },
     {
       "dir": "downstream-context-injection",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (research-context)",
-      "attempt": 1,
-      "elapsed_seconds": 600,
-      "heartbeat_at": "2026-07-02T14:33:10+0900"
+      "status": "completed",
+      "completed_at": "2026-07-02T14:33:11+0900"
     }
   ]
 }
