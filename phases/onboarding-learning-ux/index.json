@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "onboarder-difficulty-more",
-      "status": "pending"
+      "status": "completed",
+      "started_at": "2026-07-02T21:08:04+0900",
+      "team_round": "1/3 PASS",
+      "summary": "난이도(basic/mid/deep) 타겟 추가 문항 생성 백엔드. 신규 appendOnboardingQuestions(onboarding.ts): loadOnboardingArc→prepareOnboarderFromRefs(prepare.ts·저장된 arc.references만 재사용·gatherExternalSignals 재검색 0·자막 best-effort 재취득)→onboarderMoreStep(step.ts·ONBOARDER_SYSTEM+난이도/기존prompt/coreAngle 추가지시·normalizeArc 방어)→중복 prompt 드랍→기존 arc.questions 뒤에 append→기존 proposal 행 UPDATE(INSERT 아님·proposalId 유지로 gold selection 링크 보존). client.ts StageData에 more?:{difficulty:ArcDifficulty} optional(기존 이벤트 바이트동일)·onboardingStage.ts more 분기. default 경로(runOnboarding/onboarderStep) 바이트 동일·ONBOARDER_SYSTEM 무변경. submitOnboarding 무변경으로 확장 아크 전체 extractGold→금맥 갱신. 신규 tests/onboardingDifficultyMore.test.ts 9개(append 보존·재검색0 spy·default system 불변·extractGold 확장반영). 마이그0·의존성0. AC typecheck/test(1129)/build 전부 exit0(build은 stale .next 캐시 함정→rm -rf .next 후 exit0·코드무관). ⚠️라이브 append→재제출 금맥갱신 검증은 step2 UI 완성 후.",
+      "completed_at": "2026-07-02T21:23:57+0900"
     },
     {
       "step": 2,
