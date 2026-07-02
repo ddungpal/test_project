@@ -3,7 +3,7 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
-import { THUMBNAIL_MAKER_SCHEMA, THUMBNAIL_MAKER_SYSTEM } from "./schema.js";
+import { THUMBNAIL_MAKER_SCHEMA, THUMBNAIL_MAKER_SYSTEM, THUMBNAIL_PERSONA_DIRECTIVE } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
 import { loadActiveThumbnailStyle, appendThumbnailStyle, appendWinningThumbnailRefs, type ActiveThumbnailStyle } from "../shared/styleProfile.js";
 import { gatherTitleReferences, type ExternalTitleRef } from "../hook_maker/externalRefs.js";
@@ -11,6 +11,7 @@ import { loadWinningThumbnailRefs } from "./winningRefs.js";
 
 export interface ThumbnailMakerInput {
   topic: string;
+  target_persona?: string; // 주제 payload에 실린 시청 대상 한 줄 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
   selected_title: string; // 훅이 단계에서 김짠부가 확정한 제목 — 썸네일은 이 제목을 강화한다
   tone: { id: string; version: number; components: unknown } | null;
   reference_thumbnail_copies: { id: string; text: string }[]; // 김짠부 과거 썸네일 문구(corpus type=thumbnail_copy) — 톤 레퍼런스
@@ -22,9 +23,10 @@ export interface ThumbnailMakerInput {
 }
 
 export async function prepareThumbnailMaker(supa: Supa, runId: string): Promise<{ system: string; input: ThumbnailMakerInput; schema: JsonSchema }> {
-  const topicPayload = await getSelectedStagePayload(supa, runId, "topic");
-  const topic = (topicPayload as { title?: string } | null)?.title;
+  const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { title?: string; target_persona?: string } | null;
+  const topic = topicPayload?.title;
   if (!topic) throw new Error("썸네일메이커 prep: 선택된 주제를 찾을 수 없음(topic 단계 미선택?).");
+  const targetPersona = topicPayload?.target_persona; // target_persona: 같은 payload에서 함께 추출(별도 조회 없음 — 훅이 패턴)
 
   // 선택된 제목(title_thumb 단계 = 제목 전용) — edited 우선은 getSelectedStagePayload가 처리. 정상 흐름은 titles_selected 이후.
   const titlePayload = await getSelectedStagePayload(supa, runId, "title_thumb");
@@ -65,7 +67,12 @@ export async function prepareThumbnailMaker(supa: Supa, runId: string): Promise<
   const winningRefs = await loadWinningThumbnailRefs(supa);
   if (winningRefs.length) input.reference_winning_thumbnails = winningRefs;
 
+  // target_persona 조건부 주입 — persona 있을 때만 input에 실음. 없으면 키 자체를 넣지 않음(바이트 불변 → 픽스처 해시 보존).
+  if (targetPersona) input.target_persona = targetPersona;
+
   // system 합성: learned_insights → style_profile → winning_refs 순. 셋 다 없으면 THUMBNAIL_MAKER_SYSTEM 그대로(바이트 불변).
-  const system = appendWinningThumbnailRefs(appendThumbnailStyle(appendLearnedInsights(THUMBNAIL_MAKER_SYSTEM, learned), style), winningRefs);
+  //   ★ 기존 winning refs 체인은 순서·동작 그대로 두고, persona 있을 때만 그 결과 뒤에 지시문을 붙인다(훅이 prepare 미러).
+  let system = appendWinningThumbnailRefs(appendThumbnailStyle(appendLearnedInsights(THUMBNAIL_MAKER_SYSTEM, learned), style), winningRefs);
+  if (targetPersona) system += "\n" + THUMBNAIL_PERSONA_DIRECTIVE;
   return { system, input, schema: THUMBNAIL_MAKER_SCHEMA };
 }

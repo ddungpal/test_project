@@ -69,3 +69,12 @@ export const THUMBNAIL_MAKER_SYSTEM = [
   "- 레퍼런스(reference_thumbnail_copies·스타일 프로파일)는 톤·구조 참고용이다. 문구를 그대로 베끼지 마라 — 표현·단어를 재구성해 김짠부답되 매번 새롭게. 레퍼런스와 거의 동일한 카피 금지.",
   "- 한국어.",
 ].join("\n");
+
+// target_persona 지시(별도 상수) — persona가 있을 때만 (learned/style/winning refs 합성 후) system 뒤에 append한다.
+//   ★ THUMBNAIL_MAKER_SYSTEM 본문은 절대 늘리지 않는다(persona 없는 런은 system 바이트 동일 → promptHash 보존 → 골든 픽스처 안 깨짐).
+export const THUMBNAIL_PERSONA_DIRECTIVE = [
+  "■ 타겟 대상 맞춤: 입력에 target_persona(이 영상이 누구를 위한 것인지 한 줄 — 누구+상황+막막함)가 주어지면, 썸네일 카피(메인문구·박스)가 그 대상의 '막막함'을 정확히 후킹하도록 앵글·워딩을 그 맥락에 맞춘다.",
+  "  - 예: target_persona가 '2030 사회초년생, 첫 월급 굴리기 막막한 사람'이면 첫 월급·사회초년 맥락(통장 쪼개기·소액 시작)의 막막함을 찌르는 각도로 메인문구·박스를 뽑는다.",
+  "  - 단 김짠부 말투·시그니처 워딩·직설(낚시 금지)·정중-탐문 종결 금지·주제 키워드 필수 원칙은 그대로 유지한다 — persona는 대상 맥락만 더하는 보조 신호일 뿐 스타일을 덮어쓰지 않는다.",
+  "  - 억지 금지: 대상에 안 맞는 각도를 무리하게 끼우지 말고, 자연스럽게 그 막막함이 후킹되는 카피에서만 반영한다.",
+].join("\n");
