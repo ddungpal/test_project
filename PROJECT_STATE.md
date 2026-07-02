@@ -12,8 +12,8 @@ _Last updated: 2026-07-02(오후4 — **🎯 "타겟 먼저" 모드(`target-firs
 > - **Phase A 훅이** ✅ — hook_maker fixture(`9852a5cf`)에 `HOOK_PERSONA_DIRECTIVE`+persona 실림, 제목도 "노후 준비 안 한 40대 자영업자" 반영.
 > - **Phase A 썸네일** ✅ — thumbnail_maker fixture(`a72bd04e`)에 `THUMBNAIL_PERSONA_DIRECTIVE`+persona 실림.
 > - **Phase A 셜록**: persona→scope는 동일 `getSelectedStagePayload` 읽기(위에서 실증)+유닛테스트 커버. 금맥→scope는 fb792537 scope 이미 구워져 새 런엔 금맥 없음(온보딩 미실행) → 미실측(코드·유닛 확정). 필요시 온보딩 완료한 새 런으로 재확인.
-> **▶▶▶ 다음 재개점 = loose ends(키 rotate 등) 또는 새 기획.** dev(:3000)+inngest(:8288) 기동 중(재기동 순서: **inngest 먼저 preflight✅ → dev**·안 지키면 401·stall). 하네스 build가 `.next` 덮어 500나면 `rm -rf .next`+dev 재시작.
-> **✅ push 완료**(origin/main·Phase A+B 반영·main==origin). 치워둔 fixtures=`/tmp/tfm-stray-fixtures`(28개·$0 재생성·불필요). 잔여 `feat-onboarding-tutor` 브랜치(삭제 가능). **loose ends 그대로**(키 rotate·rules 날짜·YT quota).
+> **▶▶▶ 다음 재개점 = ⚠️키 rotate(사용자 액션·최우선) 또는 새 기획.** dev(:3000)+inngest(:8288) 기동 중(재기동 순서: **inngest 먼저 preflight✅ → dev**·안 지키면 401·stall). 하네스 build가 `.next` 덮어 500나면 `rm -rf .next`+dev 재시작.
+> **✅ push 완료**(origin/main·main==origin). **loose ends 정리(2026-07-02 오후5):** ✅rules.md freshness 날짜 2026-07-02 갱신 ✅미병합 규칙 제안 1건(vitest catch-swallow 스텁) 병합·삭제 ✅잔여 `feat-onboarding-tutor` 브랜치 삭제 ✅치운 fixtures `/tmp/tfm-stray-fixtures`($0 재생성). **남은 loose end = ⚠️OpenAI/구글 키 rotate(사용자 콘솔 직접·보안)** · YT quota(PT자정 자동복구).
 > **✅ 온보딩 튜터(쏙이) 라이브 검증 완료(2026-07-01 오후7)** — 궁금증 아크 후킹 품질·금맥 구다리 주입 둘 다 브라우저 검증 통과. **✅ 쏙이 복습 창(review 모드) 라이브 검증 완료(오후8)** — 구성 이후 런에서 "다시 훑어보기" 렌더·복습 재생·정직 완료문구 확인(상세는 위 헤더). inngest(:8288) 기동 상태(죽었으면 `npx inngest-cli dev -u http://localhost:3000/api/inngest`).
 > **loose ends (바로 마무리):**
 > - ⚠️ **OpenAI/구글 키 rotate** — 채팅 노출분 폐기 미완(보안·사용자 콘솔 직접). 최우선.
