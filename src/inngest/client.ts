@@ -4,6 +4,7 @@
 // 이벤트 명명: "run/<stage>.<verb>" — requested=단계 시작(AI 돈 쓰기 시작점, §8.2), selected=사람 게이트 통과.
 
 import { Inngest, EventSchemas } from "inngest";
+import type { ArcDifficulty } from "../agents/onboarder/schema.js";
 
 // 단계 경계 이벤트 스키마(§8.2: 버튼=단계경계/사람게이트). data는 최소(runId)만 — 진실은 DB.
 // softAck: SOFT 비용캡 일시정지 후 사람이 승인하고 재개할 때 true(반장 마감).
@@ -14,7 +15,8 @@ import { Inngest, EventSchemas } from "inngest";
 // forceLlm: 'LLM으로 새로 써줘' — 로컬($0) 생성을 건너뛰고 callLLM 강제(step2 계약, step3 UI에서 전달). 없으면 hybrid 기본.
 // postConfirm: 확정 후 재생성 — 상태 전이 없이 새 proposal만 INSERT(selectedState에서도 진입, 낙관잠금 없음).
 // fromStep: 리서치 부분 재진입(migration 28) — 'examples'면 셈이·유이만 재생성(②③⑦·research_facts 보존). 없으면 'full'(현행). research.requested에서만 사용.
-type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; targetPersona?: string; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean; fromStep?: "full" | "examples" };
+// more: 쏙이 난이도 타겟 추가 문항 — 있으면 그 난이도 문항을 기존 아크에 append(재검색 없음). onboarding.requested에서만 사용. optional이라 기존 이벤트 바이트 동일.
+type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; targetPersona?: string; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean; fromStep?: "full" | "examples"; more?: { difficulty: ArcDifficulty } };
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };

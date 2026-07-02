@@ -6,9 +6,9 @@
 import type { Supa } from "./runState.js";
 import type { StageRuntimeDeps } from "./stageRuntime.js";
 import type { Json } from "../lib/supabase/database.types.js";
-import { prepareOnboarder } from "../agents/onboarder/prepare.js";
-import { onboarderStep } from "../agents/onboarder/step.js";
-import type { OnboardingArc, OnboardingGold, ArcReference } from "../agents/onboarder/schema.js";
+import { prepareOnboarder, prepareOnboarderFromRefs } from "../agents/onboarder/prepare.js";
+import { onboarderStep, onboarderMoreStep } from "../agents/onboarder/step.js";
+import type { OnboardingArc, OnboardingGold, ArcReference, ArcDifficulty } from "../agents/onboarder/schema.js";
 
 const ONBOARDING_STAGE = "onboarding" as const;
 
@@ -107,4 +107,43 @@ export async function runOnboarding(
   if (error) throw new Error(`온보딩 아크 저장 실패: ${error.message}`);
 
   return { runId, arc, skipped: false };
+}
+
+/**
+ * 난이도 타겟 추가 문항을 생성해 기존 아크에 **append**(덮어쓰기 아님) — 온디맨드.
+ *   - loadOnboardingArc로 기존 아크 로드(없으면 throw — 먼저 이해하기 실행).
+ *   - prepareOnboarderFromRefs로 저장된 refs 재사용(★재검색 gatherExternalSignals 금지).
+ *   - onboarderMoreStep으로 그 난이도 문항 생성 → 기존 prompt와 정확 일치하는 건 드랍(LLM 불이행 방어).
+ *   - 기존 proposal 행을 UPDATE(INSERT 아님) — proposalId 유지로 기존 gold selection 링크 보존.
+ *   - coreAngle·references는 기존 값 보존(추가 생성은 문항만 늘린다).
+ */
+export async function appendOnboardingQuestions(
+  runId: string,
+  deps: StageRuntimeDeps,
+  difficulty: ArcDifficulty,
+): Promise<{ runId: string; arc: OnboardingArc; appended: number }> {
+  const { supa } = deps;
+
+  const existing = await loadOnboardingArc(supa, runId);
+  if (!existing) throw new Error("온보딩 아크가 없습니다 — 먼저 이해하기를 실행하세요.");
+
+  const input = await prepareOnboarderFromRefs(supa, runId, existing.references ?? []);
+  const newQuestions = await onboarderMoreStep(deps, runId, input, difficulty, existing);
+
+  // 중복 방어 — 기존 prompt와 정확히 일치하는 새 문항은 드랍(LLM이 기존 문항을 재출력한 경우).
+  const existingPrompts = new Set(existing.questions.map((q) => q.prompt));
+  const dedupedNew = newQuestions.filter((q) => !existingPrompts.has(q.prompt));
+
+  const merged: OnboardingArc = { ...existing, questions: [...existing.questions, ...dedupedNew] };
+
+  const proposalId = await latestOnboardingProposalId(supa, runId);
+  if (!proposalId) throw new Error("온보딩 아크가 없습니다 — 먼저 이해하기를 실행하세요.");
+  const candidates = [{ idx: 0, payload: merged, reason: "온보딩 아크", evidence_ids: [] as string[] }];
+  const { error } = await supa
+    .from("stage_proposals")
+    .update({ candidates: candidates as unknown as Json })
+    .eq("id", proposalId);
+  if (error) throw new Error(`온보딩 아크 확장 저장 실패: ${error.message}`);
+
+  return { runId, arc: merged, appended: dedupedNew.length };
 }

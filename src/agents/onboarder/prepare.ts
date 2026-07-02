@@ -10,7 +10,7 @@ import { getSelectedStagePayload } from "../../pipeline/context.js";
 import { gatherExternalSignals, rankExternalByMultiplier, type ExternalItem } from "../topic_scout/externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { fetchTranscript } from "../../lib/onboarding/transcript.js";
-import type { OnboarderInput, OnboarderReference } from "./schema.js";
+import type { OnboarderInput, OnboarderReference, ArcReference } from "./schema.js";
 
 /** 유튜브 watch URL(...watch?v=<id>) 또는 youtu.be 단축 URL에서 videoId 추출. 못 뽑으면 null(순수·throw 0). */
 export function extractVideoId(url: string | undefined | null): string | null {
@@ -173,6 +173,43 @@ export async function prepareOnboarder(supa: Supa, runId: string): Promise<Onboa
   // videoId를 하나도 못 뽑아 references가 비면 그것도 0개 → 블록(refs ≥1 강제).
   if (references.length === 0) {
     throw new Error("레퍼런스 영상을 찾지 못해 온보딩 불가");
+  }
+
+  return { topic, references };
+}
+
+/**
+ * 추가 문항 생성용 입력 조립 — 저장된 아크 refs를 재사용(재검색 없음·quota 0).
+ *   ★ gatherExternalSignals(검색) 절대 호출 금지 — storedRefs를 그대로 순회한다.
+ *   - topic: getSelectedStagePayload("topic").title. 없으면 ""(크래시 금지·prepareOnboarder 미러).
+ *   - 각 storedRef: videoId 없으면 스킵. { title, url, videoId } + 자막(fetchTranscript best-effort·null이면 키 생략).
+ *     videoFacts는 아크 payload에 저장 안 됐으니(경량 refs) 생략한다.
+ *   - storedRefs가 []여도 { topic, references:[] } 반환(구버전 아크 하위호환·throw 0).
+ */
+export async function prepareOnboarderFromRefs(
+  supa: Supa,
+  runId: string,
+  storedRefs: ArcReference[],
+): Promise<OnboarderInput> {
+  const topicPayload = (await getSelectedStagePayload(supa, runId, "topic")) as { title?: string } | null;
+  const topic = topicPayload?.title ?? "";
+
+  const references: OnboarderReference[] = [];
+  for (const stored of storedRefs) {
+    const videoId = stored?.videoId?.trim();
+    if (!videoId) continue; // videoId 없으면 그 ref 스킵.
+
+    const ref: OnboarderReference = { title: stored.title?.trim() ?? "", url: stored.url, videoId };
+
+    // 자막 — best-effort(개별 실패 무시). videoFacts는 저장 안 됐으니 생략.
+    try {
+      const transcript = await fetchTranscript(videoId);
+      if (transcript) ref.transcript = transcript; // null이면 키 생략.
+    } catch (e) {
+      console.warn(`[쏙이 prep] 저장 refs 자막 취득 실패(무시) videoId=${videoId}:`, e instanceof Error ? e.message : e);
+    }
+
+    references.push(ref);
   }
 
   return { topic, references };
