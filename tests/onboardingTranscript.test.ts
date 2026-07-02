@@ -44,7 +44,7 @@ import {
   prepareOnboarder,
   extractVideoId,
   buildVideoFacts,
-  pickTopReference,
+  pickTopReferences,
 } from "../src/agents/onboarder/prepare.js";
 import type { ExternalItem } from "../src/agents/topic_scout/externalSignals.js";
 import type { Supa } from "../src/pipeline/runState.js";
@@ -153,7 +153,7 @@ describe("extractVideoId — 순수(throw 0)", () => {
   });
 });
 
-describe("buildVideoFacts / pickTopReference — 순수", () => {
+describe("buildVideoFacts / pickTopReferences — 순수", () => {
   it("메타에서 설명·조회수·구독자 사실 스니펫을 뽑는다(셜록 미호출)", () => {
     const facts = buildVideoFacts(ytItem({ snippet: "예금보다 파킹통장", viewCount: 123456, subscriberCount: 7890 }));
     expect(facts.some((f) => f.includes("영상 설명"))).toBe(true);
@@ -164,17 +164,17 @@ describe("buildVideoFacts / pickTopReference — 순수", () => {
     const facts = buildVideoFacts(ytItem({ snippet: "", viewCount: null, subscriberCount: null }));
     expect(facts).toEqual([]);
   });
-  it("pickTopReference: 배수 상위 youtube 1개, viewCount null·web은 제외", () => {
+  it("pickTopReferences: 배수 상위 youtube n개, viewCount null·web은 제외", () => {
     const items: ExternalItem[] = [
       ytItem({ id: "yt:0", viewCount: 10000, subscriberCount: 100000 }), // 배수 0.1
       ytItem({ id: "yt:1", viewCount: 500000, subscriberCount: 50000 }), // 배수 10 → 최상위
       ytItem({ id: "yt:2", source: "web" }),
       ytItem({ id: "yt:3", viewCount: null }),
     ];
-    expect(pickTopReference(items)?.id).toBe("yt:1");
+    expect(pickTopReferences(items, 1).map((r) => r.id)).toEqual(["yt:1"]);
   });
-  it("pickTopReference: youtube 없으면 null", () => {
-    expect(pickTopReference([ytItem({ source: "web" })])).toBeNull();
+  it("pickTopReferences: youtube 없으면 빈 배열", () => {
+    expect(pickTopReferences([ytItem({ source: "web" })])).toEqual([]);
   });
 });
 
@@ -186,44 +186,44 @@ describe("prepareOnboarder — 하이브리드 조립(throw 0)", () => {
     gx.impl = async () => [];
   });
 
-  it("자막 null이면 transcript 키를 생략하고 나머지 필드로 유효한 OnboarderInput을 반환한다", async () => {
+  it("자막 null이면 references[0]에서 transcript 키를 생략하고 나머지 필드로 유효한 OnboarderInput을 반환한다", async () => {
     gx.impl = async () => [ytItem({ title: "레퍼 제목", snippet: "설명", viewCount: 200000, subscriberCount: 10000 })];
     yt.impl = async () => []; // 자막 없음 → fetchTranscript null
 
     const input = await prepareOnboarder(makeFakeSupa("연봉 3천 이하 무조건 보세요"), "run-1");
 
     expect(input.topic).toBe("연봉 3천 이하 무조건 보세요");
-    expect(input.referenceTitle).toBe("레퍼 제목");
-    expect("transcript" in input).toBe(false); // 자막 null → 키 생략
-    expect(input.videoFacts && input.videoFacts.length).toBeGreaterThan(0);
+    expect(input.references.length).toBe(1);
+    const ref0 = input.references[0]!;
+    expect(ref0.title).toBe("레퍼 제목");
+    expect("transcript" in ref0).toBe(false); // 자막 null → 키 생략
+    expect(ref0.videoFacts && ref0.videoFacts.length).toBeGreaterThan(0);
   });
 
-  it("자막이 있으면 transcript도 실린다", async () => {
+  it("자막이 있으면 references[0].transcript도 실린다", async () => {
     gx.impl = async () => [ytItem({})];
     yt.impl = async () => [{ text: "자막본문", duration: 1, offset: 0 }];
 
     const input = await prepareOnboarder(makeFakeSupa("주제"), "run-2");
-    expect(input.transcript).toBe("자막본문");
+    expect(input.references[0]!.transcript).toBe("자막본문");
   });
 
-  it("레퍼런스가 없으면 topic만으로 유효(referenceTitle·transcript·videoFacts 전부 생략)", async () => {
+  it("topic이 있는데 레퍼런스가 0개면 온보딩 불가로 throw한다(topic-only 폴백 금지)", async () => {
     gx.impl = async () => [];
-    const input = await prepareOnboarder(makeFakeSupa("주제"), "run-3");
-    expect(input).toEqual({ topic: "주제" });
+    await expect(prepareOnboarder(makeFakeSupa("주제"), "run-3")).rejects.toThrow(/온보딩 불가/);
   });
 
-  it("레퍼런스 수집이 throw해도 크래시 없이 topic만 반환(best-effort)", async () => {
+  it("레퍼런스 수집이 throw하면(개별 실패는 삼키되) 최종 0개라 온보딩 불가로 throw한다", async () => {
     gx.impl = async () => {
       throw new Error("quota exceeded");
     };
-    const input = await prepareOnboarder(makeFakeSupa("주제"), "run-4");
-    expect(input).toEqual({ topic: "주제" });
+    await expect(prepareOnboarder(makeFakeSupa("주제"), "run-4")).rejects.toThrow(/온보딩 불가/);
   });
 
-  it("선택된 주제가 없어도 throw하지 않고 topic=''로 반환(구다리와 달리 best-effort)", async () => {
+  it("선택된 주제가 없어도 throw하지 않고 { topic:'', references:[] } 반환(구다리와 달리 best-effort)", async () => {
     gx.impl = async () => [];
     const input = await prepareOnboarder(makeFakeSupa(null), "run-5");
-    expect(input).toEqual({ topic: "" });
+    expect(input).toEqual({ topic: "", references: [] });
     expect(gx.calls).toBe(0); // 빈 topic이면 수집 시도 안 함
   });
 });

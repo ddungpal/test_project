@@ -10,7 +10,7 @@ import { getSelectedStagePayload } from "../../pipeline/context.js";
 import { gatherExternalSignals, rankExternalByMultiplier, type ExternalItem } from "../topic_scout/externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { fetchTranscript } from "../../lib/onboarding/transcript.js";
-import type { OnboarderInput } from "./schema.js";
+import type { OnboarderInput, OnboarderReference } from "./schema.js";
 
 /** 유튜브 watch URL(...watch?v=<id>) 또는 youtu.be 단축 URL에서 videoId 추출. 못 뽑으면 null(순수·throw 0). */
 export function extractVideoId(url: string | undefined | null): string | null {
@@ -43,58 +43,137 @@ export function buildVideoFacts(ref: ExternalItem): string[] {
   return facts;
 }
 
-/** youtube 소스 & viewCount 있는 레퍼런스 중 배수/조회수 상위 1개(rankExternalByMultiplier 재사용). 없으면 null(순수). */
-export function pickTopReference(items: ExternalItem[]): ExternalItem | null {
+/** youtube 소스 & viewCount 있는 레퍼런스 중 배수/조회수 상위 n개(rankExternalByMultiplier 재사용). 순수(throw 0).
+ *   기존 pickTopReference(단일) 필터 로직 계승 — eligible = youtube & viewCount != null. FLOOR_SUBS 하한 적용. */
+export function pickTopReferences(items: ExternalItem[], n = 3): ExternalItem[] {
   const eligible = items.filter((it) => it.source === "youtube" && it.viewCount != null);
-  const top = rankExternalByMultiplier(eligible, 1, FLOOR_SUBS);
-  return top[0] ?? null;
+  return rankExternalByMultiplier(eligible, n, FLOOR_SUBS);
 }
 
-/** 주제 문자열로 레퍼런스 영상을 수집(gatherExternalSignals 재사용). best-effort — throw 전파 차단(gatherTitleReferences 패턴 미러). */
-async function gatherReference(topic: string): Promise<ExternalItem | null> {
-  if (!topic.trim()) return null;
-  try {
-    const items = await gatherExternalSignals({
-      webQueries: [],
-      ytQuery: topic,
-      maxPerQuery: 8,
-      volatility: "slow",
-    });
-    return pickTopReference(items);
-  } catch (e) {
-    console.warn(`[쏙이 prep] 레퍼런스 수집 실패(무시):`, e instanceof Error ? e.message : e);
-    return null;
-  }
+const REF_TARGET = 3; // 목표 레퍼런스 수.
+
+/** 검색어 완화 — topic을 공백 기준 앞 절반(최소 1토큰) 핵심 키워드로 줄인다. 순수(throw 0). */
+function relaxQuery(topic: string): string {
+  const tokens = topic.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length <= 1) return tokens.join(" ");
+  const half = Math.max(1, Math.ceil(tokens.length / 2));
+  return tokens.slice(0, half).join(" ");
 }
 
 /**
- * 쏙이 입력 조립 — 선택된 주제 + 레퍼런스 영상(자막·미검증 사실). best-effort(throw 0).
+ * 주제 문자열로 레퍼런스 영상들을 수집(gatherExternalSignals 재사용) — 최대 REF_TARGET개.
+ *   ★ 개별 수집(각 gather 호출) 실패는 try/catch로 삼킨다(best-effort). 최종 0개 판정·throw는 콜러(prepareOnboarder) 몫.
+ *   점진 완화(각 단계에서 REF_TARGET 채워지면 즉시 중단·quota 절약):
+ *     0) 기본: gather(topic, 10) → pickTopReferences(items, 3)  [FLOOR_SUBS·viewCount 필터]
+ *     (a) FLOOR_SUBS 하한 제거: 이미 모은 items 재랭킹(rankExternalByMultiplier floorSubs=0) — 재검색 없음.
+ *     (b) viewCount 필터 제거: eligible = youtube 전부(viewCount null 포함) 재랭킹 — 재검색 없음.
+ *     (c) 검색어 완화: relaxQuery(topic)로 재검색 → viewCount 필터만(floorSubs=0)로 랭킹.
+ */
+async function gatherReferences(topic: string): Promise<ExternalItem[]> {
+  if (!topic.trim()) return [];
+
+  // 0) 기본 수집.
+  let items: ExternalItem[] = [];
+  try {
+    items = await gatherExternalSignals({
+      webQueries: [],
+      ytQuery: topic,
+      maxPerQuery: 10,
+      volatility: "slow",
+    });
+  } catch (e) {
+    console.warn(`[쏙이 prep] 레퍼런스 수집 실패(무시):`, e instanceof Error ? e.message : e);
+    // items는 []로 유지 — 아래 완화 단계가 [] 위에서 도니 무해(재검색은 (c)에서).
+  }
+
+  let refs = pickTopReferences(items, REF_TARGET);
+  if (refs.length >= REF_TARGET) return refs;
+
+  // (a) FLOOR_SUBS 하한 제거 — 이미 모은 items 재랭킹(재검색 없음).
+  const ytWithViews = items.filter((it) => it.source === "youtube" && it.viewCount != null);
+  refs = rankExternalByMultiplier(ytWithViews, REF_TARGET, 0);
+  if (refs.length >= REF_TARGET) return refs;
+
+  // (b) viewCount 필터 제거 — youtube 전부(viewCount null 포함) 재랭킹(재검색 없음).
+  const ytAll = items.filter((it) => it.source === "youtube");
+  refs = rankExternalByMultiplier(ytAll, REF_TARGET, 0);
+  if (refs.length >= REF_TARGET) return refs;
+
+  // (c) 검색어 완화 — 재검색(quota 사용). 원래 topic과 완화어가 같으면(1토큰 등) 재검색 스킵.
+  const relaxed = relaxQuery(topic);
+  if (relaxed && relaxed !== topic.trim()) {
+    try {
+      const more = await gatherExternalSignals({
+        webQueries: [],
+        ytQuery: relaxed,
+        maxPerQuery: 10,
+        volatility: "slow",
+      });
+      // url 기준 dedup(같은 영상이 원 검색·완화 검색 양쪽에 잡힐 수 있음 — 먼저 들어온 것 유지).
+      const seen = new Set<string>();
+      const merged: ExternalItem[] = [];
+      for (const it of [...items, ...more]) {
+        if (it.source !== "youtube") continue;
+        if (it.url && seen.has(it.url)) continue;
+        if (it.url) seen.add(it.url);
+        merged.push(it);
+      }
+      refs = rankExternalByMultiplier(merged, REF_TARGET, 0);
+    } catch (e) {
+      console.warn(`[쏙이 prep] 레퍼런스 완화 재수집 실패(무시):`, e instanceof Error ? e.message : e);
+    }
+  }
+
+  return refs; // 최종 refs(0~3개) — 0개 판정은 콜러가.
+}
+
+/**
+ * 쏙이 입력 조립 — 선택된 주제 + 레퍼런스 영상들(최대 3개·자막·미검증 사실).
  *   - topic: getSelectedStagePayload("topic").title. 없으면 ""(크래시 금지 — 구다리와 달리 여기선 throw 안 함).
- *   - 레퍼런스 없으면 referenceTitle·transcript·videoFacts 모두 생략({topic}만으로도 유효).
- *   - (가) transcript: fetchTranscript(videoId), null이면 키 생략.
- *   - (나) videoFacts: buildVideoFacts(ref), 빈 배열이면 키 생략.
+ *   ★ topic 빈 문자열이면 수집 시도 없이 { topic:"", references:[] } 반환(best-effort — throw 안 함·gather 호출 0).
+ *   ★ topic이 있는데 최종 refs가 0개면 throw("...온보딩 불가") — topic-only 폴백 금지(설계 A+B, refs ≥1 강제).
+ *   각 ref: extractVideoId(url) 없으면 스킵. (가) transcript=fetchTranscript(videoId) null이면 키 생략(자막 fetch도 best-effort).
+ *           (나) videoFacts=buildVideoFacts(ref) 빈배열이면 키 생략.
  */
 export async function prepareOnboarder(supa: Supa, runId: string): Promise<OnboarderInput> {
   const topicPayload = (await getSelectedStagePayload(supa, runId, "topic")) as { title?: string } | null;
   const topic = topicPayload?.title ?? "";
 
-  const input: OnboarderInput = { topic };
+  // topic 없으면 best-effort — 수집 시도 없이 빈 references(throw 안 함).
+  if (!topic.trim()) return { topic, references: [] };
 
-  const ref = await gatherReference(topic);
-  if (!ref) return input; // 레퍼런스 없음 → topic만으로 유효.
-
-  if (ref.title?.trim()) input.referenceTitle = ref.title.trim();
-
-  // (가) 자막 — best-effort. URL에서 videoId 뽑아 취득(라이브러리는 URL도 받지만 명시 추출).
-  const videoId = extractVideoId(ref.url);
-  if (videoId) {
-    const transcript = await fetchTranscript(videoId);
-    if (transcript) input.transcript = transcript; // null이면 키 생략(설명+videoFacts 폴백).
+  const items = await gatherReferences(topic);
+  if (items.length === 0) {
+    // topic은 있는데 레퍼런스 0개 → 온보딩 블록(설계 A+B: refs 없이 아크 생성 안 함).
+    throw new Error("레퍼런스 영상을 찾지 못해 온보딩 불가");
   }
 
-  // (나) 영상이 쓴 사실(미검증) — 메타에서만. 셜록 미호출.
-  const videoFacts = buildVideoFacts(ref);
-  if (videoFacts.length > 0) input.videoFacts = videoFacts;
+  const references: OnboarderReference[] = [];
+  for (const item of items) {
+    const videoId = extractVideoId(item.url);
+    if (!videoId) continue; // videoId 못 뽑으면 그 ref 스킵.
 
-  return input;
+    const ref: OnboarderReference = { title: item.title?.trim() ?? "", url: item.url, videoId };
+
+    // (가) 자막 — best-effort(개별 실패 무시). URL에서 뽑은 videoId로 취득.
+    try {
+      const transcript = await fetchTranscript(videoId);
+      if (transcript) ref.transcript = transcript; // null이면 키 생략(설명+videoFacts 폴백).
+    } catch (e) {
+      console.warn(`[쏙이 prep] 자막 취득 실패(무시) videoId=${videoId}:`, e instanceof Error ? e.message : e);
+    }
+
+    // (나) 영상이 쓴 사실(미검증) — 메타에서만. 셜록 미호출.
+    const videoFacts = buildVideoFacts(item);
+    if (videoFacts.length > 0) ref.videoFacts = videoFacts;
+
+    references.push(ref);
+  }
+
+  // videoId를 하나도 못 뽑아 references가 비면 그것도 0개 → 블록(refs ≥1 강제).
+  if (references.length === 0) {
+    throw new Error("레퍼런스 영상을 찾지 못해 온보딩 불가");
+  }
+
+  return { topic, references };
 }

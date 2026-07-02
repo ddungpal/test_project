@@ -1,0 +1,1 @@
+- 제안: 여러 번의 gatherExternalSignals 결과(원검색 + 완화/폴백 재검색)를 합칠 때는 url(또는 videoId) 기준으로 dedup한다 (근거: 같은 영상이 두 검색에 모두 잡혀 references가 중복 증식 — 단일 gather 내부 dedup만 믿고 병합하면 pickTopReferences가 같은 영상을 여러 슬롯에 넣는다. onboarder prepare 완화 (c) 병합에서 실제로 1개 item이 2개로 불어난 사례).

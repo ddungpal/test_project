@@ -332,7 +332,12 @@
     },
     {
       "dir": "onboarding-references",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (onboarder-multi-ref)",
+      "attempt": 1,
+      "elapsed_seconds": 660,
+      "heartbeat_at": "2026-07-02T20:34:38+0900"
     },
     {
       "dir": "onboarding-learning-ux",
