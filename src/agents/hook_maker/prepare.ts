@@ -3,13 +3,14 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
-import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM } from "./schema.js";
+import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM, HOOK_PERSONA_DIRECTIVE } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
 import { loadActiveTitleStyle, appendTitleStyle } from "../shared/styleProfile.js";
 import { gatherTitleReferences, type ExternalTitleRef } from "./externalRefs.js";
 
 export interface HookMakerInput {
   topic: string;
+  target_persona?: string; // 주제 payload에 실린 시청 대상 한 줄 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
   tone: { id: string; version: number; components: unknown } | null;
   reference_titles: { id: string; text: string }[]; // 과거 완성 제목(corpus) — 톤 레퍼런스
   learned_insights?: LearnedInsight[]; // 환류(슬라이스 4): 승인된 'title' 학습 규칙 — 있을 때만(픽스처 해시 보존)
@@ -18,9 +19,10 @@ export interface HookMakerInput {
 }
 
 export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ system: string; input: HookMakerInput; schema: JsonSchema }> {
-  const topicPayload = await getSelectedStagePayload(supa, runId, "topic");
-  const topic = (topicPayload as { title?: string } | null)?.title;
+  const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { title?: string; target_persona?: string } | null;
+  const topic = topicPayload?.title;
   if (!topic) throw new Error("훅이 prep: 선택된 주제를 찾을 수 없음(topic 단계 미선택?).");
+  const targetPersona = topicPayload?.target_persona; // target_persona: 같은 payload에서 함께 추출(별도 조회 없음 — 구다리 패턴)
 
   const tone = await getToneProfile(supa);
 
@@ -52,7 +54,12 @@ export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ sys
   const titleStyle = await loadActiveTitleStyle(supa);
   if (titleStyle) input.style_profile = { id: titleStyle.id, version: titleStyle.version, patterns: titleStyle.patterns };
 
+  // target_persona 조건부 주입 — persona 있을 때만 input에 실음. 없으면 키 자체를 넣지 않음(바이트 불변 → 픽스처 해시 보존).
+  if (targetPersona) input.target_persona = targetPersona;
+
   // system 합성: learned_insights + (있으면) title 스타일 사양. 둘 다 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
-  const system = appendTitleStyle(appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), titleStyle);
+  //   ★ 기존 appendTitleStyle/appendLearnedInsights 체인은 그대로 두고, persona 있을 때만 그 결과 뒤에 지시문을 붙인다(짠펜 step.ts 미러).
+  let system = appendTitleStyle(appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), titleStyle);
+  if (targetPersona) system += "\n" + HOOK_PERSONA_DIRECTIVE;
   return { system, input, schema: HOOK_MAKER_SCHEMA };
 }

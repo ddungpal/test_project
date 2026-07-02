@@ -319,6 +319,15 @@
       "dir": "onboarding-review-window",
       "status": "completed",
       "completed_at": "2026-07-01T20:03:53+0900"
+    },
+    {
+      "dir": "downstream-context-injection",
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (hook-persona)",
+      "attempt": 1,
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-07-02T14:13:56+0900"
     }
   ]
 }
