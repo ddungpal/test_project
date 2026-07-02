@@ -37,3 +37,28 @@
 [Joy] AC 3개 다 돌렸어 typecheck0 test0(1098개!) build0 초록불 통과 🎉
 [Joy] 맥스 또 1라운드 컷이네ㅋㅋ 나 요즘 트집거리 실업자 될 판이다
 [리드] 좋아, step1 PASS. index.json completed+summary로 갱신, JSON 문법도 검증했어. 1라운드 통과, 둘 다 수고했어!
+
+=== Step 2: research-context ===
+
+=== Step 2: research-context ===
+
+[리드] 이번엔 셜록 리서치 scope 차례야. persona랑 온보딩 금맥을 소프트 주입 — 근데 이번엔 방식 A라 system은 절대 안 건드리고 input 키만 얹는 거야. 구다리 prepare가 금맥 4필드 조건부로 넣는 방식 그대로 미러하면 돼.
+[리드] 맥스, runResearchScope랑 regenerateResearchScope 두 경로 다 적용해야 해. 한쪽만 하면 재생성 때 컨텍스트 빠져. 부탁해.
+[Max] step2 research-context 시작할게. 설계 A섹션이랑 구다리 prepare 금맥 4필드 넣는 방식, 셜록 step/schema, researchScope 두 경로 다 읽었어. 이번엔 방식 A라 SHERLOCK_SCOPE_SYSTEM 본문은 안 건드리고 scopeStep input 키만 조건부로 얹을 거야.
+[Max] 셜록 step.ts input 타입에 target_persona랑 onboardingGold 4필드 optional로 추가하고, researchScope의 runResearchScope랑 regenerateResearchScope 양쪽에서 topic payload persona + loadOnboardingGold 읽어서 있을 때만 넣게 미러할 거야. 둘 다 없으면 예전이랑 바이트 동일하게.
+[Max] 다 짰어. 셜록 step.ts input 타입에 target_persona랑 onboardingGold 4필드 추가하고, SHERLOCK_SCOPE_SYSTEM 본문은 한 글자도 안 건드렸어. researchScope엔 softScopeContext 헬퍼 하나 두고 run/regenerate 양쪽에서 스프레드로 얹었어 — 있을 때만 키 들어가고 없으면 예전이랑 바이트 동일이라 promptHash 안 깨져. topic payload는 title만 뽑던 걸 payload 전체 받아서 persona도 같이 꺼내게 했는데 title 추출 결과는 그대로야.
+[Max] 테스트는 scopeStep을 vi.mock으로 스파이해서 실제로 넘어간 input을 캡처했어. run/regenerate 각각 케이스 A(persona+금맥 있음)/B(둘 다 없음) 4개. B에선 두 키가 in 검사로 아예 없는 것까지 못박았고 topic/title/outline/budget 불변도 같이 봤어. 이제 AC 3개 돌려볼게.
+[Max] AC 세 개 다 초록불이야. typecheck exit 0, test 1102개 통과(1098→1102 +4), build exit 0. SHERLOCK_SCOPE_SCHEMA는 이미 additionalProperties:true라 손 안 댔고 확인만 했어. 파일은 셜록 step.ts, researchScope.ts, 신규 테스트 세 개뿐이라 범위 밖 부산물 안 섞였어. 조이 검수 부탁해. …persona 없는 런은 이번에도 진짜 바이트 그대로인지 in 검사로 못박아놨어.
+[리드] 확인했어. typecheck exit 0, test 1102 통과, build exit 0. 조이, 검수 부탁해.
+
+[Joy] 맥스 step2 받았어! git diff부터 봤는데 schema.ts diff가 완전 비어있네 SHERLOCK_SCOPE_SYSTEM 무변경 방식 A 딱 지켰고 굿굿
+[Joy] softScopeContext 헬퍼로 run/regenerate 양쪽 공유한 거 깔끔하다 구다리 4필드 shape도 정확히 미러됐고
+[Joy] 이제 typecheck test build 3종 세트 직접 돌려볼게 커피 탈 시간 없겠다 ㅋㅋ
+
+[Joy] 오케이 다 돌아왔어 typecheck exit 0, test 1102개 다 통과(새 researchScopeContext 4개도 실제 실행됨), build도 exit 0
+[Joy] 체크리스트 7개 전부 클리어! 방식 A 무변경 조건부 불변식 양쪽경로 금맥shape 범위준수 죽은import없음 테스트 의미있음 다 확인했어
+[Joy] 케이스 B가 키 부재까지 in 연산자로 딱 잡아주는 거 좋더라 껍데기 아니고 진짜 회귀가드야
+[Joy] index.json step2가 아직 pending인데 이건 하네스 output 커밋 단계에서 completed로 바뀌는 정상 중간상태라 안 잡았어
+[Joy] 맥스 이번 것도 구다리 미러 그대로 깔끔하게 뽑았다 통과! 🎉
+[Joy] 검수 끝! schema diff 완전히 비어있어서 system 무변경 확인, 양쪽 경로 다 적용됐고 금맥 shape도 구다리랑 똑같아. AC 셋 다 exit 0, test 1102 통과 🎉
+[리드] 좋아, step2 완료 처리했어. 방식 A라 promptHash 안 깨지는 거 못박은 게 핵심이었네. 수고했어 둘 다!

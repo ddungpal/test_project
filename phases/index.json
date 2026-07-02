@@ -323,11 +323,11 @@
     {
       "dir": "downstream-context-injection",
       "status": "running",
-      "progress": "1/3",
-      "running_step": "1 (thumbnail-persona)",
+      "progress": "2/3",
+      "running_step": "2 (research-context)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-02T14:22:38+0900"
+      "elapsed_seconds": 600,
+      "heartbeat_at": "2026-07-02T14:33:10+0900"
     }
   ]
 }

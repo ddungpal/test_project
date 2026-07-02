@@ -7,6 +7,7 @@ import type { LlmConfig } from "../llm/config.js";
 import { getRun, transitionRun, setProgress, type Supa } from "./runState.js";
 import { flushLedger } from "./runGuards.js";
 import { getSelectedStagePayload } from "./context.js";
+import { loadOnboardingGold } from "./onboarding.js";
 import { scopeStep } from "../agents/sherlock_lead/step.js";
 import { countOutlineSections, suggestDefaultSelection } from "./researchBudget.js";
 import type { Candidate } from "./stageContract.js";
@@ -14,6 +15,29 @@ import type { CostGuard, InMemoryCostLedger } from "../llm/costGuard.js";
 import type { Json } from "../lib/supabase/database.types.js";
 import type { SherlockScopeOutput } from "../agents/sherlock_lead/schema.js";
 import type { LlmBackendDriver } from "../llm/types.js";
+
+/** 셜록 scope input의 소프트 컨텍스트(persona·금맥) 조각을 조건부로 만든다 — runResearchScope·regenerate 공유(미러).
+ *  방식 A: system 무변경, scopeStep input에 키만 얹는다. 값이 있을 때만 키를 넣어 없는 런은 byte-identical(promptHash 보존).
+ *  onboardingGold shape은 구다리 StructurerInput.onboardingGold와 동일한 4필드로 명시(여분 필드 없음). */
+async function softScopeContext(
+  supa: Supa,
+  runId: string,
+  topicPayload: { target_persona?: string } | null,
+): Promise<{ target_persona?: string; onboardingGold?: { confusionPoints: string[]; ahaPoints: string[]; coreAngle: string; calibratedLevel: string } }> {
+  const ctx: { target_persona?: string; onboardingGold?: { confusionPoints: string[]; ahaPoints: string[]; coreAngle: string; calibratedLevel: string } } = {};
+  const targetPersona = topicPayload?.target_persona; // topic payload에서 함께 추출(별도 조회 없음)
+  if (targetPersona) ctx.target_persona = targetPersona;
+  const gold = await loadOnboardingGold(supa, runId);
+  if (gold) {
+    ctx.onboardingGold = {
+      confusionPoints: gold.confusionPoints,
+      ahaPoints: gold.ahaPoints,
+      coreAngle: gold.coreAngle,
+      calibratedLevel: gold.calibratedLevel,
+    };
+  }
+  return ctx;
+}
 
 /** scope 결과(claims+concepts) → stage_proposals candidate 배열 빌드.
  *  runResearchScope의 4) 로직을 그대로 추출(바이트 동일) — regenerateResearchScope와 공유.
@@ -99,14 +123,22 @@ export async function runResearchScope(runId: string, deps: ResearchScopeDeps): 
   try {
     // 1) 컨텍스트: 선택된 구성(outline) + 주제·제목(researchCell.ts와 동일 패턴).
     const structure = await getSelectedStagePayload(supa, runId, "structure");
-    const topic = (await getSelectedStagePayload(supa, runId, "topic") as { title?: string } | null)?.title ?? "";
+    const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { title?: string; target_persona?: string } | null;
+    const topic = topicPayload?.title ?? ""; // title 추출 동작·결과 불변
     const title = (await getSelectedStagePayload(supa, runId, "title_thumb") as { title?: string } | null)?.title ?? "";
 
     // 2) 섹션 비례 '기본 선택 개수' 힌트(상한 아님 — default_selected 마킹용).
     const budget = suggestDefaultSelection(countOutlineSections(structure), config.research);
 
     // 3) 셜록 scope — 검증 후보 분해(섹션 고루 커버·중요도순). fan-out 검증 없음.
-    const scope = await scopeStep(llm, runId, { topic, title, outline: structure, budget });
+    //    persona·금맥은 소프트 컨텍스트로 조건부 주입(구다리 미러·있을 때만·없으면 byte-identical → promptHash 보존).
+    const scope = await scopeStep(llm, runId, {
+      topic,
+      title,
+      outline: structure,
+      budget,
+      ...(await softScopeContext(supa, runId, topicPayload)),
+    });
 
     // 4) 후보 배열 — claims + concepts 전부(블라인드 slice 없음). 배열 순서 = 중요도.
     //    budget은 상위 N개만 default_selected=true로 표시(기본 체크 힌트). 나머지는 false지만 모두 저장된다.
@@ -157,7 +189,8 @@ export async function regenerateResearchScope(
   try {
     // 1) 컨텍스트(runResearchScope와 동일 패턴).
     const structure = await getSelectedStagePayload(supa, runId, "structure");
-    const topic = (await getSelectedStagePayload(supa, runId, "topic") as { title?: string } | null)?.title ?? "";
+    const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { title?: string; target_persona?: string } | null;
+    const topic = topicPayload?.title ?? ""; // title 추출 동작·결과 불변
     const title = (await getSelectedStagePayload(supa, runId, "title_thumb") as { title?: string } | null)?.title ?? "";
     const budget = suggestDefaultSelection(countOutlineSections(structure), config.research);
 
@@ -185,6 +218,7 @@ export async function regenerateResearchScope(
       .map((p) => p.name);
 
     // 3) 셜록 재호출 — reason·existing은 값이 있을 때만 input에 담는다(promptHash 영향은 regenerate 경로에 국한).
+    //    persona·금맥도 runResearchScope와 동일하게 조건부 소프트 주입(있을 때만·미러).
     const trimmedReason = reason?.trim();
     const scope = await scopeStep(llm, runId, {
       topic,
@@ -195,6 +229,7 @@ export async function regenerateResearchScope(
       ...(existingClaims.length || existingConcepts.length
         ? { existing: { claims: existingClaims, concepts: existingConcepts } }
         : {}),
+      ...(await softScopeContext(supa, runId, topicPayload)),
     });
 
     // 4) 후보 빌드(runResearchScope와 공유) + 새 proposal INSERT(전이 없음 — 최신 proposal이 자동 반영).
