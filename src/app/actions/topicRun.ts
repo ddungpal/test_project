@@ -25,7 +25,7 @@ import { extractGold, type ArcAnswer } from "../../lib/onboarding/arc.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 import type { SeedRunInput } from "../../lib/dashboard/seedTypes.js";
 
-export async function startTopicRun(topic?: string, levelSplit?: boolean): Promise<{ runId: string; contentId: string }> {
+export async function startTopicRun(topic?: string, levelSplit?: boolean, targetPersona?: string): Promise<{ runId: string; contentId: string }> {
   const ownerId = await requireOwner();
   const supa = createAdminClient();
 
@@ -45,8 +45,9 @@ export async function startTopicRun(topic?: string, levelSplit?: boolean): Promi
 
   // 결정적 로직(DB저장) 끝 → 이벤트로 durable 파이프라인에 넘김. AI는 함수 안에서 1회.
   //   levelSplit: 촉이 수준 분해 모드(이벤트 페이로드로 전달 — durable 보존, migration 불필요).
-  await inngest.send({ name: "run/topic.requested", data: { runId: run.id, ...(levelSplit ? { levelSplit: true } : {}) } });
-  await auditLog(supa, { actorId: ownerId, action: "run_started", targetType: "run", targetId: run.id, detail: { mode: topic ? "keyword" : "discovery", topic: topic ?? null, levelSplit: !!levelSplit } });
+  //   targetPersona: "타겟 먼저" 모드 — 고정 타겟을 페이로드로 전달(levelSplit과 동일 조건부, 있을 때만).
+  await inngest.send({ name: "run/topic.requested", data: { runId: run.id, ...(levelSplit ? { levelSplit: true } : {}), ...(targetPersona ? { targetPersona } : {}) } });
+  await auditLog(supa, { actorId: ownerId, action: "run_started", targetType: "run", targetId: run.id, detail: { mode: topic ? "keyword" : "discovery", topic: topic ?? null, levelSplit: !!levelSplit, ...(targetPersona ? { targetPersona } : {}) } });
   return { runId: run.id, contentId: content.id };
 }
 

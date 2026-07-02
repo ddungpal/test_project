@@ -6,7 +6,7 @@ import type { ProposalStageSpec, Candidate } from "../../pipeline/stageContract.
 import { prepareTopicScout } from "./prepare.js";
 import type { TopicScoutOutput } from "./schema.js";
 
-export function topicStageSpec(runId: string, opts?: { levelSplit?: boolean }): ProposalStageSpec<TopicScoutOutput> {
+export function topicStageSpec(runId: string, opts?: { levelSplit?: boolean; targetPersona?: string }): ProposalStageSpec<TopicScoutOutput> {
   return {
     runId,
     descriptor: STAGE_DESCRIPTORS.topic,

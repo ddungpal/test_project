@@ -33,7 +33,7 @@ export interface TopicScoutInput {
 export async function prepareTopicScout(
   supa: Supa,
   runId: string,
-  opts?: { levelSplit?: boolean },
+  opts?: { levelSplit?: boolean; targetPersona?: string }, // targetPersona: 배선만(step0) — 프롬프트 주입은 step1 몫.
 ): Promise<{ system: string; input: TopicScoutInput; schema: JsonSchema; sources: ProposalSource[] }> {
   // 0) 이 run의 키워드(content.topic). 있으면 키워드 발굴 모드. as_of_date로 트렌드 쿼리 연도 도출.
   let keyword: string | null = null;

@@ -324,6 +324,15 @@
       "dir": "downstream-context-injection",
       "status": "completed",
       "completed_at": "2026-07-02T14:33:11+0900"
+    },
+    {
+      "dir": "target-first-mode",
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (target-first-plumbing)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-07-02T15:30:10+0900"
     }
   ]
 }

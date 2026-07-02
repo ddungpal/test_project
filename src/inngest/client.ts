@@ -8,12 +8,13 @@ import { Inngest, EventSchemas } from "inngest";
 // 단계 경계 이벤트 스키마(§8.2: 버튼=단계경계/사람게이트). data는 최소(runId)만 — 진실은 DB.
 // softAck: SOFT 비용캡 일시정지 후 사람이 승인하고 재개할 때 true(반장 마감).
 // levelSplit: 촉이 수준 분해 모드(키워드를 시청자 수준별로 나눠 제안) — topic.requested에서만 사용.
+// targetPersona: "타겟 먼저" 모드 — 고정 타겟 페르소나(촉이가 그 타겟용 주제만 발굴) — topic.requested에서만 사용.
 // force: '다시 생성' — 멱등 메모이즈를 우회해 proposedState에서 새 제안을 INSERT(상태 전이 없음).
 // reason: '다시 생성' 시 사용자가 적은 선택적 이유(transient·프롬프트용, DB 미저장). 없으면 기존과 동일.
 // forceLlm: 'LLM으로 새로 써줘' — 로컬($0) 생성을 건너뛰고 callLLM 강제(step2 계약, step3 UI에서 전달). 없으면 hybrid 기본.
 // postConfirm: 확정 후 재생성 — 상태 전이 없이 새 proposal만 INSERT(selectedState에서도 진입, 낙관잠금 없음).
 // fromStep: 리서치 부분 재진입(migration 28) — 'examples'면 셈이·유이만 재생성(②③⑦·research_facts 보존). 없으면 'full'(현행). research.requested에서만 사용.
-type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean; fromStep?: "full" | "examples" };
+type StageData = { runId: string; softAck?: boolean; levelSplit?: boolean; targetPersona?: string; force?: boolean; reason?: string; forceLlm?: boolean; postConfirm?: boolean; fromStep?: "full" | "examples" };
 type PipelineEvents = {
   "run/topic.requested": { data: StageData };
   "run/titles.requested": { data: StageData };
