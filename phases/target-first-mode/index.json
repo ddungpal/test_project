@@ -13,7 +13,11 @@
     {
       "step": 1,
       "name": "target-first-prompt",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-02T15:33:40+0900",
+      "summary": "step0에서 값만 배선된 targetPersona를 실제 작동시킴. schema.ts에 appendPersonaDirective 신설(appendLevelDirective 미러): persona 있으면 '★ 타겟 먼저 모드' 지시문을 TOPIC_SCOUT_SYSTEM 뒤에 append(고정 타겟 값 인용·그 타겟용 주제만 발굴·모든 후보 target_persona 통일·audience_level/need는 후보별 유지), 없으면 바이트 동일 반환(promptHash 보존·TOPIC_SCOUT_SYSTEM 본문 무변경). prepare.ts는 기존 appendLevelDirective 체인에 appendPersonaDirective(system, opts?.targetPersona) 추가. stage.ts toCandidates는 fixedPersona 클로저로 후보 payload.target_persona만 고정값 덮어쓰기(title/audience_level/audience_need는 촉이 출력 보존), 없으면 촉이 출력 그대로. 신규 tests/targetFirstMode.test.ts 6개(appendPersonaDirective 인용/바이트동일, toCandidates 덮어쓰기/필드보존/미전달불변). 마이그0·의존성0. typecheck exit0·test 1102→1108 exit0·build(.next stale캐시 rm 후) exit0.",
+      "completed_at": "2026-07-02T15:41:44+0900"
     },
     {
       "step": 2,
