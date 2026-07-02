@@ -402,6 +402,9 @@ export async function requestScriptReworkAction(runId: string): Promise<{ state:
   const supa = createAdminClient();
   const res = await requestScriptRework(supa, runId);
   await auditLog(supa, { actorId: ownerId, action: "script_rework", targetType: "run", targetId: runId });
+  // rework는 script_review→scripting으로 되돌린다 — 짠펜 재실행 이벤트를 반드시 재발행한다.
+  //   (이유: scriptStageFn은 run/script.requested로만 실행. 안 쏘면 scripting 상태로 멈춰 "작성 중" 안내만 뜬 채 stuck.)
+  if (res.state === "scripting") await inngest.send({ name: "run/script.requested", data: { runId } });
   return res;
 }
 
@@ -420,6 +423,9 @@ export async function reviewScriptAction(runId: string, decision: { rejectFactId
     targetId: runId,
     detail: { approved: res.state, rejected: rejected.length },
   });
+  // 반려가 있으면 reviewScript가 requestScriptRework로 scripting까지 되돌린다 — 짠펜 재실행 이벤트 재발행.
+  //   (이유: 안 쏘면 반려해도 대본이 다시 안 써져 출력이 그대로. scriptStageFn은 이 이벤트로만 실행.)
+  if (res.state === "scripting") await inngest.send({ name: "run/script.requested", data: { runId } });
   return res;
 }
 
