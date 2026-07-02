@@ -338,11 +338,11 @@
     {
       "dir": "onboarding-learning-ux",
       "status": "running",
-      "progress": "1/3",
-      "running_step": "1 (onboarder-difficulty-more)",
+      "progress": "2/3",
+      "running_step": "2 (additional-questions-ui)",
       "attempt": 1,
-      "elapsed_seconds": 900,
-      "heartbeat_at": "2026-07-02T21:23:04+0900"
+      "elapsed_seconds": 720,
+      "heartbeat_at": "2026-07-02T21:35:57+0900"
     },
     {
       "dir": "segment-edit",

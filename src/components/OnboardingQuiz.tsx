@@ -8,10 +8,11 @@
 //     - hookMode(reversal=반전 / practical=실용템)는 색 남발 대신 노랑 보더 작은 라벨로만 구분.
 //     - 정답/오답 피드백·진행 표시는 은은하게(과한 색·애니메이션 금지). 프리테스트 프레이밍 = '시험' 아닌 '호기심 체크'.
 
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import type { ArcHookMode } from "@/agents/onboarder/schema";
+import type { ArcHookMode, ArcDifficulty } from "@/agents/onboarder/schema";
 import type { OnboardingArc, OnboardingGold } from "@/agents/onboarder/schema";
+import { LiveRefresh } from "@/components/LiveRefresh";
 import {
   initPlayback,
   currentQuestion,
@@ -24,7 +25,16 @@ import {
   totalQuestions,
   type PlaybackState,
 } from "@/lib/onboarding/playback";
-import { submitOnboarding } from "@/app/actions/topicRun";
+import { submitOnboarding, requestOnboarding } from "@/app/actions/topicRun";
+
+// 추가 문제 폴링 상한 — RequestOnboardingButton 미러.
+const MORE_POLL_LIMIT_MS = 180000;
+
+const DIFFICULTY_OPTIONS: readonly { d: ArcDifficulty; label: string }[] = [
+  { d: "basic", label: "입문" },
+  { d: "mid", label: "중급" },
+  { d: "deep", label: "심화" },
+];
 
 // hookMode → 사람이 읽는 라벨. 색은 안 바꾸고(TRUS 3색) 라벨·보더 톤으로만 구분.
 const HOOK_LABEL: Record<ArcHookMode, string> = {
@@ -39,6 +49,47 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // 추가 문제(난이도 타겟) — 발행·폴링·타임아웃·에러. RequestOnboardingButton 미러.
+  const [moreSubmitted, setMoreSubmitted] = useState(false);
+  const [moreTimedOut, setMoreTimedOut] = useState(false);
+  const [moreError, setMoreError] = useState<string | null>(null);
+  const [morePending, startMoreTransition] = useTransition();
+  // 처음 문항 수 기억 — 확장 아크가 도착해 더 커지면 이어붙은 문항부터 재생한다.
+  const prevLenRef = useRef(totalQuestions(state));
+
+  // resume — 확장 아크(arc.questions가 커짐)가 도착하면 첫 새 문항부터 이어 풀기.
+  //   기존 answers 보존 → 재제출 시 전체가 extractGold로 감(금맥 갱신). done 인스턴스는 유지되고 arc prop만 새로 흘러온다.
+  useEffect(() => {
+    const newLen = arc.questions?.length ?? 0;
+    if (done && newLen > prevLenRef.current) {
+      setState((s) => ({ ...s, arc, questionIdx: prevLenRef.current, revealed: false }));
+      prevLenRef.current = newLen;
+      setDone(false);
+      setMoreSubmitted(false);
+    }
+  }, [arc, done]);
+
+  // 추가 문제 발행 후 폴링 타임아웃 — RequestOnboardingButton 미러.
+  useEffect(() => {
+    if (!moreSubmitted) return;
+    const t = setTimeout(() => setMoreTimedOut(true), MORE_POLL_LIMIT_MS);
+    return () => clearTimeout(t);
+  }, [moreSubmitted]);
+
+  function requestMore(difficulty: ArcDifficulty) {
+    setMoreError(null);
+    startMoreTransition(async () => {
+      try {
+        await requestOnboarding(runId, { difficulty });
+        setMoreSubmitted(true);
+        router.refresh();
+      } catch (e) {
+        setMoreSubmitted(false);
+        setMoreError(e instanceof Error ? e.message : "요청 실패");
+      }
+    });
+  }
 
   const q = currentQuestion(state);
   const revealed = isRevealed(state);
@@ -105,6 +156,39 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
               ? "이번 풀이는 이미 만든 구성엔 자동 반영되지 않아요 — 반영하려면 구성을 다시 생성하세요."
               : "여기서 나온 헷갈린 지점·아하·핵심 갈림길이 구성(구다리)으로 넘어갔어요."}
           </p>
+        </div>
+
+        {/* 추가 문제 — 난이도 1개 선택 → 그 난이도 문항이 기존 아크에 이어붙어 재제출되면 금맥 갱신. live/review 둘 다 노출.
+            위계: 완료·금맥이 주. 이 블록은 보조 액션이라 라벨을 흐린 톤(헤더의 '호기심 체크' 미러)으로 낮춘다. */}
+        <div className="flex flex-col gap-2 border-t border-trus-white/15 pt-3">
+          <div className="flex items-baseline justify-between gap-3">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-trus-white/40">더 풀어보기</span>
+            <span className="shrink-0 text-[10px] font-bold tracking-widest text-trus-white/40">선택</span>
+          </div>
+          <p className="text-xs text-trus-white/50">난이도를 골라 문제를 더 풀면 학습 내용이 갱신돼요.</p>
+          <div className="flex gap-2" role="group" aria-label="추가 문제 난이도">
+            {DIFFICULTY_OPTIONS.map(({ d, label }) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => requestMore(d)}
+                disabled={morePending || moreSubmitted}
+                className="flex-1 border border-trus-white/30 px-3 py-2 text-sm font-bold text-trus-white/85 hover:border-trus-yellow hover:text-trus-yellow disabled:cursor-default disabled:opacity-40 disabled:hover:border-trus-white/30 disabled:hover:text-trus-white/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trus-yellow"
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {moreSubmitted && !moreTimedOut && (
+            <div className="flex items-center gap-2">
+              <LiveRefresh active fallbackMs={3000} />
+              <p className="text-xs text-trus-white/60">쏙이가 문제 만드는 중… 잠시 후 새로고침</p>
+            </div>
+          )}
+          {moreSubmitted && moreTimedOut && (
+            <p className="text-xs text-trus-white/50">오래 걸립니다 — 새로고침하거나 로그를 확인하세요.</p>
+          )}
+          {moreError && <p className="text-xs font-bold text-trus-yellow">⚠ {moreError}</p>}
         </div>
       </div>
     );

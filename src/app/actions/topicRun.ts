@@ -22,6 +22,7 @@ import { auditLog } from "../../lib/observability/auditLog.js";
 import { deleteProducedContent } from "./contentLifecycle.js";
 import { loadOnboardingArc, saveOnboardingGold } from "../../pipeline/onboarding.js";
 import { extractGold, type ArcAnswer } from "../../lib/onboarding/arc.js";
+import type { ArcDifficulty } from "../../agents/onboarder/schema.js";
 import type { Json } from "../../lib/supabase/database.types.js";
 import type { SeedRunInput } from "../../lib/dashboard/seedTypes.js";
 
@@ -202,9 +203,11 @@ export async function editThumbnails(runId: string, payloads: ThumbnailPayload[]
 
 // 쏙이 온보딩 아크 생성 요청(온디맨드·게이트 아님) — requestStructure 미러(requireOwner → 이벤트 발행).
 //   버튼 트리거 → run/onboarding.requested → onboardingStage(prepare→step)가 아크를 stage_proposals에 저장. AI는 함수 안에서.
-export async function requestOnboarding(runId: string): Promise<void> {
+//   more: 난이도 타겟 추가 문항 요청(basic/mid/deep). 없으면 이벤트 data는 { runId }로 기존과 바이트 동일
+//   (조건부 스프레드로 undefined 키 대입 금지 — exactOptionalPropertyTypes 준수).
+export async function requestOnboarding(runId: string, more?: { difficulty: ArcDifficulty }): Promise<void> {
   await requireOwner();
-  await inngest.send({ name: "run/onboarding.requested", data: { runId } });
+  await inngest.send({ name: "run/onboarding.requested", data: { runId, ...(more ? { more } : {}) } });
 }
 
 // 쏙이 온보딩 응답 제출 — 저장된 아크 로드 → extractGold(순수) → 금맥 저장(온디맨드·게이트 아님).
