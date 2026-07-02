@@ -11,7 +11,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ArcHookMode } from "@/agents/onboarder/schema";
-import type { OnboardingArc } from "@/agents/onboarder/schema";
+import type { OnboardingArc, OnboardingGold } from "@/agents/onboarder/schema";
 import {
   initPlayback,
   currentQuestion,
@@ -33,7 +33,7 @@ const HOOK_LABEL: Record<ArcHookMode, string> = {
 };
 
 // mode: live=구성 직전(금맥이 구다리로 넘어감) / review=구성 이후 복습(자동 반영 안 됨). 완료 문구만 분기, 재생·제출 로직은 동일.
-export function OnboardingQuiz({ runId, arc, mode = "live" }: { runId: string; arc: OnboardingArc; mode?: "live" | "review" }) {
+export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: string; arc: OnboardingArc; gold?: OnboardingGold | null; mode?: "live" | "review" }) {
   const [state, setState] = useState<PlaybackState>(() => initPlayback(arc));
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -58,15 +58,54 @@ export function OnboardingQuiz({ runId, arc, mode = "live" }: { runId: string; a
   }
 
   // 제출 완료 — live면 금맥이 구다리로 넘어갔음. review는 이미 구성 생성 후라 자동 반영 안 됨(정직 카피).
+  //   gold가 있으면 실제 학습 내용(금맥 4필드)을 기존 카피 위에 표시. 없으면(미제출·구버전) 기존 카피만(하위호환).
   if (done) {
     return (
-      <div className="border border-trus-yellow px-4 py-3">
-        <p className="text-sm font-black text-trus-yellow">{mode === "review" ? "복습 완료" : "이해 완료"}</p>
-        <p className="mt-1 text-xs text-trus-white/60">
-          {mode === "review"
-            ? "이번 풀이는 이미 만든 구성엔 자동 반영되지 않아요 — 반영하려면 구성을 다시 생성하세요."
-            : "여기서 나온 헷갈린 지점·아하·핵심 갈림길이 구성(구다리)으로 넘어갔어요."}
-        </p>
+      <div className="flex flex-col gap-3">
+        {gold && (
+          <div className="flex flex-col gap-3 border-l-2 border-l-trus-yellow bg-trus-white/[0.03] px-3 py-2">
+            {gold.confusionPoints.length > 0 && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-trus-yellow">헷갈렸던 지점</span>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {gold.confusionPoints.map((p, i) => (
+                    <li key={i} className="text-sm leading-relaxed text-trus-white/90">{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {gold.ahaPoints.length > 0 && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-trus-yellow">아하 포인트</span>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {gold.ahaPoints.map((p, i) => (
+                    <li key={i} className="text-sm leading-relaxed text-trus-white/90">{p}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {gold.coreAngle && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-trus-yellow">핵심 갈림길</span>
+                <p className="mt-1 text-sm font-bold leading-snug text-trus-white">{gold.coreAngle}</p>
+              </div>
+            )}
+            {gold.calibratedLevel && (
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-trus-yellow">추론된 수준</span>
+                <p className="mt-1 text-sm leading-relaxed text-trus-white/90">{gold.calibratedLevel}</p>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="border border-trus-yellow px-4 py-3">
+          <p className="text-sm font-black text-trus-yellow">{mode === "review" ? "복습 완료" : "이해 완료"}</p>
+          <p className="mt-1 text-xs text-trus-white/60">
+            {mode === "review"
+              ? "이번 풀이는 이미 만든 구성엔 자동 반영되지 않아요 — 반영하려면 구성을 다시 생성하세요."
+              : "여기서 나온 헷갈린 지점·아하·핵심 갈림길이 구성(구다리)으로 넘어갔어요."}
+          </p>
+        </div>
       </div>
     );
   }

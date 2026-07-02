@@ -337,7 +337,12 @@
     },
     {
       "dir": "onboarding-learning-ux",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (gold-display)",
+      "attempt": 1,
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-07-02T21:07:50+0900"
     },
     {
       "dir": "segment-edit",

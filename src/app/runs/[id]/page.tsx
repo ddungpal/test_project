@@ -33,9 +33,9 @@ import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
 import { RequestOnboardingButton } from "@/components/RequestOnboardingButton";
 import { OnboardingQuiz } from "@/components/OnboardingQuiz";
-import { loadOnboardingArc, loadOnboardingReferences } from "@/pipeline/onboarding";
+import { loadOnboardingArc, loadOnboardingGold, loadOnboardingReferences } from "@/pipeline/onboarding";
 import { MustWatchReferences } from "@/components/MustWatchReferences";
-import type { OnboardingArc } from "@/agents/onboarder/schema";
+import type { OnboardingArc, OnboardingGold } from "@/agents/onboarder/schema";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isOnboardingVisible } from "@/domain/enums";
 import type { RunState } from "@/domain/enums";
@@ -384,7 +384,7 @@ function ScriptSection({
 // 쏙이 온보딩 진입 — 노출 창 전 구간(thumbnails_selected~published)에서 렌더. 온디맨드·건너뛰기 가능(구다리 버튼과 병존).
 //   아크 없으면 "먼저 이해하기" 버튼(requestOnboarding 발행), 있으면 OnboardingQuiz 인터랙티브 재생.
 //   mode: live=구성 직전(금맥 주입) / review=구성 이후 복습(자동 반영 안 됨). 카피만 분기, 로직·버튼은 동일.
-function OnboardingSection({ runId, arc, mode }: { runId: string; arc: OnboardingArc | null; mode: "live" | "review" }) {
+function OnboardingSection({ runId, arc, gold, mode }: { runId: string; arc: OnboardingArc | null; gold: OnboardingGold | null; mode: "live" | "review" }) {
   const review = mode === "review";
   return (
     <section className="mt-8 border border-trus-yellow/50 p-4">
@@ -398,7 +398,7 @@ function OnboardingSection({ runId, arc, mode }: { runId: string; arc: Onboardin
       </p>
       <div className="mt-3">
         {arc ? (
-          <OnboardingQuiz runId={runId} arc={arc} mode={mode} />
+          <OnboardingQuiz runId={runId} arc={arc} gold={gold} mode={mode} />
         ) : (
           <div className="flex flex-col gap-2">
             <RequestOnboardingButton runId={runId} />
@@ -436,13 +436,16 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   //   onboardingArc는 노출 창 전 구간(thumbnails_selected~published)에서 로드 — review 상태에서도 기존 아크를 복습 재생.
   //   그 외 상태는 호출 안 함(getRunDetail과 같은 admin 클라 경로 재사용).
   //   mustWatchRefs는 스크립트가 보이는 상태(SCRIPT_LOADED)에서만 로드 — 아크 payload의 경량 references(없으면 []).
-  const [rv, segments, cost, outlierRefs, onboardingArc, mustWatchRefs] = await Promise.all([
+  const [rv, segments, cost, outlierRefs, onboardingArc, onboardingGold, mustWatchRefs] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
     run.state === "thumbnails_proposed" ? getOutlierThumbnailRefs(run.id) : Promise.resolve([]),
     isOnboardingVisible(run.state)
       ? loadOnboardingArc(createAdminClient(), run.id)
+      : Promise.resolve(null),
+    isOnboardingVisible(run.state)
+      ? loadOnboardingGold(createAdminClient(), run.id)
       : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state)
       ? loadOnboardingReferences(createAdminClient(), run.id)
@@ -512,7 +515,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       ))}
 
       {/* 쏙이 온보딩 — 노출 창 전 구간(thumbnails_selected~published)에서 노출. live=구성 직전 / review=구성 이후 복습. 게이트 아님. */}
-      {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} mode={onbMode} />}
+      {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} gold={onboardingGold} mode={onbMode} />}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
       {/* 필수 시청 유튜브 영상 — 쏙이 아크 근거 3개(스크립트 위). refs 없으면 컴포넌트가 null 반환(패널 숨김). */}
