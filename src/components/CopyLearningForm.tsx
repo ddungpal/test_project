@@ -2,10 +2,11 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, requestChannelTitleRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
+import { saveCopyAbResults, requestCopyRelearn, requestChannelTitleRelearn, requestAnalogyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
 import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
 import type { AbVariantKey } from "@/performance/types";
-import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow, StructureProfile, StructureProfiles } from "@/lib/dashboard/copyLearnView";
+import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow, StructureProfile, StructureProfiles, AnalogyDraft } from "@/lib/dashboard/copyLearnView";
+import { analogyDraftSummary } from "@/lib/learning/analogyDraftSummary";
 import { numOrNull, parseViews24h } from "@/components/copyViewsParse";
 
 // 카피 학습 입력 화면(copy-learning-admin step2) — owner가 영상별 썸네일·제목 A/B + CTR(24h)를 입력→저장,
@@ -754,6 +755,166 @@ function StylePanel({ drafts }: { drafts: CopyStyleDraft[] }) {
   );
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// 비유 학습(analogist) — component 하나뿐이라 StylePanel 을 단일 component 로 간소화 미러.
+//   요약 라인은 analogyDraftSummary(순수 헬퍼·src/lib) 를 쓰고, 상세는 PatternNode·STATUS_LABEL·
+//   fmtDate 재사용(새 렌더러 금지). 재학습→검토→직접 활성화 흐름은 StylePanel 과 동일.
+// ─────────────────────────────────────────────────────────────────────────────
+
+// 비유 초안 1개 카드 — 요약 라인(analogyDraftSummary) + 키 칩 + '상세 보기' 토글(DraftCard 미러).
+//   AnalogyDraft 는 componentType 이 없어 DraftCard 를 그대로 못 써서 별도 카드로 둔다(렌더러는 재사용).
+function AnalogyDraftCard({ d }: { d: AnalogyDraft }) {
+  const [open, setOpen] = useState(false);
+  const summary = analogyDraftSummary(d.patterns);
+  return (
+    <li className="border border-trus-white/15 px-3 py-2">
+      <div className="flex items-center gap-2 text-xs text-trus-white/55">
+        <span className="font-bold text-trus-white">v{d.version ?? "—"}</span>
+        <span
+          className={
+            d.status === "active"
+              ? "border border-trus-yellow px-1.5 py-0.5 font-bold text-trus-yellow"
+              : "border border-trus-white/25 px-1.5 py-0.5 text-trus-white/55"
+          }
+        >
+          {STATUS_LABEL[d.status]}
+        </span>
+        <span className="ml-auto">{fmtDate(d.createdAt)}</span>
+      </div>
+
+      {summary.length > 0 ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-trus-white/70">
+          {summary.map((line, i) => (
+            <span key={i} className="border border-trus-white/20 px-1.5 py-0.5">
+              {line}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1 text-[11px] text-trus-white/35">요약할 비유 신호 없음</p>
+      )}
+
+      {d.patternKeys.length > 0 && (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1">
+          {d.patternKeys.map((k) => (
+            <span key={k} className="border border-trus-white/20 px-1.5 py-0.5 text-[11px] text-trus-white/70">
+              {k}
+            </span>
+          ))}
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            className="ml-auto text-[11px] font-bold text-trus-yellow/80 hover:text-trus-yellow"
+          >
+            {open ? "상세 접기 −" : "상세 보기 +"}
+          </button>
+        </div>
+      )}
+      {open && (
+        <div className="mt-2 border-t border-trus-white/10 pt-2">
+          <PatternNode value={d.patterns} />
+        </div>
+      )}
+    </li>
+  );
+}
+
+function AnalogyPanel({ drafts }: { drafts: AnalogyDraft[] }) {
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "relearn" | "activate">(null);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  // 재학습은 requestAnalogyRelearn 을 동기 await(STT→추출) 하므로 pending 이 학습 끝까지 유지된다.
+  //   완료 시 router.refresh() 로 새 초안 반영. StylePanel.run 미러.
+  function run(tag: "relearn" | "activate", fn: () => Promise<string>) {
+    setError(null);
+    setOk(null);
+    setBusy(tag);
+    startTransition(async () => {
+      try {
+        const msg = await fn();
+        setOk(msg);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "처리 실패");
+      } finally {
+        setBusy(null);
+      }
+    });
+  }
+
+  return (
+    <section className="border border-trus-white/20 p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-xs font-bold tracking-widest text-trus-yellow uppercase">비유 학습</h2>
+        <button
+          type="button"
+          onClick={() => run("relearn", async () => {
+            const r = await requestAnalogyRelearn();
+            if (r.created) {
+              return `비유 초안 v${r.version} 생성 (${r.transcribed}개 영상 학습). 아래에서 검토 후 활성화하세요.`;
+            }
+            if (r.transcribed === 0) {
+              return "learning/analogy-reels/ 에 mp4를 먼저 넣으세요.";
+            }
+            return `전사 ${r.transcribed}개 완료됐지만 비유 신호가 없어 초안 미생성.`;
+          })}
+          disabled={pending}
+          aria-busy={busy === "relearn"}
+          className="bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:opacity-50"
+        >
+          {busy === "relearn" ? "재학습 진행중… (수십 초~수 분)" : "비유 레퍼런스 재학습"}
+        </button>
+        {busy === "relearn" && (
+          <span className="inline-flex items-center gap-2 text-xs text-trus-yellow">
+            <span className="inline-block h-3 w-3 animate-spin border-2 border-trus-yellow border-t-transparent" aria-hidden />
+            학습 중 — 끝나면 자동 새로고침됩니다. 버튼을 다시 누르지 마세요.
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-xs text-trus-white/50">
+        <code className="text-trus-white/70">learning/analogy-reels/</code> 의 릴스를 전사(STT)해 <b className="text-trus-white/80">비유 초안(draft)</b>을 만든다.
+        첫 실행은 STT 때문에 수 분 걸릴 수 있다. 검토 후 <b className="text-trus-white/80">직접 활성화</b>한다(자동 활성화 없음).
+      </p>
+
+      <div className="mt-4 border border-trus-white/15 p-3">
+        <div className="flex items-baseline justify-between">
+          <h3 className="text-sm font-black text-trus-white">비유</h3>
+          <button
+            type="button"
+            onClick={() => run("activate", async () => {
+              const r = await activateCopyStyle("analogy");
+              return r.activated > 0 ? "비유 최신 초안을 활성화했어" : "비유 — 이미 활성(변경 없음)";
+            })}
+            disabled={pending || drafts.length === 0}
+            className="border border-trus-yellow px-3 py-1 text-xs font-bold text-trus-yellow hover:bg-trus-yellow hover:text-trus-black disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            최신 초안 활성화
+          </button>
+        </div>
+        {drafts.length === 0 ? (
+          <p className="mt-3 border border-dashed border-trus-white/15 px-3 py-4 text-center text-xs text-trus-white/35">
+            아직 초안 없음 — 재학습을 실행하세요
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {drafts.map((d) => (
+              <AnalogyDraftCard key={d.id} d={d} />
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {(ok || error) && (
+        <p className="mt-3 text-xs text-trus-yellow">{error ? `⚠ ${error}` : `✓ ${ok}`}</p>
+      )}
+    </section>
+  );
+}
+
 // ── 학습 영상 추가 카드 ──
 //   "행 만들기"만 한다 — 제목(필수) + 선택(youtube id·업로드일·썸네일 URL)로 createLearningVideo 호출.
 //   썸네일/제목 카피·CTR 입력은 여기서 안 함(생성 후 나타난 VideoCard 책임). VideoCard.onSave 의 error/ok 패턴 미러.
@@ -1105,10 +1266,12 @@ function CorrectionPanel({ corrections }: { corrections: CorrectionRow[] }) {
   );
 }
 
-export function CopyLearningForm({ videos, drafts, corrections, structure }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[]; structure: StructureProfiles }) {
+export function CopyLearningForm({ videos, drafts, corrections, structure, analogyDrafts }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[]; structure: StructureProfiles; analogyDrafts: AnalogyDraft[] }) {
   return (
     <div className="mt-8 flex flex-col gap-8">
       <StylePanel drafts={drafts} />
+
+      <AnalogyPanel drafts={analogyDrafts} />
 
       <StructurePanel structure={structure} />
 

@@ -22,3 +22,20 @@
 [리드] 조이, 검수 부탁해. 마이그·타입 드리프트·빈배열 required·draft만인지 위주로 봐줘.
 [Joy] 오케이! 마이그 기존 4종 그대로에 analogy_style만 붙었고, database.types도 같이 넓혔네~ 드리프트 0. required는 distortion_guard 하나뿐이라 critic 사건 안 밟아. draft만 넣고 activate 안 건드렸고 유이·fixture도 그대로야. AC 셋 다 exit 0! 통과 🎉
 [리드] 깔끔하다. 1라운드 PASS. Step 1 닫는다. 다음은 step2 트리거 버튼·활성화 UI.
+
+=== Step 2: copy-learn-trigger-and-activate-ui ===
+[리드] 이번엔 UI야. step1에서 백엔드(requestAnalogyRelearn·activateCopyStyle('analogy'))는 다 깔려있으니, /copy-learn 학습 허브에 '비유 레퍼런스 재학습' 버튼 + draft 요약 + 활성화 버튼만 붙이면 돼. 기존 StylePanel(썸네일/제목) 그대로 미러하는 거라 새 디자인은 없어. 맥스는 데이터층(getAnalogyDrafts 조회 + 요약 순수헬퍼 + 테스트) 맡고, 에스더는 패널 UI랑 page 배선 맡아줘. 별도 페이지 신설 금지 — 학습 허브 재사용이야.
+[리드] 맥스 먼저 시작. 조회 뷰랑 순수헬퍼 나와야 에스더가 패널 붙일 수 있어.
+[Max] 응 시작할게. getStructureProfiles/getCopyStyleDrafts 미러해서 getAnalogyDrafts 짜고, 요약 순수헬퍼는 src/lib/learning/analogyDraftSummary.ts에 따로 둘게. CopyStyleComponentType union엔 analogy_style 안 넣어 — 그거 넣으면 폼 typecheck 깨지는 거 주석에 있더라.
+[Max] 다 됐어. copyLearnView에 getAnalogyDrafts + AnalogyDraft export 넣었고, best-effort 폴백(조회 실패면 console.warn 후 [])도 getStructureProfiles 그대로 미러했어. CopyStyleComponentType엔 analogy_style 안 넣었고. 요약 헬퍼는 analogyDraftSummary(patterns)로 src/lib/learning에 뒀어 — 빈/깨진 입력은 [] 방어, 정상이면 기법 N개·친숙 영역 N개·장치 N개·금지 N개·왜곡 가드 ✓·신뢰도: 값 라인 뽑아.
+[Max] AC 다 통과. typecheck0, test 1306→1312(신규 6), build0. 떠돌이 파일 없어 — 딱 세 파일이야. 에스더가 쓸 export는 getAnalogyDrafts·AnalogyDraft·analogyDraftSummary. 놓친 거 있으면 말해줘.
+[Esther] 음.. 나 이제 시작할게. StylePanel이랑 DraftCard 다 읽었어. 비유는 component 하나뿐이라 AnalogyPanel로 간소화해서 미러할게. 요약 라인은 Max가 만든 analogyDraftSummary 그대로 쓰고.
+[Esther] AnalogyPanel 붙였어. StylePanel 톤 그대로 가되 비유는 component 하나라 활성화 버튼도 하나로 깔끔하게. 요약 라인을 칩으로 위에 먼저 보여주고 상세는 PatternNode 토글로. 색은 노랑/흰/검정 3색 직각만, 새 색 안 썼어. 이제 typecheck/test/build 돌려볼게.
+[Esther] 끝! typecheck 0, test 1312개 다 통과, build 0. 떠돌이 파일 없어(내가 만진 건 page.tsx랑 CopyLearningForm.tsx 둘뿐이야). 별도 페이지 없이 학습 허브에 비유 학습 섹션 딱 얹었어. 이건 자신 있어 😌
+
+[Joy] step2 검수 들어간다~ git diff부터 독립으로 훑어볼게!
+[Joy] 오 맥스 getAnalogyDrafts error때 console.warn 하고 빈배열 폴백까지 깔끔하네 마이그 안돼도 페이지 안 막히겠다 굿
+[Joy] 에스더 패널도 예뻐 TRUS 3색만 쓰고 rounded shadow 하나도 없어 활성화버튼 draft 없을때 disabled도 챙겼고 순수헬퍼 src/lib에 잘 뺐네 컴포넌트는 import만 완벽
+[Joy] CopyStyleComponentType union 안 건드린것도 확인 서버액션 유이 fixture 다 무변경 떠돌이 파일도 없어
+[Joy] AC 세개 내가 직접 다시 돌렸어 typecheck0 test 1312통과(비유헬퍼 6개 포함) build0 copy-learn 8.94kB 통과 🎉
+[리드] 깔끔하다. 1라운드 PASS. Step 2 닫는다. 이제 owner가 mp4 넣고 버튼 눌러 학습→검토→활성화까지 되네. 남은 건 step3 유이 프로필 주입 배선.

@@ -1,4 +1,4 @@
-import { getCopyLearnVideos, getCopyStyleDrafts, getCorrections, getStructureProfiles } from "@/lib/dashboard/copyLearnView";
+import { getCopyLearnVideos, getCopyStyleDrafts, getCorrections, getStructureProfiles, getAnalogyDrafts } from "@/lib/dashboard/copyLearnView";
 import { isDevBypass, requireOwnerPage } from "@/app/actions/auth";
 import { CopyLearningForm } from "@/components/CopyLearningForm";
 
@@ -8,11 +8,12 @@ export const dynamic = "force-dynamic";
 
 export default async function CopyLearnPage() {
   await requireOwnerPage();
-  const [videos, drafts, corrections, structure, devBypass] = await Promise.all([
+  const [videos, drafts, corrections, structure, analogyDrafts, devBypass] = await Promise.all([
     getCopyLearnVideos(),
     getCopyStyleDrafts(),
     getCorrections(),
     getStructureProfiles(),
+    getAnalogyDrafts(),
     isDevBypass(),
   ]);
 
@@ -32,7 +33,7 @@ export default async function CopyLearnPage() {
         검토 후 <b className="text-trus-white">직접 활성화</b>한 것만 다음 제작에 반영된다.
       </p>
 
-      <CopyLearningForm videos={videos} drafts={drafts} corrections={corrections} structure={structure} />
+      <CopyLearningForm videos={videos} drafts={drafts} corrections={corrections} structure={structure} analogyDrafts={analogyDrafts} />
     </main>
   );
 }

@@ -186,6 +186,54 @@ export async function getStructureProfiles(): Promise<StructureProfiles> {
   return { active, latestDraft };
 }
 
+// ── 비유(analogy_style) 스타일 draft 조회(analogy 뷰) — component_type='analogy_style'만 분리 로드. ──
+//   썸네일/제목(getCopyStyleDrafts)·구성(getStructureProfiles)과 다른 독립 타입. ⚠️ CopyStyleComponentType
+//   union 에 'analogy_style'을 넣지 않는다(넣으면 CopyLearningForm 의 Record<CopyStyleComponentType,...>
+//   typecheck 가 깨짐 — getStructureProfiles 가 이 이유로 분리된 것과 동일). getCopyStyleDrafts 의 최신순·
+//   perComponent 패턴 + getStructureProfiles/getCorrections 의 best-effort(try/warn→[]) 폴백 미러.
+//   (analogy_style CHECK 마이그 미적용 시에도 /copy-learn 전체가 막히지 않게.)
+
+export interface AnalogyDraft {
+  id: string;
+  version: number | null;
+  status: CopyStyleStatus;
+  createdAt: string;
+  patternKeys: string[]; // patterns(jsonb) 최상위 키 목록(요약). 빈/비객체면 [].
+  patterns: unknown; // patterns(jsonb) 원본 — UI 상세/요약 렌더용. 임의 구조라 렌더러가 안전 처리.
+}
+
+/**
+ * style_profiles 에서 component_type='analogy_style' 만 최신순(version desc)으로 최대 `limit`개(기본 5) 조회.
+ *   UI 가 검수·활성화 후보로 쓴다. 조회 실패(마이그 미적용·테이블 이슈)면 빈 목록 폴백(/copy-learn 보호).
+ */
+export async function getAnalogyDrafts(limit = 5): Promise<AnalogyDraft[]> {
+  const supa = createAdminClient();
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("id, version, status, patterns, created_at")
+    .eq("component_type", "analogy_style")
+    .order("version", { ascending: false, nullsFirst: false });
+  if (error) {
+    // analogy_style CHECK 마이그 미적용·테이블 이슈에도 페이지가 막히지 않게 빈 목록 폴백(getStructureProfiles 패턴 미러).
+    console.warn(`[analogy] style_profiles 조회 실패(빈 목록으로 처리 — 마이그레이션 미적용 가능): ${error.message}`);
+    return [];
+  }
+
+  const out: AnalogyDraft[] = [];
+  for (const r of data ?? []) {
+    if (out.length >= limit) break;
+    out.push({
+      id: r.id,
+      version: r.version,
+      status: r.status as CopyStyleStatus,
+      createdAt: r.created_at,
+      patternKeys: patternKeysOf(r.patterns),
+      patterns: r.patterns,
+    });
+  }
+  return out;
+}
+
 export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
   const supa = createAdminClient();
   const { data: contents, error } = await supa
