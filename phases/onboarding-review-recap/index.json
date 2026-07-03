@@ -1,0 +1,8 @@
+{
+  "project": "produce script",
+  "phase": "onboarding-review-recap",
+  "steps": [
+    { "step": 0, "name": "recap-helper", "status": "pending" },
+    { "step": 1, "name": "recap-ui", "status": "pending" }
+  ]
+}
