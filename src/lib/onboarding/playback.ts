@@ -20,6 +20,27 @@ export function initPlayback(arc: OnboardingArc): PlaybackState {
   return { arc, questionIdx: 0, revealed: false, answers: [] };
 }
 
+/**
+ * 저장된 응답(localStorage)으로 재생 상태를 복원 — 새로고침 후 이력 유지.
+ *   ★ arc는 항상 fresh prop을 쓴다(저장 arc는 안 씀 — 확장 아크와 드리프트 방지). answers만 복원.
+ *   - 범위 밖 questionIdx(아크 축소 등)는 방어적으로 버린다.
+ *   - 위치: 답한 문항 수 k 기준. k=0 → 처음부터. k≥total → 마지막 문항 공개(제출 가능). 0<k<total → 다음 미답 문항(미공개)에서 이어 풀기.
+ *   순수·throw 0.
+ */
+export function restorePlayback(arc: OnboardingArc, answers: ArcAnswer[]): PlaybackState {
+  const total = arc?.questions?.length ?? 0;
+  const valid = (answers ?? []).filter((a) => a.questionIdx >= 0 && a.questionIdx < total);
+  const k = valid.length;
+  if (k === 0) return initPlayback(arc);
+  const complete = k >= total;
+  return {
+    arc,
+    questionIdx: complete ? total - 1 : k,
+    revealed: complete,
+    answers: valid,
+  };
+}
+
 /** 현재 문항 반환(범위 밖이면 null·방어). 순수·throw 0. */
 export function currentQuestion(state: PlaybackState): ArcQuestion | null {
   const questions = state.arc?.questions ?? [];

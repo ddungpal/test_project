@@ -6,6 +6,7 @@ import type { ArcQuestion, OnboardingArc } from "../src/agents/onboarder/schema.
 import type { ArcAnswer } from "../src/lib/onboarding/arc.js";
 import {
   initPlayback,
+  restorePlayback,
   currentQuestion,
   totalQuestions,
   isLast,
@@ -46,6 +47,42 @@ describe("initPlayback", () => {
     expect(totalQuestions(s)).toBe(3);
     expect(currentQuestion(s)?.prompt).toBe("q1");
     expect(isLast(s)).toBe(false);
+  });
+});
+
+describe("restorePlayback — 새로고침 후 이력 복원", () => {
+  it("응답이 없으면 처음부터(initPlayback와 동일)", () => {
+    const s = restorePlayback(arc3(), []);
+    expect(s.questionIdx).toBe(0);
+    expect(isRevealed(s)).toBe(false);
+    expect(collectAnswers(s)).toEqual([]);
+  });
+
+  it("일부만 풀었으면 다음 미답 문항에서 이어 풀고, 푼 응답은 보존한다", () => {
+    const answers: ArcAnswer[] = [{ questionIdx: 0, chosenIdx: 0 }]; // q1만 풀었음
+    const s = restorePlayback(arc3(), answers);
+    expect(s.questionIdx).toBe(1); // q2로 이어감
+    expect(isRevealed(s)).toBe(false);
+    expect(collectAnswers(s)).toEqual(answers); // 이력 유지
+    expect(isComplete(s)).toBe(false);
+  });
+
+  it("다 풀었으면 마지막 문항 공개 상태(제출 가능)로 복원한다", () => {
+    const answers: ArcAnswer[] = [
+      { questionIdx: 0, chosenIdx: 0 },
+      { questionIdx: 1, chosenIdx: 1 },
+      { questionIdx: 2, chosenIdx: 2 },
+    ];
+    const s = restorePlayback(arc3(), answers);
+    expect(s.questionIdx).toBe(2);
+    expect(isComplete(s)).toBe(true); // 제출 버튼 노출 조건
+    expect(collectAnswers(s)).toEqual(answers);
+  });
+
+  it("범위 밖 응답(아크 축소 등)은 방어적으로 버린다", () => {
+    const answers: ArcAnswer[] = [{ questionIdx: 0, chosenIdx: 0 }, { questionIdx: 9, chosenIdx: 1 }];
+    const s = restorePlayback(arc3(), answers);
+    expect(collectAnswers(s)).toEqual([{ questionIdx: 0, chosenIdx: 0 }]);
   });
 });
 

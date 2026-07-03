@@ -15,6 +15,7 @@ import type { OnboardingArc, OnboardingGold } from "@/agents/onboarder/schema";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import {
   initPlayback,
+  restorePlayback,
   currentQuestion,
   chooseAnswer,
   next,
@@ -25,6 +26,7 @@ import {
   totalQuestions,
   type PlaybackState,
 } from "@/lib/onboarding/playback";
+import type { ArcAnswer } from "@/lib/onboarding/arc";
 import { buildRecap, recapScore } from "@/lib/onboarding/recap";
 import { MustWatchReferences } from "@/components/MustWatchReferences";
 import { submitOnboarding, requestOnboarding } from "@/app/actions/topicRun";
@@ -45,12 +47,52 @@ const HOOK_LABEL: Record<ArcHookMode, string> = {
 };
 
 // mode: live=구성 직전(금맥이 구다리로 넘어감) / review=구성 이후 복습(자동 반영 안 됨). 완료 문구만 분기, 재생·제출 로직은 동일.
+// 새로고침해도 푼 이력이 남도록 응답·완료 여부를 localStorage에 저장(runId 스코프). 서버는 집계된 금맥만 저장 —
+//   문항별 원응답은 어디에도 안 남으므로 클라 데이터 설계에 맞춰 브라우저에 보존한다. 파싱 실패·비활성 storage는 조용히 무시.
+const answersKey = (runId: string) => `onboarding:answers:${runId}`;
+
+function loadSaved(runId: string): { answers: ArcAnswer[]; done: boolean } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem(answersKey(runId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { answers?: ArcAnswer[]; done?: boolean };
+    return { answers: Array.isArray(parsed.answers) ? parsed.answers : [], done: !!parsed.done };
+  } catch {
+    return null;
+  }
+}
+
 export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: string; arc: OnboardingArc; gold?: OnboardingGold | null; mode?: "live" | "review" }) {
   const [state, setState] = useState<PlaybackState>(() => initPlayback(arc));
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
+
+  // 새로고침 복원 — SSR 미스매치 방지를 위해 마운트 후 effect에서만 읽는다(초기 렌더는 서버와 동일한 기본값).
+  //   restored가 true가 되기 전엔 저장 effect가 기본값으로 덮어쓰지 않도록 가드한다.
+  const [restored, setRestored] = useState(false);
+  useEffect(() => {
+    const saved = loadSaved(runId);
+    if (saved && saved.answers.length > 0) {
+      setState(restorePlayback(arc, saved.answers));
+      setDone(saved.done);
+    }
+    setRestored(true);
+    // arc은 의존성에서 제외 — 마운트 시 1회만 복원(확장 아크 이어붙이기는 아래 resume effect가 담당).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runId]);
+
+  // 응답·완료 여부 저장 — 복원 완료 후에만(초기 빈 상태로 저장분을 덮어쓰지 않도록).
+  useEffect(() => {
+    if (!restored || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(answersKey(runId), JSON.stringify({ answers: state.answers, done }));
+    } catch {
+      /* storage 비활성·용량초과 무시 */
+    }
+  }, [restored, runId, state.answers, done]);
 
   // 추가 문제(난이도 타겟) — 발행·폴링·타임아웃·에러. RequestOnboardingButton 미러.
   const [moreSubmitted, setMoreSubmitted] = useState(false);
