@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import { notFound } from "next/navigation";
 import { getRunDetail, type StageView } from "@/lib/dashboard/runDetail";
 import { getResearchView, type ResearchView } from "@/lib/dashboard/researchView";
@@ -537,11 +538,14 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       )}
 
       {PROPOSAL_STAGES.map((stage) => (
-        <StageSection key={stage} runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} outlierRefs={outlierRefs} />
+        <Fragment key={stage}>
+          {/* 쏙이 온보딩 — 파이프라인 진행 순서대로 구성(structure) 바로 앞에 노출. 노출 창(thumbnails_selected~published). live=구성 직전 / review=구성 이후 복습. 게이트 아님. */}
+          {stage === "structure" && isOnboardingVisible(run.state) && (
+            <OnboardingSection runId={run.id} arc={onboardingArc} gold={onboardingGold} mode={onbMode} retryableFailure={onboardingFailure} topicTitle={onboardingTopicTitle} />
+          )}
+          <StageSection runId={run.id} sv={stages[stage]} runState={run.state} topic={content.title || content.topic || ""} outlierRefs={outlierRefs} />
+        </Fragment>
       ))}
-
-      {/* 쏙이 온보딩 — 노출 창 전 구간(thumbnails_selected~published)에서 노출. live=구성 직전 / review=구성 이후 복습. 게이트 아님. */}
-      {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} gold={onboardingGold} mode={onbMode} retryableFailure={onboardingFailure} topicTitle={onboardingTopicTitle} />}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
       {/* 필수 시청 유튜브 영상 — 쏙이 아크 근거 3개(스크립트 위). refs 없으면 컴포넌트가 null 반환(패널 숨김). */}
