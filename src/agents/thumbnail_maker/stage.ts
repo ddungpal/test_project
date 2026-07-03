@@ -7,6 +7,7 @@ import { prepareThumbnailMaker, type ThumbnailMakerInput } from "./prepare.js";
 import { maxReferenceSimilarity } from "../hook_maker/referenceGuard.js";
 import { evaluateStyleConformance } from "../hook_maker/styleConformance.js";
 import { detectTopicMissing } from "./topicMissing.js";
+import { bothMainEndWithYo } from "./mainEndings.js";
 import type { ThumbnailStylePatterns } from "../style_extractor/schema.js";
 import type { ThumbnailMakerOutput } from "./schema.js";
 import { loadActiveThumbnailStyle } from "../shared/styleProfile.js";
@@ -28,6 +29,10 @@ function thumbnailToCandidates(out: ThumbnailMakerOutput, input?: unknown): Cand
   return out.candidates.map((c, idx) => {
     // ref_similarity: 썸네일 main을 join해 references와 비교(title 베낌 대신 카피 베낌 측정).
     const mainJoined = c.thumbnail_main.join(" ");
+    // 관측 로깅(강제 거부·재생성·payload 변경 없음): 두 메인문구가 둘 다 '~요' 종결이면 어미 단조 — 로그로만 표면화.
+    if (bothMainEndWithYo(c.thumbnail_main)) {
+      console.warn(`[썸네일 어미] main 2개가 둘 다 '요' 종결(idx=${idx}): ${JSON.stringify(c.thumbnail_main)}`);
+    }
     return {
       idx,
       payload: {
