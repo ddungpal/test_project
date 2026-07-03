@@ -11,7 +11,13 @@ export function MustWatchReferences({
   refs,
   heading = "📺 필수 시청 유튜브 영상",
 }: {
-  refs: { title: string; url: string; videoId: string }[];
+  refs: {
+    title: string;
+    url: string;
+    videoId: string;
+    viewCount?: number | null;
+    subscriberCount?: number | null;
+  }[];
   heading?: string; // 기본은 스크립트 단계 문구. done 화면 등에서 문구 구분 시 넘긴다(default = 기존 호출부 바이트 동일).
 }) {
   if (refs.length === 0) return null;
@@ -34,7 +40,23 @@ export function MustWatchReferences({
               }}
             />
           );
-          const title = <span className="text-sm text-trus-white/85">{ref.title}</span>;
+          // "잘 전달된 영상인지" 판단용 공개 통계 — 값 있는 것만 표시(구버전 아크·null이면 생략).
+          const stats = [
+            ref.viewCount != null && Number.isFinite(ref.viewCount)
+              ? `조회수 ${ref.viewCount.toLocaleString("ko-KR")}회`
+              : null,
+            ref.subscriberCount != null && Number.isFinite(ref.subscriberCount)
+              ? `구독자 ${ref.subscriberCount.toLocaleString("ko-KR")}명`
+              : null,
+          ].filter(Boolean);
+          const title = (
+            <span className="flex flex-col gap-0.5">
+              <span className="text-sm text-trus-white/85">{ref.title}</span>
+              {stats.length > 0 && (
+                <span className="text-xs text-trus-white/50">{stats.join(" · ")}</span>
+              )}
+            </span>
+          );
           return (
             <li key={i} className="flex items-center gap-3">
               {href ? (

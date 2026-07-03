@@ -176,7 +176,13 @@ export async function prepareOnboarder(supa: Supa, runId: string): Promise<Onboa
     const videoId = extractVideoId(item.url);
     if (!videoId) continue; // videoId 못 뽑으면 그 ref 스킵.
 
-    const ref: OnboarderReference = { title: item.title?.trim() ?? "", url: item.url, videoId };
+    const ref: OnboarderReference = {
+      title: item.title?.trim() ?? "",
+      url: item.url,
+      videoId,
+      viewCount: item.viewCount,
+      subscriberCount: item.subscriberCount,
+    };
 
     // (가) 자막 — best-effort(개별 실패 무시). URL에서 뽑은 videoId로 취득.
     try {

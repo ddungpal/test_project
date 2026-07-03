@@ -126,7 +126,13 @@ export async function runOnboarding(
   const generated = await onboarderStep(deps, runId, input);
 
   // 경량 references(title/url/videoId만)를 아크 payload에 병합해 저장 — 자막 전문·videoFacts는 저장 안 함(용량·입력 전용).
-  const references: ArcReference[] = (input.references ?? []).map((r) => ({ title: r.title, url: r.url, videoId: r.videoId }));
+  const references: ArcReference[] = (input.references ?? []).map((r) => ({
+    title: r.title,
+    url: r.url,
+    videoId: r.videoId,
+    viewCount: r.viewCount ?? null,
+    subscriberCount: r.subscriberCount ?? null,
+  }));
   const arc: OnboardingArc = { ...generated, references };
 
   const candidates = [{ idx: 0, payload: arc, reason: "온보딩 아크", evidence_ids: [] as string[] }];

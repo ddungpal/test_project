@@ -94,7 +94,7 @@ describe("runOnboarding INSERT — arc payload에 경량 references 병합(trans
       topic: "청년 자산",
       references: [
         { title: "파킹통장 TOP5", url: "https://youtube.com/watch?v=aaa", videoId: "aaa", transcript: "자막 전문 매우 김...", videoFacts: ["사실1", "사실2"] },
-        { title: "적금 이자 함정", url: "https://youtube.com/watch?v=bbb", videoId: "bbb", transcript: "또 다른 자막" },
+        { title: "적금 이자 함정", url: "https://youtube.com/watch?v=bbb", videoId: "bbb", viewCount: 123456, subscriberCount: 7890, transcript: "또 다른 자막" },
       ],
     }));
     const step = vi.fn(async () => ARC);
@@ -109,11 +109,13 @@ describe("runOnboarding INSERT — arc payload에 경량 references 병합(trans
     const cands = captured.insertedProposal?.candidates as { idx: number; payload: OnboardingArc }[];
     const savedRefs = cands[0]?.payload.references ?? [];
     expect(savedRefs.length).toBe(2);
-    // 경량 3필드만 — transcript/videoFacts는 저장 안 함.
-    expect(savedRefs[0]).toEqual({ title: "파킹통장 TOP5", url: "https://youtube.com/watch?v=aaa", videoId: "aaa" });
-    expect(Object.keys(savedRefs[0] as object).sort()).toEqual(["title", "url", "videoId"]);
+    // 경량 필드 — 표시용 3필드 + 공개 통계(viewCount/subscriberCount·입력에 없으면 null). transcript/videoFacts는 저장 안 함.
+    expect(savedRefs[0]).toEqual({ title: "파킹통장 TOP5", url: "https://youtube.com/watch?v=aaa", videoId: "aaa", viewCount: null, subscriberCount: null });
+    expect(Object.keys(savedRefs[0] as object).sort()).toEqual(["subscriberCount", "title", "url", "videoId", "viewCount"]);
     expect((savedRefs[0] as Record<string, unknown>).transcript).toBeUndefined();
     expect((savedRefs[0] as Record<string, unknown>).videoFacts).toBeUndefined();
+    // 공개 통계는 있으면 그대로 저장(잘 전달된 영상인지 표시용).
+    expect(savedRefs[1]).toMatchObject({ videoId: "bbb", viewCount: 123456, subscriberCount: 7890 });
     // 반환 arc에도 동일하게 반영(payload 미러).
     expect(res.arc.references?.length).toBe(2);
 

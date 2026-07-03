@@ -19,7 +19,14 @@ export type ArcQuestion = {
 };
 
 // 아크 payload에 저장하는 경량 레퍼런스(필수 시청 영상 표시용). 자막 전문·videoFacts는 저장 안 함(용량·입력 전용).
-export type ArcReference = { title: string; url: string; videoId: string };
+//   viewCount·subscriberCount: "잘 전달된 영상인지" 판단용 공개 통계(값 없거나 구버전 아크면 생략 → UI 미표시).
+export type ArcReference = {
+  title: string;
+  url: string;
+  videoId: string;
+  viewCount?: number | null;
+  subscriberCount?: number | null;
+};
 
 // references는 optional·하위호환(step1 이전 아크엔 없음 — 로드 시 references ?? []).
 export type OnboardingArc = { questions: ArcQuestion[]; coreAngle: string; references?: ArcReference[] };
@@ -29,6 +36,8 @@ export type OnboarderReference = {
   title: string;
   url: string;
   videoId: string;
+  viewCount?: number | null;
+  subscriberCount?: number | null;
   transcript?: string;
   videoFacts?: string[];
 };
