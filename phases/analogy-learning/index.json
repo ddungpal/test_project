@@ -23,7 +23,11 @@
     {
       "step": 2,
       "name": "copy-learn-trigger-and-activate-ui",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-04T00:25:17+0900",
+      "summary": "/copy-learn 학습 허브에 비유 재학습 UI 편입(별도 페이지 없음·기존 StylePanel 미러). ① copyLearnView.ts에 getAnalogyDrafts(limit=5) 추가 — component_type='analogy_style'만 version desc 조회·조회 error 시 console.warn→[] best-effort 폴백(analogy_style CHECK 마이그 미적용에도 페이지 안 막힘·getStructureProfiles 패턴). AnalogyDraft 인터페이스 export({id,version,status,createdAt,patternKeys,patterns}·componentType 제외). ⚠️CopyStyleComponentType union엔 analogy_style 안 넣음(Record<CopyStyleComponentType> typecheck 보호). ② 순수헬퍼 src/lib/learning/analogyDraftSummary.ts 신규 — analogyDraftSummary(unknown)→표시라인[](null/비객체/배열/비문자열 전부 방어·정상이면 '기법 N개·친숙 영역 N개·장치 N개·금지 N개·왜곡 가드 ✓·신뢰도:값'). tests/analogyDraftSummary.test.ts 6케이스. ③ CopyLearningForm.tsx에 AnalogyPanel(StylePanel 미러·단일 component) + AnalogyDraftCard(요약라인 칩+PatternNode·STATUS_LABEL·fmtDate 재사용·새 렌더러 금지) 추가: '비유 레퍼런스 재학습'→requestAnalogyRelearn()(created/폴더빔transcribed0/신호없음 3분기 안내·스피너·aria-busy·router.refresh), '최신 초안 활성화'→activateCopyStyle('analogy')(draft 없으면 disabled). ④ page.tsx Promise.all에 getAnalogyDrafts 추가·CopyLearningForm에 analogyDrafts 전달. 서버액션·유이·analogy_extractor·fixture 무변경(promptHash 보존). TRUS 3색·직각·그림자0. AC: typecheck0·test 1306→1312(+6)·build0(/copy-learn 8.94kB). 떠돌이 없음. ⚠️미완=실 브라우저 라이브검증(mp4 넣고 재학습→초안→활성화 실동작·phase 후 사용자).",
+      "completed_at": "2026-07-04T00:39:45+0900"
     },
     {
       "step": 3,
