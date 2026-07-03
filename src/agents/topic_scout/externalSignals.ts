@@ -78,6 +78,26 @@ export function rankExternalByMultiplier(items: ExternalItem[], n: number, floor
   return withMult.slice(0, n).map((w) => w.it);
 }
 
+// ExternalItem을 절대 조회수 desc로 정렬해 상위 n — 근거 영상용("많이 본 = 잘 전달됨"). 순수·결정적·입력 비변형([...items].sort).
+//   정렬 우선순위:
+//     viewCount desc → viewCount null(미상)은 -Infinity로 후순위
+//     → tie는 subscriberCount desc(null은 -Infinity) → 최종 tie는 id asc(안정).
+//   ★ rankExternalByMultiplier(배수·발굴용)와 목표가 정반대 — 그건 채널 규모 대비 바이럴(초소형 고배수 우선),
+//     이건 절대 조회수(잘 전달된 영상). 발굴·hook_maker가 배수 랭커를 쓰므로 그건 삭제·변경 금지.
+export function rankExternalByViews(items: ExternalItem[], n: number): ExternalItem[] {
+  return [...items]
+    .sort((a, b) => {
+      const av = a.viewCount ?? -Infinity;
+      const bv = b.viewCount ?? -Infinity;
+      if (av !== bv) return bv - av;
+      const as = a.subscriberCount ?? -Infinity;
+      const bs = b.subscriberCount ?? -Infinity;
+      if (as !== bs) return bs - as;
+      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
+    })
+    .slice(0, n);
+}
+
 // youtube ExternalItem을 sourceQuery(테마)별로 고르게 분산해 상위 n. 순수·결정적(입력 비변형).
 //   각 테마(sourceQuery) 그룹 내부는 rankExternalByMultiplier 동일 정렬(배수 desc) → 테마들을
 //   라운드로빈(테마1 1위, 테마2 1위, 테마3 1위, 테마1 2위 …)으로 번갈아 pick → n 슬롯이 한 테마에
@@ -276,7 +296,8 @@ export async function searchYouTube(query: string, max: number): Promise<Omit<Ex
     //   기본 호출은 max=5라도 각 패스 10을 받고, 2패스 union이라 풀이 충분히 커진다.
     // ponytail: 2-pass search = 200 quota/call; single-pass if quota tight.
     //   한 패스 실패해도 나머지로 진행(throw 안 함). 둘 다 실패하면 기존 정책대로 throw(콜러가 try/catch로 무시).
-    const perPass = Math.min(Math.max(max, 10), 10); // 사실상 10 천장 — quota·토큰 폭증 방지(명세: 50 등 과도 금지).
+    const perPass = Math.min(Math.max(max, 10), 20); // 사실상 20 천장 — caller가 max>10을 요청할 때만 늘어난다(참조 경로 maxPerQuery=20).
+    //   search.list quota는 결과 수와 무관하게 호출당 고정(100유닛)이라 quota 증가 0. 발굴 경로(maxPerQuery≤5)는 여전히 10.
     const settled = await Promise.allSettled([
       searchPass(query, perPass, "relevance", key),
       searchPass(query, perPass, "viewCount", key),

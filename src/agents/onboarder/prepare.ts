@@ -3,12 +3,11 @@
 //   (가) 레퍼런스 영상 자막(fetchTranscript) + (나) 영상이 쓴 숫자/사실 스니펫(videoFacts, 미검증).
 //   ★ best-effort(throw 0): topic·영상·자막 부재 어느 것도 크래시시키지 않는다. topic이 없어도 {topic:""} 반환.
 //   ★ 셜록/검증 파이프라인 절대 호출·신설 금지 — 이 시점 사실은 "영상 자체 주장"(미검증). 진짜 검증은 구다리 뒤 셜록 몫(시퀀싱).
-//   ★ 레퍼런스 수집은 topic_scout/externalSignals.gatherExternalSignals를 재사용(재구현 금지). FLOOR_SUBS는 hook_maker에서 재사용.
+//   ★ 레퍼런스 수집은 topic_scout/externalSignals.gatherExternalSignals를 재사용(재구현 금지). 랭킹은 절대 조회수(rankExternalByViews).
 //   ★ 조건부 주입(픽스처 보존): 값 없으면 키 자체를 넣지 않는다(undefined 필드 생략).
 import type { Supa } from "../../pipeline/runState.js";
 import { getSelectedStagePayload } from "../../pipeline/context.js";
-import { gatherExternalSignals, rankExternalByMultiplier, YouTubeQuotaError, type ExternalItem } from "../topic_scout/externalSignals.js";
-import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
+import { gatherExternalSignals, rankExternalByViews, YouTubeQuotaError, type ExternalItem } from "../topic_scout/externalSignals.js";
 import { fetchTranscript } from "../../lib/onboarding/transcript.js";
 import type { OnboarderInput, OnboarderReference, ArcReference } from "./schema.js";
 
@@ -52,18 +51,34 @@ export function buildVideoFacts(ref: ExternalItem): string[] {
   return facts;
 }
 
-/** youtube 소스 & viewCount 있는 레퍼런스 중 배수/조회수 상위 n개(rankExternalByMultiplier 재사용). 순수(throw 0).
- *   기존 pickTopReference(단일) 필터 로직 계승 — eligible = youtube & viewCount != null. FLOOR_SUBS 하한 적용. */
+/** youtube 소스 & viewCount 있는 레퍼런스 중 절대 조회수 상위 n개(rankExternalByViews 재사용). 순수(throw 0).
+ *   eligible = youtube & viewCount != null. 근거 영상은 "많이 본 = 잘 전달됨" — 배수(발굴용)가 아니라 조회수 desc. */
 export function pickTopReferences(items: ExternalItem[], n = 3): ExternalItem[] {
   const eligible = items.filter((it) => it.source === "youtube" && it.viewCount != null);
-  return rankExternalByMultiplier(eligible, n, FLOOR_SUBS);
+  return rankExternalByViews(eligible, n);
 }
 
 const REF_TARGET = 3; // 목표 레퍼런스 수.
 
-/** 검색어 완화 — topic을 공백 기준 앞 절반(최소 1토큰) 핵심 키워드로 줄인다. 순수(throw 0). */
-function relaxQuery(topic: string): string {
-  const tokens = topic.trim().split(/\s+/).filter(Boolean);
+/** 참조 검색용 쿼리 정제 — 주제 제목에서 핵심 키워드만 남긴다(주제 문장 통째는 API relevance가 낮음). 순수·throw 0.
+ *   1) 대괄호[..]·소괄호(..) 세그먼트([EP.65]·(사연편)) 제거. 2) 첫 구분자(',' '|' 개행) 앞 절만 유지.
+ *   3) 앞뒤 따옴표·후행 문장부호(?!.…~)·잉여 공백 정리. 4) 결과가 2자 미만이면 원 제목(trim) 폴백.
+ *   예: "커버드콜 ETF, 배당 진짜 나올까? [EP.65]" → "커버드콜 ETF". */
+export function refYouTubeQuery(topicTitle: string): string {
+  const raw = (topicTitle ?? "").trim();
+  let s = raw
+    .replace(/\[[^\]]*\]/g, " ") // 대괄호 세그먼트 제거
+    .replace(/\([^)]*\)/g, " "); // 소괄호 세그먼트 제거
+  s = s.split(/[,|\n]/)[0] ?? s; // 첫 구분자 앞 절만
+  s = s.replace(/["'“”‘’]/g, " "); // 따옴표 제거
+  s = s.replace(/[?!.…~]+$/g, ""); // 후행 문장부호 제거
+  s = s.replace(/\s+/g, " ").trim(); // 잉여 공백 정리
+  return s.length >= 2 ? s : raw; // 너무 짧으면 원 제목 폴백
+}
+
+/** 검색어 완화 — 정제 쿼리 q를 공백 기준 앞 절반(최소 1토큰) 핵심 키워드로 줄인다. 순수(throw 0). */
+function relaxQuery(q: string): string {
+  const tokens = q.trim().split(/\s+/).filter(Boolean);
   if (tokens.length <= 1) return tokens.join(" ");
   const half = Math.max(1, Math.ceil(tokens.length / 2));
   return tokens.slice(0, half).join(" ");
@@ -72,22 +87,24 @@ function relaxQuery(topic: string): string {
 /**
  * 주제 문자열로 레퍼런스 영상들을 수집(gatherExternalSignals 재사용) — 최대 REF_TARGET개.
  *   ★ 개별 수집(각 gather 호출) 실패는 try/catch로 삼킨다(best-effort). 최종 0개 판정·throw는 콜러(prepareOnboarder) 몫.
+ *   ★ 근거 영상은 절대 조회수 랭킹(rankExternalByViews) — 배수(발굴용)가 아니다. FLOOR_SUBS 무관(하한 재랭킹 단계 없음).
  *   점진 완화(각 단계에서 REF_TARGET 채워지면 즉시 중단·quota 절약):
- *     0) 기본: gather(topic, 10) → pickTopReferences(items, 3)  [FLOOR_SUBS·viewCount 필터]
- *     (a) FLOOR_SUBS 하한 제거: 이미 모은 items 재랭킹(rankExternalByMultiplier floorSubs=0) — 재검색 없음.
- *     (b) viewCount 필터 제거: eligible = youtube 전부(viewCount null 포함) 재랭킹 — 재검색 없음.
- *     (c) 검색어 완화: relaxQuery(topic)로 재검색 → viewCount 필터만(floorSubs=0)로 랭킹.
+ *     0) 기본: q=refYouTubeQuery(topic)로 gather(q, 20) → pickTopReferences(items, 3)  [조회수 랭킹·viewCount 필터]
+ *     (b) viewCount 필터 제거: youtube 전부(viewCount null 포함) rankExternalByViews 재랭킹 — 재검색 없음.
+ *     (c) 검색어 완화: relaxQuery(q)로 재검색 → url dedup 병합 → rankExternalByViews.
  */
 export async function gatherReferences(topic: string): Promise<ExternalItem[]> {
   if (!topic.trim()) return [];
 
-  // 0) 기본 수집.
+  const q = refYouTubeQuery(topic); // ② 제목 → 핵심 키워드 정제.
+
+  // 0) 기본 수집(정제 쿼리·풀 20).
   let items: ExternalItem[] = [];
   try {
     items = await gatherExternalSignals({
       webQueries: [],
-      ytQuery: topic,
-      maxPerQuery: 10,
+      ytQuery: q,
+      maxPerQuery: 20,
       volatility: "slow",
       throwOnYtQuota: true, // 온보더는 429를 삼키지 않는다 — "레퍼런스 없음" 오인 방지(콜러가 재시도 안내로 승격).
     });
@@ -101,24 +118,19 @@ export async function gatherReferences(topic: string): Promise<ExternalItem[]> {
   let refs = pickTopReferences(items, REF_TARGET);
   if (refs.length >= REF_TARGET) return refs;
 
-  // (a) FLOOR_SUBS 하한 제거 — 이미 모은 items 재랭킹(재검색 없음).
-  const ytWithViews = items.filter((it) => it.source === "youtube" && it.viewCount != null);
-  refs = rankExternalByMultiplier(ytWithViews, REF_TARGET, 0);
-  if (refs.length >= REF_TARGET) return refs;
-
-  // (b) viewCount 필터 제거 — youtube 전부(viewCount null 포함) 재랭킹(재검색 없음).
+  // (b) viewCount 필터 제거 — youtube 전부(viewCount null 포함) 조회수 재랭킹(재검색 없음).
   const ytAll = items.filter((it) => it.source === "youtube");
-  refs = rankExternalByMultiplier(ytAll, REF_TARGET, 0);
+  refs = rankExternalByViews(ytAll, REF_TARGET);
   if (refs.length >= REF_TARGET) return refs;
 
-  // (c) 검색어 완화 — 재검색(quota 사용). 원래 topic과 완화어가 같으면(1토큰 등) 재검색 스킵.
-  const relaxed = relaxQuery(topic);
-  if (relaxed && relaxed !== topic.trim()) {
+  // (c) 검색어 완화 — 재검색(quota 사용). 정제 쿼리 q와 완화어가 같으면(1토큰 등) 재검색 스킵.
+  const relaxed = relaxQuery(q);
+  if (relaxed && relaxed !== q) {
     try {
       const more = await gatherExternalSignals({
         webQueries: [],
         ytQuery: relaxed,
-        maxPerQuery: 10,
+        maxPerQuery: 20,
         volatility: "slow",
         throwOnYtQuota: true, // 완화 재검색도 429는 전파 대상.
       });
@@ -131,7 +143,7 @@ export async function gatherReferences(topic: string): Promise<ExternalItem[]> {
         if (it.url) seen.add(it.url);
         merged.push(it);
       }
-      refs = rankExternalByMultiplier(merged, REF_TARGET, 0);
+      refs = rankExternalByViews(merged, REF_TARGET);
     } catch (e) {
       // (c)는 이미 (0)에서 refs를 일부 모았을 수 있다 — quota여도 손에 든 refs가 있으면 그걸 반환(재시도 승격 대신).
       //   진짜 "0개인데 quota"일 때만 신호를 살려 전파(콜러가 재시도 안내로 승격).
