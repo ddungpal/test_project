@@ -22,3 +22,19 @@
 [Joy] 오 index.json step0 completed로 딱 바뀌었고 summary도 근본버그 내용까지 알차게 들어갔다 굿굿 떠돌이 부산물도 없이 깔끔해 이제 진짜 통과야 다음 step1 가자 축하해 맥스
 [Joy] 오 리드 빠르다~ index.json completed+summary 확인했고 git status도 깨끗해. 코드는 진작 흠 없었고. 통과! 🎉
 [리드] 좋아, Step 0 완료. 근본 픽스 잠갔다. index.json completed로 마감.
+
+=== Step 1: regenerate-action-and-staleness-helper ===
+
+[리드] 맥스, step1 백엔드 배선 부탁해. 세 가지야 — (A) topicRun.ts에 regenerateOnboarding(runId) 액션 추가(requestOnboarding 바로 아래·force:true), (B) OnboardingArc에 sourceTopicTitle 저장, (C) src/lib/onboarding/staleness.ts에 isOnboardingArcStale 순수헬퍼 + 테스트. requestOnboarding·난이도·normalizeArc는 절대 건드리지 마.
+
+[Max] step1 시작할게. 재생성 액션이랑 stale 헬퍼 배선만. 테스트부터 쓸게.
+
+[Max] 다 해놨어. regenerateOnboarding 액션이랑 stale 헬퍼(isOnboardingArcStale) 배선했고, 아크에 sourceTopicTitle 저장해서 주제 바뀐 걸 판정할 수 있게 했어. normalizeArc는 안 건드렸고 소스주제는 runOnboarding에서 붙여. typecheck·test 1289·build 다 통과. 놓친 거 있으면 말해줘.
+
+[Joy] 나 검수 들어간다~ git diff랑 신규파일 두 개 읽었어. regenerateOnboarding 액션 requireOwner 붙었고 force:true로 이벤트 쏘네. StageData.force도 client.ts에 이미 있어서 스키마 무변경 굿
+[Joy] sourceTopicTitle 저장 자리 references랑 나란히 붙였고 loadOnboardingArc가 payload 통짜로 로드해서(normalizeArc 재적용 안 함) 로드때도 안 날아가. appendOnboardingQuestions도 {...existing} spread라 자동 보존 확인. normalizeArc 진짜 안 건드렸네
+[Joy] staleness 헬퍼 순수하고 throw 0, 구버전 아크(sourceTopicTitle 없음) false로 오경보 안 내는거 테스트로도 딱 잡았어. 이제 AC 3종 돌려볼게
+
+[Joy] AC 3종 다 초록불이야 typecheck exit 0, test 1289 전부 통과(신규 staleness 5케이스 포함), build exit 0. database.types는 jsonb payload라 손댈 필요 없고 실제로 안 건드렸어. 떠돌이 fixtures도 0, untracked는 명세에 있는 staleness.ts랑 테스트 딱 두 개
+[Joy] requestOnboarding 시그니처랑 난이도(more) 경로 무변경, normalizeArc도 그대로, loadOnboardingArc가 payload 통짜 로드라 sourceTopicTitle 로드때도 살아있어. 배선 완벽하다 맥스 통과야 🎉
+[리드] 좋아 통과. AC는 나도 직접 돌려서 exit 0 확인했고. index.json step1 completed로 마감, team_round 1/3 PASS. 수고했어 둘 다. UI(재생성 버튼·stale 배너)는 step2에서 얹는다.

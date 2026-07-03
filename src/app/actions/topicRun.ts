@@ -210,6 +210,12 @@ export async function requestOnboarding(runId: string, more?: { difficulty: ArcD
   await inngest.send({ name: "run/onboarding.requested", data: { runId, ...(more ? { more } : {}) } });
 }
 
+// 온보딩 아크 강제 재생성 — force로 캐시 우회. requestOnboarding 미러(requireOwner→이벤트).
+export async function regenerateOnboarding(runId: string): Promise<void> {
+  await requireOwner();
+  await inngest.send({ name: "run/onboarding.requested", data: { runId, force: true } });
+}
+
 // 쏙이 온보딩 응답 제출 — 저장된 아크 로드 → extractGold(순수) → 금맥 저장(온디맨드·게이트 아님).
 //   requireOwner 게이트. 아크 없으면 throw(먼저 "이해하기" 실행 필요). audit best-effort.
 export async function submitOnboarding(runId: string, answers: ArcAnswer[]): Promise<void> {

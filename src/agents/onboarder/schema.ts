@@ -29,8 +29,8 @@ export type ArcReference = {
   subscriberCount?: number | null;
 };
 
-// references는 optional·하위호환(step1 이전 아크엔 없음 — 로드 시 references ?? []).
-export type OnboardingArc = { questions: ArcQuestion[]; coreAngle: string; references?: ArcReference[] };
+// references·sourceTopicTitle는 optional·하위호환(구버전 아크엔 없음 — sourceTopicTitle 없으면 stale 판정 안 함).
+export type OnboardingArc = { questions: ArcQuestion[]; coreAngle: string; references?: ArcReference[]; sourceTopicTitle?: string };
 
 // 개별 레퍼런스 영상(자막·미검증 사실은 각 영상별로). transcript/videoFacts는 값 없으면 키 생략(조건부 주입).
 export type OnboarderReference = {

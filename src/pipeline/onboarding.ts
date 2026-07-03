@@ -133,7 +133,8 @@ export async function runOnboarding(
     viewCount: r.viewCount ?? null,
     subscriberCount: r.subscriberCount ?? null,
   }));
-  const arc: OnboardingArc = { ...generated, references };
+  // sourceTopicTitle: 이 아크가 어느 주제로 만들어졌는지 기록(주제 변경 stale 판정용·isOnboardingArcStale). 빈 문자열도 그대로 저장.
+  const arc: OnboardingArc = { ...generated, references, sourceTopicTitle: input.topic };
 
   const candidates = [{ idx: 0, payload: arc, reason: "온보딩 아크", evidence_ids: [] as string[] }];
   const { error } = await supa
