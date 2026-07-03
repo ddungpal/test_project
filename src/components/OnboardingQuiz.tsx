@@ -27,7 +27,7 @@ import {
   type PlaybackState,
 } from "@/lib/onboarding/playback";
 import type { ArcAnswer } from "@/lib/onboarding/arc";
-import { buildRecap, recapScore } from "@/lib/onboarding/recap";
+import { buildRecap, recapScore, clampRecapIndex } from "@/lib/onboarding/recap";
 import { MustWatchReferences } from "@/components/MustWatchReferences";
 import { submitOnboarding, requestOnboarding } from "@/app/actions/topicRun";
 
@@ -99,6 +99,8 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
   const [moreSubmitted, setMoreSubmitted] = useState(false);
   const [moreTimedOut, setMoreTimedOut] = useState(false);
   const [moreError, setMoreError] = useState<string | null>(null);
+  // 내 풀이 다시 보기 — 단일 문항 페이저 현재 인덱스(clampRecapIndex로 방어).
+  const [recapIdx, setRecapIdx] = useState(0);
   const [morePending, startMoreTransition] = useTransition();
   // 처음 문항 수 기억 — 확장 아크가 도착해 더 커지면 이어붙은 문항부터 재생한다.
   const prevLenRef = useRef(totalQuestions(state));
@@ -218,9 +220,13 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
                 <span className="text-trus-white/40"> / {total} 맞힘</span>
               </span>
             </summary>
-            <div className="mt-3 flex flex-col divide-y divide-trus-white/10">
-                {rows.map((row, ri) => (
-                  <div key={ri} className="flex flex-col gap-2 pt-4 first:pt-0">
+            {/* 단일 문항 페이저 — rows를 나열하지 않고 한 문항씩. cur는 rows 길이 변화(추가 문제)에도 clamp로 방어. */}
+            {(() => {
+              const cur = clampRecapIndex(recapIdx, rows.length);
+              const row = rows[cur]!;
+              return (
+                <div className="mt-3 flex flex-col gap-3">
+                  <div className="flex flex-col gap-2">
                     {/* 질문 + difficulty 배지(HOOK_LABEL 배지 톤 미러) */}
                     <div className="flex items-start gap-2">
                       <span className="mt-0.5 shrink-0 border border-trus-white/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-trus-white/50">
@@ -270,8 +276,33 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
                       <p className="mt-1 text-sm leading-relaxed text-trus-white/90">{row.question.ahaReveal}</p>
                     </div>
                   </div>
-                ))}
-            </div>
+                  {/* 페이저 컨트롤 — 이전/다음(clamp 방어)·가운데 n/총N 인디케이터. */}
+                  <div className="flex items-center justify-between gap-3 border-t border-trus-white/10 pt-3">
+                    <button
+                      type="button"
+                      onClick={() => setRecapIdx((i) => clampRecapIndex(i - 1, rows.length))}
+                      disabled={cur <= 0}
+                      aria-label="이전 문항"
+                      className="border border-trus-white/30 px-3 py-1.5 text-sm font-bold text-trus-white/85 hover:border-trus-yellow hover:text-trus-yellow disabled:cursor-default disabled:opacity-40 disabled:hover:border-trus-white/30 disabled:hover:text-trus-white/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trus-yellow"
+                    >
+                      이전
+                    </button>
+                    <span className="shrink-0 text-[10px] font-bold tracking-widest text-trus-white/50">
+                      {cur + 1} / {rows.length}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setRecapIdx((i) => clampRecapIndex(i + 1, rows.length))}
+                      disabled={cur >= rows.length - 1}
+                      aria-label="다음 문항"
+                      className="border border-trus-white/30 px-3 py-1.5 text-sm font-bold text-trus-white/85 hover:border-trus-yellow hover:text-trus-yellow disabled:cursor-default disabled:opacity-40 disabled:hover:border-trus-white/30 disabled:hover:text-trus-white/85 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-trus-yellow"
+                    >
+                      다음
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </details>
         )}
 

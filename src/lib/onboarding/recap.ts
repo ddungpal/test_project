@@ -51,3 +51,13 @@ export function recapScore(rows: RecapRow[]): { correct: number; total: number }
   }
   return { correct, total: list.length };
 }
+
+/** 페이저 인덱스를 [0, total-1]로 클램프. total<=0이면 0. NaN도 0. 순수·throw 0. */
+export function clampRecapIndex(idx: number, total: number): number {
+  if (!Number.isFinite(idx)) return 0;
+  if (total <= 0) return 0;
+  if (idx < 0) return 0;
+  const i = Math.trunc(idx);
+  if (i >= total) return total - 1;
+  return i;
+}

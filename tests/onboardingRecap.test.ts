@@ -5,7 +5,7 @@
 import { describe, it, expect } from "vitest";
 import type { ArcQuestion, OnboardingArc } from "../src/agents/onboarder/schema.js";
 import type { ArcAnswer } from "../src/lib/onboarding/arc.js";
-import { buildRecap, recapScore, type RecapRow } from "../src/lib/onboarding/recap.js";
+import { buildRecap, recapScore, clampRecapIndex, type RecapRow } from "../src/lib/onboarding/recap.js";
 
 function q(over: Partial<ArcQuestion> = {}): ArcQuestion {
   return {
@@ -138,5 +138,40 @@ describe("recapScore — correct/total 집계", () => {
 
   it("빈 행은 correct 0·total 0", () => {
     expect(recapScore([])).toEqual({ correct: 0, total: 0 });
+  });
+});
+
+describe("clampRecapIndex — 페이저 인덱스 클램프", () => {
+  it("total<=0이면 항상 0", () => {
+    expect(clampRecapIndex(0, 0)).toBe(0);
+    expect(clampRecapIndex(3, 0)).toBe(0);
+    expect(clampRecapIndex(2, -5)).toBe(0);
+  });
+
+  it("음수 idx는 0으로", () => {
+    expect(clampRecapIndex(-1, 5)).toBe(0);
+    expect(clampRecapIndex(-99, 5)).toBe(0);
+  });
+
+  it("idx>=total이면 total-1로", () => {
+    expect(clampRecapIndex(5, 5)).toBe(4);
+    expect(clampRecapIndex(99, 3)).toBe(2);
+  });
+
+  it("정상 범위는 그대로", () => {
+    expect(clampRecapIndex(0, 5)).toBe(0);
+    expect(clampRecapIndex(2, 5)).toBe(2);
+    expect(clampRecapIndex(4, 5)).toBe(4);
+  });
+
+  it("NaN·Infinity는 0", () => {
+    expect(clampRecapIndex(NaN, 5)).toBe(0);
+    expect(clampRecapIndex(Infinity, 5)).toBe(0);
+    expect(clampRecapIndex(-Infinity, 5)).toBe(0);
+  });
+
+  it("정수 아닌 값은 trunc(버림)", () => {
+    expect(clampRecapIndex(1.9, 5)).toBe(1);
+    expect(clampRecapIndex(2.1, 5)).toBe(2);
   });
 });
