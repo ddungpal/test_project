@@ -30,7 +30,10 @@ describe("normalizeArc", () => {
     expect(arc).not.toBeNull();
     expect(arc!.coreAngle).toBe("핵심 앵글");
     expect(arc!.questions).toHaveLength(2);
-    expect(arc!.questions[0]!.answerIdx).toBe(1);
+    // ★ normalizeArc는 저장 전 결정적 셔플(shuffleChoices)을 적용 → answerIdx 위치는 이동할 수 있다.
+    //   불변식은 "정답 내용 보존" — 원래 정답 choice(p1='b', p2='c')를 여전히 answerIdx가 가리킨다.
+    expect(arc!.questions[0]!.choices[arc!.questions[0]!.answerIdx]).toBe("b");
+    expect(arc!.questions[1]!.choices[arc!.questions[1]!.answerIdx]).toBe("c");
   });
 
   it("questions가 1개 미만이면 null 드랍", () => {

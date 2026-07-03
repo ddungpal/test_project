@@ -3,6 +3,7 @@
 //   ★ stray 내성: comparator 패턴 미러 — 루트·items 모두 additionalProperties:true(claude-p stray 결정적 실패 방지).
 //   ★ 배열 required 함정: required는 string/필수 필드만. 빈 배열이 될 수 있는 배열 필드는 required에서 뺀다(forced tool_use 검증 깨짐 방지).
 import type { JsonSchema } from "../../llm/types.js";
+import { shuffleChoices } from "../../lib/onboarding/shuffle.js";
 
 export type ArcDifficulty = "basic" | "mid" | "deep";
 export type ArcHookMode = "reversal" | "practical"; // 위험→reversal, 혜택→practical
@@ -142,7 +143,9 @@ export function normalizeArc(raw: unknown): OnboardingArc | null {
       question.cliffhanger = item.cliffhanger;
     }
 
-    questions.push(question);
+    // 정답 위치 분산 — 저장 전 한 곳에서만 결정적 셔플(재생·제출·recap이 같은 인덱스 공유).
+    //   정답 내용 불변·위치만 이동 → "정답이 늘 2번"이 코드상 불가능해짐. onboarderMoreStep도 이 경로를 거침.
+    questions.push(shuffleChoices(question));
   }
 
   if (questions.length < 1) return null; // 1개 미만이면 null 드랍
@@ -168,6 +171,7 @@ export const ONBOARDER_SYSTEM: string = [
   "② 클리프행어 아크 — 문항을 랜덤으로 나열하지 마라. 한 편의 이야기로 엮는다. 각 문항의 ahaReveal이 다음 문항을 여는 cliffhanger로 이어지고, 마지막 아하가 coreAngle(영상 핵심 앵글=갈림길)로 수렴하도록 배치한다.",
   "③ 프리테스트 프레이밍 — 이건 '시험'이 아니라 '호기심 체크'다. 직관이 보기 좋게 틀리는 반전 문항을 환영하고, 틀려도 좋다는 톤으로 만든다(찍고 틀리면 오히려 궁금증이 커진다).",
   "④ 난이도 태그 — 각 문항의 difficulty(basic/mid/deep)를 정직하게 매긴다(나중에 김짠부 수준을 추론하는 데 쓴다). 쉬운 걸 deep로, 어려운 걸 basic으로 속이지 마라.",
+  "④-2 오답 설계 — 오답(choices)은 '얼핏 맞아 보이는데 틀린' 그럴듯한 것으로 구성한다. 뻔한 정답·한눈에 걸러지는 명백한 오답은 금지한다. 직관이 보기 좋게 틀리는 반전을 강화한다(프리테스트 프레이밍과 정렬).",
   "⑤ money-safety(최우선) — 아하(ahaReveal)는 여러 레퍼런스 영상의 자막·사실(transcript·videoFacts)에 근거해야 한다. 검증 안 된 수치·금리·제도 값은 단정하지 말고 그 문항의 unverifiedNumbers에 넣어 '확인 필요'로 표시한다. 억지 문항·날조 금지 — 근거가 될 소재가 부족하면 문항 수를 줄여라(빈 문항보다 없는 게 낫다).",
   "⑥ 말투 — 김짠부 채널 톤으로 직설·단정하게 쓴다. ★어투: 정중-탐문형 질문 종결('~까요?/~셨나요?/~인가요?/~될까요?/~할까요?')은 김짠부 말투가 아니므로 금지한다 — 부드럽게 묻는 탐문은 광고·낚시체다(hook_maker 어투 규칙과 정렬). 단, 문항 prompt는 도발·단정형 질문을 허용한다(예: '이래도 예금해요?','이게 이득일 것 같죠?').",
   "- 각 문항: prompt(도발·단정형 질문 1줄) + choices(2~4지선다) + answerIdx(정답 인덱스) + difficulty + hookMode + ahaReveal(찍은 뒤 여는 해설) + (선택)cliffhanger + (선택)unverifiedNumbers.",
