@@ -7,6 +7,7 @@
 
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { styleRelearnSweep } from "../../performance/styleRelearn.js";
+import { analogyRelearnSweep } from "../../performance/analogyRelearn.js";
 import { fetchChannelTitles } from "../../ingest/channelTitles.js";
 import { extractTitleStylePatterns, saveTitleStyleDraft } from "../../performance/titleStyleLearn.js";
 import { requireOwner } from "./auth.js";
@@ -348,6 +349,34 @@ export async function requestCopyRelearn(): Promise<{
     title: { created: titleCreated },
     anyCreated: thumbnailCreated || titleCreated,
   };
+}
+
+/**
+ * 비유 스타일 재학습(사람 게이트). requireOwner 후 analogyRelearnSweep 를 **동기로 await** 한다.
+ *   ★ requestCopyRelearn 미러 — 이벤트 발행이 아니라 직접 실행(pending 이 학습 끝까지 유지·정확한 안내).
+ *   sweep = STT(learning/analogy-reels 전사) → 비유 기법 추출 → style_profiles(analogy_style) draft 삽입.
+ *   draft 까지만 — activate 는 별도 사람 게이트(이후 step 버튼). 폴더 없음/빈 폴더면 created:false(LLM/INSERT 0).
+ *   // ponytail: 동기 await — 첫 실행은 캐시 미스 파일 수만큼 STT 로 수 분 걸릴 수 있다(로컬 dev 타임아웃 여유).
+ *   //   이후 재실행은 .txt 캐시 히트로 추출만(과금 0). 운영 타임아웃 문제 시 Inngest 비동기로 옮긴다(requestCopyRelearn 결).
+ */
+export async function requestAnalogyRelearn(): Promise<{
+  transcribed: number;
+  created: boolean;
+  version: number | null;
+}> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const res = await analogyRelearnSweep(supa);
+
+  // auditLog 는 best-effort(던지지 않음).
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "analogy_relearn_requested",
+    detail: { transcribed: res.transcribed, created: res.created, version: res.version },
+  });
+
+  return { transcribed: res.transcribed, created: res.created, version: res.version };
 }
 
 // 채널 제목 학습 대상 핸들 — @zzanboo 고정(입력 인자/입력칸 없음). 김짠부 채널 단일 출처.

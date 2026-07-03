@@ -21,6 +21,7 @@ export type AuditAction =
   | "copy_ab_saved"
   | "copy_relearn_requested"
   | "channel_title_relearn_requested"
+  | "analogy_relearn_requested"
   | "copy_style_activated"
   | "learning_video_created"
   | "content_title_updated"

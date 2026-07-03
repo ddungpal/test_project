@@ -176,10 +176,12 @@ export function buildCorrectionRow(input: CorrectionInput): TablesInsert<"thumbn
   return row;
 }
 
-/** UI의 component 선택("thumbnail"|"title") → style_profiles.component_type. 썸네일 카피는 thumbnail_copy. */
-export type CopyComponent = "thumbnail" | "title";
-export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "title" {
-  return component === "thumbnail" ? "thumbnail_copy" : "title";
+/** UI의 component 선택 → style_profiles.component_type. 썸네일 카피는 thumbnail_copy, 비유는 analogy_style. */
+export type CopyComponent = "thumbnail" | "title" | "analogy";
+export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "title" | "analogy_style" {
+  if (component === "thumbnail") return "thumbnail_copy";
+  if (component === "analogy") return "analogy_style";
+  return "title";
 }
 
 /** performance_metrics d1 overall 1행(순수 변환). ctr=ctr24h, views=views24h. */
