@@ -39,3 +39,24 @@
 [Joy] CopyStyleComponentType union 안 건드린것도 확인 서버액션 유이 fixture 다 무변경 떠돌이 파일도 없어
 [Joy] AC 세개 내가 직접 다시 돌렸어 typecheck0 test 1312통과(비유헬퍼 6개 포함) build0 copy-learn 8.94kB 통과 🎉
 [리드] 깔끔하다. 1라운드 PASS. Step 2 닫는다. 이제 owner가 mp4 넣고 버튼 눌러 학습→검토→활성화까지 되네. 남은 건 step3 유이 프로필 주입 배선.
+
+=== Step 3: analogist-profile-injection ===
+
+---
+
+## Step 3 — 유이(analogist) 주입: active 비유 프로필을 프롬프트에 반영
+
+[리드] 자, 학습 루프 닫는 마지막 step이야. active analogy_style 프로필을 유이 프롬프트에 주입하는 거고, 핵심은 "프로필 없으면 절대 안 건드림"(해시 불변). 맥스, 이거 styleProfile.ts 미러라 어렵진 않을 거야. 맡아줄래?
+[Max] 응 맡을게. 스펙 §4.4·§5랑 styleProfile.ts 패턴 다 읽었어. loadActiveThumbnailStyle/appendThumbnailStyle 그대로 미러할게. hasUsablePatterns는 중복정의 안 하고 styleProfile.ts에서 export해서 재사용할게. 핵심은 비면 원본 바이트 동일이라 유이 fixture/promptHash 그대로 통과하는 거. 그거 테스트로 못박고 갈게.
+[Max] analogyStyle.ts 만들었어. loadActiveAnalogyStyle은 썸네일 로더 그대로고, appendAnalogyStyle은 techniques/장치/금지를 불릿 블록으로, 친숙 영역은 한 줄로, 왜곡 방지도 넣었어. 비면 system 원본 그대로 반환. hasUsablePatterns는 styleProfile.ts에서 export해서 재사용했어.
+[Max] researchCell 두 경로(full·examples 재진입) 각각 loadActiveAnalogyStyle 1회씩 로드해서 analogyStep에 넘겼어. step.ts는 analogyStyle을 system에만 반영하고 LLM input은 concepts/facts만 넣게 했어 — 프로필 없으면 input도 바이트 동일. 이제 테스트 짤게.
+[Max] 테스트 짰어. appendAnalogyStyle 순수함수(null·빈객체·깨진입력→원본 그대로 / 정상→기법·영역·장치·금지·왜곡·style:id 포함)랑, 유이 step 회귀(analogyStyle 안 넘기면 driver가 받은 system==ANALOGIST_SYSTEM, input==concepts/facts만)까지 캡처변수로 못박았어. vi.fn 안 쓰고.
+[Max] researchCell에 style_profiles 로드가 붙으면서 comparator·caseMiner·researchReentry의 fake supa가 그 테이블을 몰라서 깨졌어. 셋 다 active 없음(null 반환) 케이스만 흉내내게 얇게 추가했어 — 이게 마침 "프로필 없을 때 system 바이트 동일" 회귀를 그대로 검증해주는 셈이야.
+[Max] AC 다 통과. typecheck0, test 1312→1320(신규 8), build0. 핵심 불변식(active 없으면 유이 fixture/promptHash 그대로)도 기존 셀 테스트 3개가 null 경로로 지켜주는 거 확인했어. 떠돌이 있나 볼게.
+[리드] 조이, 검수 부탁해. AC 내가 돌려봤어 — typecheck 0, test 1320 passed, build 0. 핵심은 active 프로필 없을 때 유이 promptHash 불변(해시 보존)이 진짜 지켜지는지야.
+
+[Joy] 오 맥스 스텝3까지 왔네! 학습 루프 닫는 젤 중요한 스텝이니까 promptHash 불변 이거부터 빡세게 볼게 🔍
+[Joy] 코드 봤는데 loadActiveThumbnailStyle 미러 정확하고 input엔 concepts facts만 나가네. 이제 typecheck랑 test 돌려본다
+[Joy] 오케이 다 봤어! typecheck 0 test 1320 다 통과 build 0. 프로필 없으면 유이 system이랑 input 둘 다 바이트 동일이라 promptHash 절대 안 바뀌고 방어도 빈틈없네. 테스트 supa에 active없음 케이스 추가한것도 회귀 은폐가 아니라 오히려 불변식 지키는 방향이야. 통과 🎉
+[Joy] 통과! active 프로필 없으면 유이 system 바이트 동일 — 해시 불변 확실히 지켜졌어. typecheck 0, test 1320, build 0 🎉
+[리드] 좋아, 1라운드 PASS. 비유 학습 루프 이제 완전히 닫혔다(수집→추출→draft→활성화→유이 주입). step 3 완료. 라이브검증(실제 mp4)만 사용자 몫으로 남겨둠.

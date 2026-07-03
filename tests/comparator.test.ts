@@ -277,6 +277,17 @@ function makeFullSupa(opts: FullFakeOpts) {
       if (table === "cost_ledger") {
         return { insert: async () => ({ error: null }) };
       }
+      if (table === "style_profiles") {
+        // 유이 비유 스타일 주입 로드(active 없음 → null → system 바이트 동일). loadActiveAnalogyStyle 미러 체인.
+        const chain = {
+          select() { return chain; },
+          eq() { return chain; },
+          order() { return chain; },
+          limit() { return chain; },
+          maybeSingle: async () => ({ data: null, error: null }),
+        };
+        return chain;
+      }
       throw new Error(`unexpected table: ${table}`);
     },
   } as unknown as Supa;

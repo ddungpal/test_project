@@ -13,6 +13,7 @@ import type { ScopeClaim, ScopeConcept } from "../agents/sherlock_lead/schema.js
 import { verifyClaimStep, degradedVerification, type VerifyClaimResult } from "../agents/fact_verifier/step.js";
 import { numbersStep } from "../agents/numbers/step.js";
 import { analogyStep } from "../agents/analogist/step.js";
+import { loadActiveAnalogyStyle } from "../agents/shared/analogyStyle.js";
 import { criticStep } from "../agents/critic/step.js";
 import { comparatorStep } from "../agents/comparator/step.js";
 import { caseMinerStep } from "../agents/case_miner/step.js";
@@ -118,13 +119,15 @@ export async function runResearchCell(
   //    그래서 숫자/비유가 '계획상 값'이 아니라 '확인된 값'에 grounding 된다(grounding gap 해소).
   await setProgress(supa, runId, "4/5·숫자·비유 (셈이∥유이)");
   const factContext = factRows.map((f) => ({ claim: f.claim, verification_status: f.verification_status, quote_excerpt: f.quote_excerpt }));
+  // active 비유 스타일 프로필(있으면) 1회 로드해 유이 system 에 주입. 없으면 null → 유이 prepare 바이트 동일(해시 불변).
+  const analogyStyle = await loadActiveAnalogyStyle(supa);
   const numPs: Promise<NumbersOutput["assets"]> =
     concepts.some((c) => c.needs_number)
       ? numbersStep(llm, runId, { concepts: concepts.filter((c) => c.needs_number), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as NumbersOutput["assets"]; })
       : Promise.resolve([] as NumbersOutput["assets"]);
   const anaPs: Promise<AnalogistOutput["assets"]> =
     concepts.some((c) => c.needs_analogy)
-      ? analogyStep(llm, runId, { concepts: concepts.filter((c) => c.needs_analogy), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as AnalogistOutput["assets"]; })
+      ? analogyStep(llm, runId, { concepts: concepts.filter((c) => c.needs_analogy), facts: factContext, analogyStyle }).catch((e) => { if (isCapError(e)) throw e; return [] as AnalogistOutput["assets"]; })
       : Promise.resolve([] as AnalogistOutput["assets"]);
   // 비교가 — outline에 format='table' 섹션이 있을 때만 셈이·유이와 병렬로 실행. table 0개면 호출 자체를 안 함
   //   → 기존 런 동작·비용·promptHash 영향 0(조건부 추가). 검증된 사실'만' 받아 비교표 구조화(새 사실 생성 X).
@@ -227,13 +230,15 @@ async function runExamplesReentry(
 
   // 3) 셈이·유이만 재실행 — full 경로와 동일 호출(검증된 사실에 grounding). 캡 에러만 전파, 그 외는 빈 배열 강등.
   await setProgress(supa, runId, "2/2·숫자·비유 재생성 (셈이∥유이)");
+  // active 비유 스타일 프로필(있으면) 1회 로드해 유이 system 에 주입. full 경로와 별도 함수라 여기서도 1회 로드. 없으면 null(해시 불변).
+  const analogyStyle = await loadActiveAnalogyStyle(supa);
   const numPs: Promise<NumbersOutput["assets"]> =
     concepts.some((c) => c.needs_number)
       ? numbersStep(llm, runId, { concepts: concepts.filter((c) => c.needs_number), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as NumbersOutput["assets"]; })
       : Promise.resolve([] as NumbersOutput["assets"]);
   const anaPs: Promise<AnalogistOutput["assets"]> =
     concepts.some((c) => c.needs_analogy)
-      ? analogyStep(llm, runId, { concepts: concepts.filter((c) => c.needs_analogy), facts: factContext }).catch((e) => { if (isCapError(e)) throw e; return [] as AnalogistOutput["assets"]; })
+      ? analogyStep(llm, runId, { concepts: concepts.filter((c) => c.needs_analogy), facts: factContext, analogyStyle }).catch((e) => { if (isCapError(e)) throw e; return [] as AnalogistOutput["assets"]; })
       : Promise.resolve([] as AnalogistOutput["assets"]);
   const [numSettled, anaSettled] = await Promise.all([Promise.allSettled([numPs]), Promise.allSettled([anaPs])]);
   await throwIfCapRejected([...numSettled, ...anaSettled], supa, runId, run.cost_usd, ledger);

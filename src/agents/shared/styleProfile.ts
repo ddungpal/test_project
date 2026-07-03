@@ -28,8 +28,9 @@ export async function loadActiveThumbnailStyle(supa: Supa): Promise<ActiveThumbn
   return { id: `style:${data.id}`, version: data.version ?? 0, patterns: data.patterns };
 }
 
-/** patterns가 실질 내용을 가졌는지(빈/깨진 가드). 비-객체·null·빈 객체면 false. */
-function hasUsablePatterns(patterns: unknown): patterns is Record<string, unknown> {
+/** patterns가 실질 내용을 가졌는지(빈/깨진 가드). 비-객체·null·빈 객체면 false.
+ *  ★ analogyStyle.ts(비유 환류)가 이 가드를 그대로 재사용하려고 export한다(중복 정의 금지). export만 추가, 동작 불변. */
+export function hasUsablePatterns(patterns: unknown): patterns is Record<string, unknown> {
   return (
     typeof patterns === "object" &&
     patterns !== null &&
