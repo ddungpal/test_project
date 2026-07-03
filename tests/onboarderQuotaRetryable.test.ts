@@ -105,7 +105,8 @@ describe("gatherReferences — quota(429) 전파(빈 [] 폴백 금지)", () => {
     // 첫 수집은 generic 에러로 삼킴 → items []. 완화 재검색(c)에서 refs 확보.
     gx.impl = async (opts) => {
       const o = opts as { ytQuery?: string };
-      if (o.ytQuery === "연봉 3천 이하") return [ytItem({ id: "yt:9", url: "https://www.youtube.com/watch?v=RELAX1" })];
+      // 정제 쿼리 q="연봉 3천 이하 무조건"(4토큰 캡) → relaxQuery half=ceil(4/2)=2 → "연봉 3천".
+      if (o.ytQuery === "연봉 3천") return [ytItem({ id: "yt:9", url: "https://www.youtube.com/watch?v=RELAX1" })];
       throw new Error("youtube 500");
     };
     const refs = await gatherReferences("연봉 3천 이하 무조건 보세요");
@@ -117,7 +118,8 @@ describe("gatherReferences — quota(429) 전파(빈 [] 폴백 금지)", () => {
     // 기본 수집(0)에서 refs 3개 미만(1개)만 확보 → 완화 재검색 진입 → 거기서 quota throw.
     gx.impl = async (opts) => {
       const o = opts as { ytQuery?: string };
-      if (o.ytQuery === "연봉 3천 이하") throw new YouTubeQuotaError("youtube 429: relax");
+      // 완화 쿼리 relaxQuery("연봉 3천 이하 무조건")="연봉 3천"에서 quota throw.
+      if (o.ytQuery === "연봉 3천") throw new YouTubeQuotaError("youtube 429: relax");
       return [ytItem({ id: "yt:0", url: "https://www.youtube.com/watch?v=BASE1", viewCount: 300000, subscriberCount: 10000 })];
     };
     const refs = await gatherReferences("연봉 3천 이하 무조건 보세요");
@@ -129,7 +131,8 @@ describe("gatherReferences — quota(429) 전파(빈 [] 폴백 금지)", () => {
     // 기본 수집(0)은 web-only(youtube 없음) → refs 0개 → 완화 재검색 진입 → 거기서 quota throw.
     gx.impl = async (opts) => {
       const o = opts as { ytQuery?: string };
-      if (o.ytQuery === "연봉 3천 이하") throw new YouTubeQuotaError("youtube 429: relax");
+      // 완화 쿼리 relaxQuery("연봉 3천 이하 무조건")="연봉 3천"에서 quota throw.
+      if (o.ytQuery === "연봉 3천") throw new YouTubeQuotaError("youtube 429: relax");
       return []; // 기본 수집 0개.
     };
     await expect(gatherReferences("연봉 3천 이하 무조건 보세요")).rejects.toBeInstanceOf(YouTubeQuotaError);

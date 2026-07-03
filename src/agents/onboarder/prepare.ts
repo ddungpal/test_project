@@ -60,19 +60,24 @@ export function pickTopReferences(items: ExternalItem[], n = 3): ExternalItem[] 
 
 const REF_TARGET = 3; // 목표 레퍼런스 수.
 
-/** 참조 검색용 쿼리 정제 — 주제 제목에서 핵심 키워드만 남긴다(주제 문장 통째는 API relevance가 낮음). 순수·throw 0.
- *   1) 대괄호[..]·소괄호(..) 세그먼트([EP.65]·(사연편)) 제거. 2) 첫 구분자(',' '|' 개행) 앞 절만 유지.
- *   3) 앞뒤 따옴표·후행 문장부호(?!.…~)·잉여 공백 정리. 4) 결과가 2자 미만이면 원 제목(trim) 폴백.
- *   예: "커버드콜 ETF, 배당 진짜 나올까? [EP.65]" → "커버드콜 ETF". */
+/** 참조 검색용 쿼리 정제 — 주제 제목에서 핵심 키워드만 남긴다(주제 문장 통째는 API relevance가 낮아 0개 반환 위험). 순수·throw 0.
+ *   1) 대괄호[..]·소괄호(..) 세그먼트([EP.65]·(사연편)) 제거. 2) 첫 절 경계(',' '|' 개행 + '?' '!') 앞 절만 유지.
+ *   3) 앞뒤 따옴표·후행 문장부호(.…~)·잉여 공백 정리. 4) 앞 MAX_TOKENS(=4)개 토큰으로 제한(긴 제목 통째 → 0개 방지).
+ *   5) 결과가 2자 미만이면 원 제목(trim) 폴백.
+ *   예: "커버드콜 ETF, 배당 진짜 나올까? [EP.65]" → "커버드콜 ETF".
+ *       "커버드콜 ETF가 대체 뭐길래 배당을 10%씩 줄까? 초보를 위한 원리 완전 정복"
+ *         → 물음표 경계 컷 + 앞 4토큰 → "커버드콜 ETF가 대체 뭐길래"(핵심어 보존·검색 recall 확보). */
 export function refYouTubeQuery(topicTitle: string): string {
   const raw = (topicTitle ?? "").trim();
   let s = raw
     .replace(/\[[^\]]*\]/g, " ") // 대괄호 세그먼트 제거
     .replace(/\([^)]*\)/g, " "); // 소괄호 세그먼트 제거
-  s = s.split(/[,|\n]/)[0] ?? s; // 첫 구분자 앞 절만
+  s = s.split(/[,|\n?!]/)[0] ?? s; // 첫 절 경계(콤마·파이프·개행·물음/느낌표) 앞 절만
   s = s.replace(/["'“”‘’]/g, " "); // 따옴표 제거
-  s = s.replace(/[?!.…~]+$/g, ""); // 후행 문장부호 제거
+  s = s.replace(/[.…~]+$/g, ""); // 후행 문장부호 제거(?! 는 이미 절 경계로 컷됨)
   s = s.replace(/\s+/g, " ").trim(); // 잉여 공백 정리
+  const MAX_TOKENS = 4; // ★ 핵심: 긴 제목을 앞 4토큰 키워드로 제한(초정밀 쿼리의 0개 반환 방지·recall 확보)
+  s = s.split(" ").filter(Boolean).slice(0, MAX_TOKENS).join(" ");
   return s.length >= 2 ? s : raw; // 너무 짧으면 원 제목 폴백
 }
 
