@@ -352,7 +352,12 @@
     },
     {
       "dir": "youtube-key-pool",
-      "status": "pending"
+      "status": "running",
+      "progress": "0/2",
+      "running_step": "0 (youtube-key-manager)",
+      "attempt": 1,
+      "elapsed_seconds": 360,
+      "heartbeat_at": "2026-07-03T11:19:17+0900"
     }
   ]
 }
