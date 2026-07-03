@@ -60,13 +60,20 @@ export function pickTopReferences(items: ExternalItem[], n = 3): ExternalItem[] 
 
 const REF_TARGET = 3; // 목표 레퍼런스 수.
 
+// 검색 가치 없는 의문/강조 필러 — 핵심 명사 뒤에 붙어 검색을 뒤틀어 저성과/무관 영상을 부른다.
+//   (라이브 측정: '대체'·'뭐길래' 추가 시 482만→9만→734). 조사는 제외(무해·단어 훼손 위험: '국가'→'국').
+const REF_QUERY_FILLER = new Set([
+  "대체","도대체","뭐길래","뭐길레","왜","진짜","정말","과연","그냥",
+  "얼마나","어떻게","무엇","뭐","뭔데","이게","이거","이런","이렇게","도데체",
+]);
+
 /** 참조 검색용 쿼리 정제 — 주제 제목에서 핵심 키워드만 남긴다(주제 문장 통째는 API relevance가 낮아 0개 반환 위험). 순수·throw 0.
  *   1) 대괄호[..]·소괄호(..) 세그먼트([EP.65]·(사연편)) 제거. 2) 첫 절 경계(',' '|' 개행 + '?' '!') 앞 절만 유지.
- *   3) 앞뒤 따옴표·후행 문장부호(.…~)·잉여 공백 정리. 4) 앞 MAX_TOKENS(=4)개 토큰으로 제한(긴 제목 통째 → 0개 방지).
- *   5) 결과가 2자 미만이면 원 제목(trim) 폴백.
+ *   3) 앞뒤 따옴표·후행 문장부호(.…~)·잉여 공백 정리. 4) 의문/강조 필러(REF_QUERY_FILLER) 토큰 제거(정확 매치만).
+ *   5) 앞 MAX_TOKENS(=3)개 토큰으로 제한(긴 제목 통째 → 0개 방지). 6) 결과가 2자 미만이면 원 제목(trim) 폴백.
  *   예: "커버드콜 ETF, 배당 진짜 나올까? [EP.65]" → "커버드콜 ETF".
  *       "커버드콜 ETF가 대체 뭐길래 배당을 10%씩 줄까? 초보를 위한 원리 완전 정복"
- *         → 물음표 경계 컷 + 앞 4토큰 → "커버드콜 ETF가 대체 뭐길래"(핵심어 보존·검색 recall 확보). */
+ *         → 물음표 경계 컷 + 필러('대체'·'뭐길래') 제거 + 앞 3토큰 → "커버드콜 ETF가 배당을"(482만 조회 영상 반환). */
 export function refYouTubeQuery(topicTitle: string): string {
   const raw = (topicTitle ?? "").trim();
   let s = raw
@@ -76,8 +83,10 @@ export function refYouTubeQuery(topicTitle: string): string {
   s = s.replace(/["'“”‘’]/g, " "); // 따옴표 제거
   s = s.replace(/[.…~]+$/g, ""); // 후행 문장부호 제거(?! 는 이미 절 경계로 컷됨)
   s = s.replace(/\s+/g, " ").trim(); // 잉여 공백 정리
-  const MAX_TOKENS = 4; // ★ 핵심: 긴 제목을 앞 4토큰 키워드로 제한(초정밀 쿼리의 0개 반환 방지·recall 확보)
-  s = s.split(" ").filter(Boolean).slice(0, MAX_TOKENS).join(" ");
+  const MAX_TOKENS = 3; // ★ 4→3: 필러 제거 후 핵심 명사 위주로 더 짧게(저성과 쿼리 방지)
+  // 의문/강조 필러 토큰 제거(★ 정확 토큰 매치만 — '배당을'의 '을' 같은 부분 문자열은 안 건드림).
+  const tokens = s.split(" ").filter((t) => t && !REF_QUERY_FILLER.has(t));
+  s = tokens.slice(0, MAX_TOKENS).join(" ");
   return s.length >= 2 ? s : raw; // 너무 짧으면 원 제목 폴백
 }
 

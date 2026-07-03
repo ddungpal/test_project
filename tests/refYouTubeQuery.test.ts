@@ -30,12 +30,15 @@ describe("refYouTubeQuery — 검색 쿼리 정제", () => {
   });
 
   it("앞뒤 따옴표 제거", () => {
-    expect(refYouTubeQuery('"통장 쪼개기" 완벽 가이드')).toBe("통장 쪼개기 완벽 가이드");
+    // 3토큰 이하 제목으로 따옴표 제거만 검증(캡에 걸리지 않게).
+    expect(refYouTubeQuery('"통장 쪼개기" 가이드')).toBe("통장 쪼개기 가이드");
   });
 
   it("후행 문장부호(?!.…~) 제거", () => {
-    expect(refYouTubeQuery("이게 진짜 되나...")).toBe("이게 진짜 되나");
+    // 필러 없는 제목으로 후행부호 제거만 검증(필러 토큰이 섞이면 결과가 바뀜 — 아래 필러 케이스 참조).
+    expect(refYouTubeQuery("배당 ETF 되나...")).toBe("배당 ETF 되나");
     expect(refYouTubeQuery("대박 재테크!!!")).toBe("대박 재테크");
+    // "정말요"는 필러 "정말"의 부분 문자열일 뿐 정확 토큰 매치가 아니므로 제거되지 않는다.
     expect(refYouTubeQuery("정말요~~")).toBe("정말요");
   });
 
@@ -53,34 +56,51 @@ describe("refYouTubeQuery — 검색 쿼리 정제", () => {
     expect(refYouTubeQuery("   ")).toBe("");
   });
 
-  it("정제할 게 없는 깔끔한 제목은 그대로", () => {
-    expect(refYouTubeQuery("배당 ETF 완벽 정리")).toBe("배당 ETF 완벽 정리");
+  it("정제할 게 없는 깔끔한 제목(3토큰 이하)은 그대로", () => {
+    expect(refYouTubeQuery("배당 ETF 정리")).toBe("배당 ETF 정리");
   });
 
-  // ── 4토큰 캡 · 물음표 경계 (근본 픽스 회귀) ────────────────────────────
-  it("긴 콤마 없는 제목 → 4토큰 이하로 축약(핵심어 보존·0개 반환 방지)", () => {
-    // 라이브 근본원인: 12단어 초정밀 쿼리라 YouTube가 0개 반환. 앞 4토큰으로 잘라 검색 가능하게.
+  // ── 3토큰 캡 · 물음표 경계 · 의문형 필러 제거 (근본 픽스 회귀) ──────────
+  it("라이브 케이스: 의문형 필러('대체'·'뭐길래') 제거 + 3토큰 이하", () => {
+    // 라이브 측정: '대체'·'뭐길래' 붙으면 상위 조회수 482만→9만→734로 붕괴. 필러를 걷어야 함.
     const out = refYouTubeQuery("커버드콜 ETF가 대체 뭐길래 배당을 10%씩 줄까? 초보를 위한 원리 완전 정복");
     const tokens = out.split(" ").filter(Boolean);
-    expect(tokens.length).toBeLessThanOrEqual(4); // ★ 4토큰 이하
+    expect(tokens.length).toBeLessThanOrEqual(3); // ★ 3토큰 이하
     expect(out).toContain("커버드콜"); // 핵심어 보존
+    expect(out).not.toContain("대체"); // 필러 제거
+    expect(out).not.toContain("뭐길래"); // 필러 제거
     // 물음표 경계로 뒷절("초보를 위한 원리 완전 정복")은 이미 잘려 나감.
     expect(out).not.toContain("초보");
+    // 필러 제거 후 앞 3토큰 → "커버드콜 ETF가 배당을".
+    expect(out).toBe("커버드콜 ETF가 배당을");
   });
 
-  it("콤마 제목 → 첫 절만(4토큰 캡 무해)", () => {
+  it("필러는 정확 토큰 매치만 제거 — 부분 문자열인 정상어는 보존", () => {
+    // '배당을'은 필러가 아님(필러 '을' 없음), '정말요'는 필러 '정말'의 부분 문자열이라 보존.
+    expect(refYouTubeQuery("배당을 정말요 지급")).toBe("배당을 정말요 지급");
+    // 반대로 정확 토큰인 '진짜'·'정말'은 제거된다.
+    expect(refYouTubeQuery("배당 진짜 정말 지급하나")).toBe("배당 지급하나");
+  });
+
+  it("콤마 제목 → 첫 절만(3토큰 캡 무해)", () => {
     expect(refYouTubeQuery("월배당 ETF, 매달 현금 꽂히는 종목")).toBe("월배당 ETF");
   });
 
   it("물음표를 절 경계로 컷(뒷절 제거)", () => {
-    expect(refYouTubeQuery("배당 진짜 나올까? 지금 사도 될까")).toBe("배당 진짜 나올까");
+    // '진짜'는 필러라 제거 → "배당 나올까".
+    expect(refYouTubeQuery("배당 진짜 나올까? 지금 사도 될까")).toBe("배당 나올까");
   });
 
   it("느낌표를 절 경계로 컷(뒷절 제거)", () => {
-    expect(refYouTubeQuery("이거 놓치면 손해! 지금 확인하세요")).toBe("이거 놓치면 손해");
+    expect(refYouTubeQuery("이거 놓치면 손해! 지금 확인하세요")).toBe("놓치면 손해");
   });
 
-  it("긴 첫 절이어도 앞 4토큰만(대괄호/괄호 제거 후 적용)", () => {
-    expect(refYouTubeQuery("연금저축 세액공제 완벽 총정리 최신판 [2026]")).toBe("연금저축 세액공제 완벽 총정리");
+  it("긴 첫 절이어도 앞 3토큰만(대괄호/괄호 제거 후 적용)", () => {
+    expect(refYouTubeQuery("연금저축 세액공제 완벽 총정리 최신판 [2026]")).toBe("연금저축 세액공제 완벽");
+  });
+
+  it("결과 2자 미만이면 원 제목(trim) 폴백 유지(필러 제거 후에도)", () => {
+    // 필러만 남는 제목 → 토큰 전멸 → 2자 미만 → 원 제목 폴백.
+    expect(refYouTubeQuery("대체 왜 진짜")).toBe("대체 왜 진짜");
   });
 });
