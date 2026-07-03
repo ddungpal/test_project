@@ -10,6 +10,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync, renameSync } from "
 import { createHash, randomBytes } from "node:crypto";
 import { join } from "node:path";
 import { searchYouTube as liveSearchYouTube, type ExternalItem } from "./externalSignals.js";
+import { getYouTubeKeys } from "./youtubeKeys.js";
 
 const FIX_DIR = "fixtures/youtube";
 
@@ -29,8 +30,9 @@ export async function searchYouTubeCached(
   const dir = deps.dir ?? FIX_DIR;
   const fixtures = process.env.YOUTUBE_FIXTURES ?? "record";
 
-  // YOUTUBE_API_KEY 있고 off 아닐 때만 fixture(search.ts tavily-only 미러). 키 없으면 live가 []를 반환 — 그대로.
-  const useFixture = Boolean(process.env.YOUTUBE_API_KEY) && fixtures !== "off";
+  // 키 풀(YOUTUBE_API_KEYS) 또는 단일(YOUTUBE_API_KEY) 하나라도 있고 off 아닐 때만 fixture(search.ts tavily-only 미러).
+  //   풀만 설정하고 단일을 비운 환경도 켜지도록 getYouTubeKeys().length로 게이트(단일 키만 있어도 동일 동작). 키 없으면 live가 []를 반환 — 그대로.
+  const useFixture = getYouTubeKeys().length > 0 && fixtures !== "off";
   if (useFixture) {
     const path = join(dir, `${youtubeFixtureHash(query, max)}.json`);
     if (existsSync(path)) {

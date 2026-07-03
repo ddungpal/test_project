@@ -353,11 +353,11 @@
     {
       "dir": "youtube-key-pool",
       "status": "running",
-      "progress": "0/2",
-      "running_step": "0 (youtube-key-manager)",
+      "progress": "1/2",
+      "running_step": "1 (searchyoutube-rotation)",
       "attempt": 1,
-      "elapsed_seconds": 360,
-      "heartbeat_at": "2026-07-03T11:19:17+0900"
+      "elapsed_seconds": 600,
+      "heartbeat_at": "2026-07-03T11:30:10+0900"
     }
   ]
 }

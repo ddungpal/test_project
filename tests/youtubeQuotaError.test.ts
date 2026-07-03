@@ -7,6 +7,10 @@ import {
   YouTubeQuotaError,
   gatherExternalSignals,
 } from "../src/agents/topic_scout/externalSignals.js";
+// step1(searchyoutube-rotation) 이후: searchYouTube가 키 풀 rotation을 타면서 429 본 키를 프로세스 소진 Set에
+//   마킹한다(세션 유지가 스펙). 이 스위트는 여러 테스트가 같은 키 "fake"를 재사용하므로, 앞선 429 케이스의 소진
+//   마킹이 뒤 테스트(500·200)로 새면 "사용 가능한 키 없음"으로 오염된다 → afterEach에서 소진 Set을 리셋해 격리.
+import { __resetExhaustedForTest } from "../src/agents/topic_scout/youtubeKeys.js";
 
 describe("YouTubeQuotaError — 타입", () => {
   it("Error의 인스턴스이고 name이 YouTubeQuotaError다", () => {
@@ -59,6 +63,7 @@ describe("gatherExternalSignals — throwOnYtQuota 분기(촉이 회귀 가드)"
     delete process.env.YOUTUBE_API_KEY;
     if (OLD_YT_FIX === undefined) delete process.env.YOUTUBE_FIXTURES;
     else process.env.YOUTUBE_FIXTURES = OLD_YT_FIX;
+    __resetExhaustedForTest(); // 429 소진 마킹이 다음 테스트로 새지 않도록 격리(세션 유지 스펙의 부작용 차단).
     vi.unstubAllEnvs?.();
   });
 

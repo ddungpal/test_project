@@ -5,6 +5,10 @@
 
 import { search } from "../../search/search.js";
 import { searchYouTubeCached } from "./youtubeFixture.js";
+// 키 풀 + 429 rotation(step0 순수 모듈). searchYouTube만 이걸로 감싼다(캐시 히트는 키를 안 씀).
+//   ★ 순환참조 주의: youtubeKeys.ts가 여기(YouTubeQuotaError)를 import한다. 둘 다 런타임 호출 시점에만 서로를
+//     쓰므로 ESM 순환은 안전(typecheck·test·build로 검증). 값이 아닌 함수만 top-level에서 참조.
+import { getYouTubeKeys, withRotatingYouTubeKey } from "./youtubeKeys.js";
 
 // YouTube Data API 일일 quota 소진(429) 전용 에러 — "레퍼런스 없음"(콘텐츠 판정)과 "한도 초과"(일시적 인프라)를 구분.
 //   촉이는 429를 삼켜도 정상(웹 신호로 충분)이지만, 온보더는 이 타입을 잡아 재시도 안내로 표면화한다.
@@ -261,56 +265,60 @@ async function searchPass(query: string, max: number, order: "relevance" | "view
 }
 
 export async function searchYouTube(query: string, max: number): Promise<Omit<ExternalItem, "id">[]> {
-  const key = process.env.YOUTUBE_API_KEY;
-  if (!key) return [];
+  const keys = getYouTubeKeys();
+  if (keys.length === 0) return []; // 기존 "키 없으면 []" 유지(단일 폴백 포함).
 
-  // 2패스: relevance(주제 적합) + viewCount(고조회·바이럴) → videoId dedup 병합으로 풀 확대.
-  //   각 패스 maxResults는 넉넉히(max 또는 10 중 큰 쪽, 단 천장 10) — 합치면 union이 더 커진다.
-  //   기본 호출은 max=5라도 각 패스 10을 받고, 2패스 union이라 풀이 충분히 커진다.
-  // ponytail: 2-pass search = 200 quota/call; single-pass if quota tight.
-  //   한 패스 실패해도 나머지로 진행(throw 안 함). 둘 다 실패하면 기존 정책대로 throw(콜러가 try/catch로 무시).
-  const perPass = Math.min(Math.max(max, 10), 10); // 사실상 10 천장 — quota·토큰 폭증 방지(명세: 50 등 과도 금지).
-  const settled = await Promise.allSettled([
-    searchPass(query, perPass, "relevance", key),
-    searchPass(query, perPass, "viewCount", key),
-  ]);
-  const ok = settled.filter((s): s is PromiseFulfilledResult<YtSearchItem[]> => s.status === "fulfilled");
-  if (ok.length === 0) {
-    // 둘 다 실패 → 기존 단일패스 throw 정책 유지(첫 reject 사유로).
-    const firstRej = settled.find((s): s is PromiseRejectedResult => s.status === "rejected");
-    throw firstRej?.reason instanceof Error ? firstRej.reason : new Error("youtube search.list 2-pass 전부 실패");
-  }
-  // relevance 패스를 앞에 두어 적합 영상이 union 앞쪽(perPass 순서 = [relevance, viewCount]).
-  const items = mergeSearchPasses(...ok.map((s) => s.value));
+  // 429(YouTubeQuotaError)면 다음 키로 rotation, 비-quota 에러는 즉시 전파. 캐시 히트는 이 경로를 안 탄다.
+  //   본문 로직(2패스·stats·subs·롱폼·매핑)은 step0 이전과 바이트 동일 — key 출처만 env→인자로 주입.
+  return withRotatingYouTubeKey(async (key) => {
+    // 2패스: relevance(주제 적합) + viewCount(고조회·바이럴) → videoId dedup 병합으로 풀 확대.
+    //   각 패스 maxResults는 넉넉히(max 또는 10 중 큰 쪽, 단 천장 10) — 합치면 union이 더 커진다.
+    //   기본 호출은 max=5라도 각 패스 10을 받고, 2패스 union이라 풀이 충분히 커진다.
+    // ponytail: 2-pass search = 200 quota/call; single-pass if quota tight.
+    //   한 패스 실패해도 나머지로 진행(throw 안 함). 둘 다 실패하면 기존 정책대로 throw(콜러가 try/catch로 무시).
+    const perPass = Math.min(Math.max(max, 10), 10); // 사실상 10 천장 — quota·토큰 폭증 방지(명세: 50 등 과도 금지).
+    const settled = await Promise.allSettled([
+      searchPass(query, perPass, "relevance", key),
+      searchPass(query, perPass, "viewCount", key),
+    ]);
+    const ok = settled.filter((s): s is PromiseFulfilledResult<YtSearchItem[]> => s.status === "fulfilled");
+    if (ok.length === 0) {
+      // 둘 다 실패 → 기존 단일패스 throw 정책 유지(첫 reject 사유로).
+      const firstRej = settled.find((s): s is PromiseRejectedResult => s.status === "rejected");
+      throw firstRej?.reason instanceof Error ? firstRej.reason : new Error("youtube search.list 2-pass 전부 실패");
+    }
+    // relevance 패스를 앞에 두어 적합 영상이 union 앞쪽(perPass 순서 = [relevance, viewCount]).
+    const items = mergeSearchPasses(...ok.map((s) => s.value));
 
-  // 통계 보강(조회수·좋아요·댓글·구독자수) — 병합된 union에 1회 배치(중복 비용 없음). best-effort.
-  const videoIds = items.map((it) => it.id!.videoId!);
-  const channelIds = [...new Set(items.map((it) => it.snippet?.channelId).filter((c): c is string => !!c))];
-  const [stats, subs] = await Promise.all([fetchVideoStats(videoIds, key), fetchChannelSubs(channelIds, key)]);
+    // 통계 보강(조회수·좋아요·댓글·구독자수) — 병합된 union에 1회 배치(중복 비용 없음). best-effort.
+    const videoIds = items.map((it) => it.id!.videoId!);
+    const channelIds = [...new Set(items.map((it) => it.snippet?.channelId).filter((c): c is string => !!c))];
+    const [stats, subs] = await Promise.all([fetchVideoStats(videoIds, key), fetchChannelSubs(channelIds, key)]);
 
-  // 롱폼 필터 — 김짠부는 롱폼만 찾는다. 길이 미상(stats 비거나 contentDetails 누락)은 통과(풀 전멸 방지).
-  const longform = items.filter((it) => isLongform(stats.get(it.id!.videoId!)?.durationSec ?? null));
+    // 롱폼 필터 — 김짠부는 롱폼만 찾는다. 길이 미상(stats 비거나 contentDetails 누락)은 통과(풀 전멸 방지).
+    const longform = items.filter((it) => isLongform(stats.get(it.id!.videoId!)?.durationSec ?? null));
 
-  return longform.map((it) => {
-    const st = stats.get(it.id!.videoId!);
-    return {
-      source: "youtube" as const,
-      title: decodeEntities(it.snippet?.title ?? ""),
-      url: `https://www.youtube.com/watch?v=${it.id!.videoId}`,
-      publisher: it.snippet?.channelTitle ?? null,
-      published_at: it.snippet?.publishedAt ?? null,
-      snippet: decodeEntities(it.snippet?.description ?? "").slice(0, 280),
-      viewCount: st?.views ?? null,
-      likeCount: st?.likes ?? null,
-      commentCount: st?.comments ?? null,
-      subscriberCount: it.snippet?.channelId ? (subs.get(it.snippet.channelId) ?? null) : null,
-      thumbnailUrl:
-        it.snippet?.thumbnails?.high?.url ??
-        it.snippet?.thumbnails?.medium?.url ??
-        it.snippet?.thumbnails?.default?.url ??
-        null,
-      sourceQuery: query, // 어느 키워드로 발견됐나 — 테마별 분산(pickSpreadYoutube)용.
-    };
+    return longform.map((it) => {
+      const st = stats.get(it.id!.videoId!);
+      return {
+        source: "youtube" as const,
+        title: decodeEntities(it.snippet?.title ?? ""),
+        url: `https://www.youtube.com/watch?v=${it.id!.videoId}`,
+        publisher: it.snippet?.channelTitle ?? null,
+        published_at: it.snippet?.publishedAt ?? null,
+        snippet: decodeEntities(it.snippet?.description ?? "").slice(0, 280),
+        viewCount: st?.views ?? null,
+        likeCount: st?.likes ?? null,
+        commentCount: st?.comments ?? null,
+        subscriberCount: it.snippet?.channelId ? (subs.get(it.snippet.channelId) ?? null) : null,
+        thumbnailUrl:
+          it.snippet?.thumbnails?.high?.url ??
+          it.snippet?.thumbnails?.medium?.url ??
+          it.snippet?.thumbnails?.default?.url ??
+          null,
+        sourceQuery: query, // 어느 키워드로 발견됐나 — 테마별 분산(pickSpreadYoutube)용.
+      };
+    });
   });
 }
 
