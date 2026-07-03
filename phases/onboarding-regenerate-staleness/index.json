@@ -1,0 +1,27 @@
+{
+  "project": "produce script",
+  "phase": "onboarding-regenerate-staleness",
+  "steps": [
+    {
+      "step": 0,
+      "name": "refyoutubequery-keyword-extraction",
+      "status": "completed",
+      "started_at": "2026-07-03T18:57:38+0900",
+      "team_round": "2/3 PASS",
+      "summary": "refYouTubeQuery에 ?! 절 경계 + MAX_TOKENS=4 토큰 캡 추가 — 콤마 없는 긴 제목(예: 커버드콜 12단어)이 통째로 검색어가 돼 YouTube 0개 반환하던 근본버그 수정(앞 4토큰 핵심어로 축약, 폴백 유지). gatherReferences/relaxQuery/rankExternalByViews 무변경. tests/refYouTubeQuery.test.ts 회귀 5건 추가(긴 제목 4토큰+핵심어 보존 잠금), onboarderQuotaRetryable.test.ts는 relaxQuery 정당 산출값(연봉 3천) 반영. AC 전부 exit 0(typecheck/test 1284/build).",
+      "completed_at": "2026-07-03T19:08:33+0900"
+    },
+    {
+      "step": 1,
+      "name": "regenerate-action-and-staleness-helper",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "regenerate-button-and-stale-banner-ui",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-07-03T00:00:00+0900",
+  "status": "pending"
+}
