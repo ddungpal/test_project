@@ -60,6 +60,14 @@ describe("appendAnalogyStyle — 정상 patterns면 지시 섹션 append", () =>
     expect(out).toContain("쉽게 만들되 사실을 왜곡하지 마라");
     expect(out).toContain("style:uuid-123");
   });
+
+  it("★ 예시 소재 재사용 금지 가드를 반드시 포함한다(기법만 배우고 소재는 새로)", () => {
+    const out = appendAnalogyStyle(SYS, profile);
+    // 유이가 레퍼런스의 구체 소재(바나나·물 등)를 그대로 베끼지 못하게 하는 명시적 금지 문구.
+    expect(out).toContain("배우는 것은 '기법'이지 '소재'가 아니다");
+    expect(out).toContain("그대로 가져다 쓰지 마라");
+    expect(out).toContain("완전히 새로운 비유를 직접 만들어라");
+  });
 });
 
 // ── (4) 유이 step 회귀: analogyStyle 미전달 시 system/input 불변 ──────────────
