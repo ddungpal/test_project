@@ -21,3 +21,22 @@
 [Joy] AC 셋 다 직접 돌렸어. typecheck0, test 1229 전부통과, build0. git status도 명세 파일만 있고 떠돌이 fixtures 없음. 통과야 축하해 맥스 에스더 🎉
 
 [리드] 좋아, Step 0 1라운드 PASS로 마감. index.json completed 갱신했어. 이제 정답이 코드상 한 번호에 못 몰려. 수고했어 팀 👏
+
+=== Step 1: term-definition-questions ===
+
+=== Step 1: term-definition-questions ===
+
+[리드] 다음은 '용어 정의 문제'다. 쏙이 아크에 개념 이해 축을 하나 더 얹는 거야. hookMode에 term 하나 추가하고, 라벨 채우고, 프롬프트에 지시 덧붙이면 끝. 맥스, 작아 보이지만 정합 맞추는 게 관건이야 — enum·HOOK_MODES·HOOK_LABEL 세 곳 한 번에. 맡아줄래?
+[Max] step1 시작할게. term 하나 얹는 거라 세 곳만 정합 맞추면 돼. 조용히 해둘게.
+[Max] term 세 곳 다 맞췄어. enum·라벨·SYSTEM(① 한 줄 + ④-3 새 항목). 기존 문장은 안 건드리고 덧붙이기만 했고.
+[Max] 테스트 신규로 하나 만들었어. term 문항이 normalizeArc 안 드랍되고 hookMode 보존되는지. isHookMode가 export가 아니라 통과로 간접검증했어.
+[Max] typecheck·test·build 다 통과. test 1229에서 1232로 3개 늘었어. 놓친 거 있으면 말해줘.
+
+[리드] 맥스 빠르네. 조이, 검수 부탁해. term 세 곳 정합(enum·HOOK_MODES·HOOK_LABEL)·프롬프트 덧붙이기만 했는지·term 문항이 normalizeArc 통과하는지·AC 재실행까지 봐줘.
+
+[Joy] 오 term 하나 얹은 거네~ 세 곳(enum·HOOK_MODES·HOOK_LABEL) 다 봤고 프롬프트도 덧붙이기만 했어. 깔끔하다 👍 이제 AC 셋 다 돌려볼게!
+
+[Joy] AC 셋 다 직접 돌렸어. typecheck0, test 1232 전부통과(term 3개 신규·step0 shuffle이랑 onboardingArc도 안 깨짐), build0. git status도 명세 파일만 있고 떠돌이 fixtures 없어. 프롬프트는 ①에 term 한 줄 + ④-3 새 항목으로 덧붙이기만 했고 기존 문장 안 건드렸네. term 문항이 normalizeArc 통과+hookMode 보존하는 테스트도 있고 미지 hookMode는 여전히 드랍되는 것까지 확인해줬어. 완벽해 통과야 🎉 수고했어 맥스!
+
+[Joy] term 세 곳 정합 깔끔하고, term 문항도 normalizeArc 잘 통과해~ typecheck·test·build 다 exit 0! 1229→1232 통과, 기존 것도 하나 안 깨졌어. 통과 🎉
+[리드] 좋아, phase 마지막 step까지 통과. 온보딩 문항 품질 phase 마무리한다. 다들 수고했어.

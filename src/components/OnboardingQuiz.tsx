@@ -44,6 +44,7 @@ const DIFFICULTY_OPTIONS: readonly { d: ArcDifficulty; label: string }[] = [
 const HOOK_LABEL: Record<ArcHookMode, string> = {
   reversal: "반전",
   practical: "실용템",
+  term: "용어",
 };
 
 // mode: live=구성 직전(금맥이 구다리로 넘어감) / review=구성 이후 복습(자동 반영 안 됨). 완료 문구만 분기, 재생·제출 로직은 동일.

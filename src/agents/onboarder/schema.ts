@@ -6,7 +6,7 @@ import type { JsonSchema } from "../../llm/types.js";
 import { shuffleChoices } from "../../lib/onboarding/shuffle.js";
 
 export type ArcDifficulty = "basic" | "mid" | "deep";
-export type ArcHookMode = "reversal" | "practical"; // 위험→reversal, 혜택→practical
+export type ArcHookMode = "reversal" | "practical" | "term"; // 위험→reversal, 혜택→practical, 용어정의→term
 
 export type ArcQuestion = {
   prompt: string;
@@ -58,7 +58,7 @@ export type OnboardingGold = {
 };
 
 const DIFFICULTIES: readonly ArcDifficulty[] = ["basic", "mid", "deep"];
-const HOOK_MODES: readonly ArcHookMode[] = ["reversal", "practical"];
+const HOOK_MODES: readonly ArcHookMode[] = ["reversal", "practical", "term"];
 
 export const ONBOARDER_SCHEMA: JsonSchema = {
   type: "object",
@@ -168,10 +168,12 @@ export const ONBOARDER_SYSTEM: string = [
   "① 듀얼 훅 — 각 문항이 어떤 성격의 사실을 다루는지 hookMode로 표기한다.",
   "  - 위험·손해 사실(좋아 보이는데 사실은 손해인 반전)이면 hookMode='reversal'. 예: '이득 같지만 실은 손해' 반전.",
   "  - 숨은 혜택·꿀팁(이거 알면 개이득)이면 hookMode='practical'. 실용템으로 제시한다.",
+  "  - 처음 들으면 헷갈릴 용어의 뜻을 묻는 정의 문제면 hookMode='term'.",
   "② 클리프행어 아크 — 문항을 랜덤으로 나열하지 마라. 한 편의 이야기로 엮는다. 각 문항의 ahaReveal이 다음 문항을 여는 cliffhanger로 이어지고, 마지막 아하가 coreAngle(영상 핵심 앵글=갈림길)로 수렴하도록 배치한다.",
   "③ 프리테스트 프레이밍 — 이건 '시험'이 아니라 '호기심 체크'다. 직관이 보기 좋게 틀리는 반전 문항을 환영하고, 틀려도 좋다는 톤으로 만든다(찍고 틀리면 오히려 궁금증이 커진다).",
   "④ 난이도 태그 — 각 문항의 difficulty(basic/mid/deep)를 정직하게 매긴다(나중에 김짠부 수준을 추론하는 데 쓴다). 쉬운 걸 deep로, 어려운 걸 basic으로 속이지 마라.",
   "④-2 오답 설계 — 오답(choices)은 '얼핏 맞아 보이는데 틀린' 그럴듯한 것으로 구성한다. 뻔한 정답·한눈에 걸러지는 명백한 오답은 금지한다. 직관이 보기 좋게 틀리는 반전을 강화한다(프리테스트 프레이밍과 정렬).",
+  "④-3 용어 정의 — 레퍼런스(transcript·videoFacts)에 나온 '처음 들으면 헷갈릴 용어' 1개 이상을 정의 문제로 낸다. 정답=정확한 정의, 오답=그럴듯하지만 틀린 정의로 구성하고, 그 문항의 hookMode='term'으로 표기한다. money-safety 유지 — 근거에 없는 용어를 지어내지 말고, 마땅한 소재가 없으면 굳이 넣지 마라.",
   "⑤ money-safety(최우선) — 아하(ahaReveal)는 여러 레퍼런스 영상의 자막·사실(transcript·videoFacts)에 근거해야 한다. 검증 안 된 수치·금리·제도 값은 단정하지 말고 그 문항의 unverifiedNumbers에 넣어 '확인 필요'로 표시한다. 억지 문항·날조 금지 — 근거가 될 소재가 부족하면 문항 수를 줄여라(빈 문항보다 없는 게 낫다).",
   "⑥ 말투 — 김짠부 채널 톤으로 직설·단정하게 쓴다. ★어투: 정중-탐문형 질문 종결('~까요?/~셨나요?/~인가요?/~될까요?/~할까요?')은 김짠부 말투가 아니므로 금지한다 — 부드럽게 묻는 탐문은 광고·낚시체다(hook_maker 어투 규칙과 정렬). 단, 문항 prompt는 도발·단정형 질문을 허용한다(예: '이래도 예금해요?','이게 이득일 것 같죠?').",
   "- 각 문항: prompt(도발·단정형 질문 1줄) + choices(2~4지선다) + answerIdx(정답 인덱스) + difficulty + hookMode + ahaReveal(찍은 뒤 여는 해설) + (선택)cliffhanger + (선택)unverifiedNumbers.",
