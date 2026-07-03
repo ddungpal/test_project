@@ -212,9 +212,13 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
             위계: 완료·금맥이 주. 복습은 보조라 요약·정답수를 summary 한 줄에 접어(기본 닫힘) 넣고,
             '시험 점수'가 아니라 '찍고 틀려도 좋아요' 헤더 톤에 맞춘 가벼운 복습 프레이밍으로 낮춘다. */}
         {total > 0 && (
-          <details className="border-t border-trus-white/15 pt-3">
-            <summary className="flex cursor-pointer items-baseline justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-trus-white/40 marker:text-trus-white/40">
-              <span>내 풀이 다시 보기</span>
+          <details className="group border-t border-trus-white/15 pt-3">
+            <summary className="flex cursor-pointer items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-trus-white/40 marker:content-none">
+              <span className="flex items-center gap-1.5">
+                {/* 토글 표식 — flex summary라 네이티브 삼각형이 사라지므로 수동 추가. 열리면 90° 회전(펼침 표시). */}
+                <span aria-hidden="true" className="inline-block text-trus-yellow transition-transform group-open:rotate-90">▸</span>
+                내 풀이 다시 보기
+              </span>
               <span className="shrink-0 tracking-widest">
                 <span className="text-trus-yellow">{correct}</span>
                 <span className="text-trus-white/40"> / {total} 맞힘</span>
