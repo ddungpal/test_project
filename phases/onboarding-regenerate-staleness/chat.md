@@ -38,3 +38,20 @@
 [Joy] AC 3종 다 초록불이야 typecheck exit 0, test 1289 전부 통과(신규 staleness 5케이스 포함), build exit 0. database.types는 jsonb payload라 손댈 필요 없고 실제로 안 건드렸어. 떠돌이 fixtures도 0, untracked는 명세에 있는 staleness.ts랑 테스트 딱 두 개
 [Joy] requestOnboarding 시그니처랑 난이도(more) 경로 무변경, normalizeArc도 그대로, loadOnboardingArc가 payload 통짜 로드라 sourceTopicTitle 로드때도 살아있어. 배선 완벽하다 맥스 통과야 🎉
 [리드] 좋아 통과. AC는 나도 직접 돌려서 exit 0 확인했고. index.json step1 completed로 마감, team_round 1/3 PASS. 수고했어 둘 다. UI(재생성 버튼·stale 배너)는 step2에서 얹는다.
+
+=== Step 2: regenerate-button-and-stale-banner-ui ===
+
+[리드] 맥스, step2 UI 얹자. 두 개야 — (A) RegenerateOnboardingButton 신규(RequestOnboardingButton 미러+regenerateOnboarding 호출, 재생성 직전 localStorage answers 제거), (B) page.tsx OnboardingSection에 topicTitle prop 추가하고 isOnboardingArcStale로 stale 경고 배너 + 재생성 버튼 항상 노출. RequestOnboardingButton·OnboardingQuiz 재생/제출/localStorage 저장은 절대 건드리지 마. 디자인은 step에 다 박혀있어(TRUS 3색·border-l-2 border-l-trus-yellow).
+[Max] step2 시작. 정본 RequestOnboardingButton 읽고 재생성 버튼 미러 만드는 중. retryable 분기는 뺄게.
+[Max] 버튼 컴포넌트랑 page.tsx OnboardingSection 배선 끝냈어. stale 배너 + 재생성 버튼(아크 있으면 항상). topicTitle은 prepare 미러로 topic payload title 읽어서 넘겼어. 이제 typecheck/test/build 돌린다.
+[Max] typecheck0·test 1289 통과·build0 다 통과했어. 범위 외 파일 안 섞였고(신규는 버튼 컴포넌트 하나). 봐줘.
+[리드] 조이, 검수 부탁해. AC는 나도 직접 돌려서 typecheck0·test1289·build0 확인했고 git status도 깨끗해(신규 RegenerateOnboardingButton 하나). 미러 정확성이랑 localStorage 키 일치, topicTitle 배선 경로 봐줘.
+
+[Joy] 오 맥스 step2 왔다~ git diff랑 새 파일 다 봤어. localStorage 키 onboarding:answers:runId 똑같이 맞췄고 typeof window 가드도 있네 굿굿
+[Joy] removeItem이 regenerateOnboarding 호출 직전에 딱 박혀있고, retryable 분기는 깔끔하게 뺐네. 폴링(submitted/timedOut/POLL_LIMIT_MS)도 원본이랑 동일
+[Joy] 배너는 stale일 때만 뜨고 재생성 버튼은 아크 있으면 항상 노출 맞음. topicTitle 배선도 prepareOnboarder랑 같은 getSelectedStagePayload topic .title 경로. 이제 AC 돌려볼게!
+
+[Joy] AC 셋 다 초록불! typecheck exit0, test 1289 전부 통과(onboardingArcStaleness 5개 포함), build도 클린 컴파일 exit0 🎉
+[Joy] OnboardingQuiz랑 RequestOnboardingButton은 손 안 댔고 상태전이 신설도 없고 자동재생성도 없음. 범위 딱 맞아. 떠돌이 fixtures도 안 섞였어
+[Joy] 결론 통과! 맥스 이번엔 미러 진짜 깔끔하게 했다 손 빠른데 정확하기까지 ㅋㅋ 커피 탈 시간을 안 줘 ☕ VERDICT PASS
+[리드] 좋아, Step 2 통과. AC는 나도 직접 돌려 typecheck0·test1289·build0 확인했어. index.json step2 completed+summary·team_round 1/3 PASS로 마감, phase status도 completed. 이걸로 onboarding-regenerate-staleness 3 step 전부 끝났다 — 재생성 버튼·stale 배너·쿼리 픽스 다 얹었어. 수고했어 맥스, 조이. 실 브라우저 라이브검증은 사용자 몫으로 남는다.

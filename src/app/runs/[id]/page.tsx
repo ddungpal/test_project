@@ -32,7 +32,10 @@ import { parseSubProgress } from "@/lib/dashboard/stageProgress";
 import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
 import { RequestOnboardingButton } from "@/components/RequestOnboardingButton";
+import { RegenerateOnboardingButton } from "@/components/RegenerateOnboardingButton";
 import { OnboardingQuiz } from "@/components/OnboardingQuiz";
+import { isOnboardingArcStale } from "@/lib/onboarding/staleness";
+import { getSelectedStagePayload } from "@/pipeline/context";
 import { loadOnboardingArc, loadOnboardingGold, loadOnboardingReferences, loadOnboardingFailure } from "@/pipeline/onboarding";
 import { MustWatchReferences } from "@/components/MustWatchReferences";
 import type { OnboardingArc, OnboardingGold } from "@/agents/onboarder/schema";
@@ -384,8 +387,10 @@ function ScriptSection({
 // 쏙이 온보딩 진입 — 노출 창 전 구간(thumbnails_selected~published)에서 렌더. 온디맨드·건너뛰기 가능(구다리 버튼과 병존).
 //   아크 없으면 "먼저 이해하기" 버튼(requestOnboarding 발행), 있으면 OnboardingQuiz 인터랙티브 재생.
 //   mode: live=구성 직전(금맥 주입) / review=구성 이후 복습(자동 반영 안 됨). 카피만 분기, 로직·버튼은 동일.
-function OnboardingSection({ runId, arc, gold, mode, retryableFailure }: { runId: string; arc: OnboardingArc | null; gold: OnboardingGold | null; mode: "live" | "review"; retryableFailure: string | null }) {
+function OnboardingSection({ runId, arc, gold, mode, retryableFailure, topicTitle }: { runId: string; arc: OnboardingArc | null; gold: OnboardingGold | null; mode: "live" | "review"; retryableFailure: string | null; topicTitle: string | null }) {
   const review = mode === "review";
+  // 주제가 아크 생성 이후 바뀌었으면 stale — 경고만(차단 아님). 구버전 아크·주제 미선택이면 false(오경보 방지).
+  const stale = arc ? isOnboardingArcStale(arc.sourceTopicTitle, topicTitle) : false;
   return (
     <section className="mt-8 border border-trus-yellow/50 p-4">
       <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">
@@ -398,7 +403,19 @@ function OnboardingSection({ runId, arc, gold, mode, retryableFailure }: { runId
       </p>
       <div className="mt-3">
         {arc ? (
-          <OnboardingQuiz runId={runId} arc={arc} gold={gold} mode={mode} />
+          <div className="flex flex-col gap-3">
+            {stale && (
+              <div className="border-l-2 border-l-trus-yellow pl-3 text-xs text-trus-yellow">
+                <p className="font-black">⚠️ 주제가 바뀌었어요 — 이 온보딩은 이전 주제로 만들어졌어요. 아래 &lsquo;온보딩 다시 만들기&rsquo;로 갱신하세요.</p>
+                {arc.sourceTopicTitle && (
+                  <p className="mt-1 text-[10px] text-trus-white/50">이전: {arc.sourceTopicTitle}</p>
+                )}
+              </div>
+            )}
+            <OnboardingQuiz runId={runId} arc={arc} gold={gold} mode={mode} />
+            {/* 아크가 있으면 stale 여부와 무관하게 항상 노출 — 언제든 수동 재생성 가능. */}
+            <RegenerateOnboardingButton runId={runId} />
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             <RequestOnboardingButton runId={runId} retryableFailure={retryableFailure} />
@@ -436,7 +453,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
   //   onboardingArc는 노출 창 전 구간(thumbnails_selected~published)에서 로드 — review 상태에서도 기존 아크를 복습 재생.
   //   그 외 상태는 호출 안 함(getRunDetail과 같은 admin 클라 경로 재사용).
   //   mustWatchRefs는 스크립트가 보이는 상태(SCRIPT_LOADED)에서만 로드 — 아크 payload의 경량 references(없으면 []).
-  const [rv, segments, cost, outlierRefs, onboardingArc, onboardingGold, mustWatchRefs, onboardingFailure] = await Promise.all([
+  const [rv, segments, cost, outlierRefs, onboardingArc, onboardingGold, mustWatchRefs, onboardingFailure, onboardingTopicTitle] = await Promise.all([
     RESEARCH_LOADED.includes(run.state) ? getResearchView(run.id) : Promise.resolve(null),
     SCRIPT_LOADED.includes(run.state) ? getScriptView(run.id) : Promise.resolve(null),
     getCostView(run.id),
@@ -452,6 +469,12 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       : Promise.resolve([]),
     isOnboardingVisible(run.state)
       ? loadOnboardingFailure(createAdminClient(), run.id)
+      : Promise.resolve(null),
+    // 현재 선택된 주제 제목 — stale 판정용(prepareOnboarder 미러 읽기 경로: getSelectedStagePayload("topic").title, 없으면 null).
+    isOnboardingVisible(run.state)
+      ? getSelectedStagePayload(createAdminClient(), run.id, "topic").then(
+          (p) => ((p as { title?: string } | null)?.title ?? null),
+        )
       : Promise.resolve(null),
   ]);
 
@@ -518,7 +541,7 @@ export default async function RunDetailPage({ params }: { params: Promise<{ id: 
       ))}
 
       {/* 쏙이 온보딩 — 노출 창 전 구간(thumbnails_selected~published)에서 노출. live=구성 직전 / review=구성 이후 복습. 게이트 아님. */}
-      {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} gold={onboardingGold} mode={onbMode} retryableFailure={onboardingFailure} />}
+      {isOnboardingVisible(run.state) && <OnboardingSection runId={run.id} arc={onboardingArc} gold={onboardingGold} mode={onbMode} retryableFailure={onboardingFailure} topicTitle={onboardingTopicTitle} />}
 
       <ResearchSection runId={run.id} runState={run.state} rv={rv} progressNote={run.progressNote} />
       {/* 필수 시청 유튜브 영상 — 쏙이 아크 근거 3개(스크립트 위). refs 없으면 컴포넌트가 null 반환(패널 숨김). */}
