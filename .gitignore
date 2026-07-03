@@ -82,5 +82,8 @@ scripts/__pycache__/
 # 런타임 스케줄러 lock(세션용·추적 제외)
 .claude/scheduled_tasks.lock
 
-# 비유 학습 원본 영상(민감·대용량) — 커밋 금지
+# 비유 학습 원본 영상·생성물(민감·대용량) — 커밋 금지
 learning/analogy-reels/*.mp4
+learning/analogy-reels/*.txt
+learning/analogy-reels/*.mp3
+learning/analogy-reels/*.m4a
