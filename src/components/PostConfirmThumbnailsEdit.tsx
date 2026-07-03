@@ -6,6 +6,7 @@ import { editThumbnails, regenerateAfterConfirm } from "@/app/actions/topicRun";
 import { extractGenCopy } from "@/components/thumbnailCorrectionGen";
 import { CandidateBody } from "@/components/CandidateBody";
 import { LiveRefresh } from "@/components/LiveRefresh";
+import { applyThumbnailEdit } from "@/lib/thumbnail/applyEdit";
 import type { ThumbnailPayload } from "@/lib/dashboard/proposalTypes";
 
 // 확정(thumbnails_selected) 후 썸네일 A/B/C 손편집 — editThumbnails만 호출(상태 전이 없음).
@@ -85,6 +86,8 @@ export function PostConfirmThumbnailsEdit({
     startTransition(async () => {
       try {
         await editThumbnails(runId, payloads);
+        // ★ localItems(단일 출처)를 편집값으로 즉시 갱신 — 안 하면 useState(items)가 refresh된 prop을 무시해 편집이 안 보인다.
+        setLocalItems((prev) => applyThumbnailEdit(prev, editIdx, editedPayload));
         setEditingIdx(null);
         router.refresh();
       } catch (e) {
