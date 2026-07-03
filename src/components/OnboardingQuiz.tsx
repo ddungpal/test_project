@@ -25,6 +25,8 @@ import {
   totalQuestions,
   type PlaybackState,
 } from "@/lib/onboarding/playback";
+import { buildRecap, recapScore } from "@/lib/onboarding/recap";
+import { MustWatchReferences } from "@/components/MustWatchReferences";
 import { submitOnboarding, requestOnboarding } from "@/app/actions/topicRun";
 
 // 추가 문제 폴링 상한 — RequestOnboardingButton 미러.
@@ -111,6 +113,9 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
   // 제출 완료 — live면 금맥이 구다리로 넘어갔음. review는 이미 구성 생성 후라 자동 반영 안 됨(정직 카피).
   //   gold가 있으면 실제 학습 내용(금맥 4필드)을 기존 카피 위에 표시. 없으면(미제출·구버전) 기존 카피만(하위호환).
   if (done) {
+    // 복습(읽기 전용) — step0 헬퍼로 조인·집계. 조인/정오 로직은 컴포넌트에 다시 쓰지 않는다.
+    const rows = buildRecap(state.arc, state.answers);
+    const { correct, total } = recapScore(rows);
     return (
       <div className="flex flex-col gap-3">
         {gold && (
@@ -158,6 +163,75 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
           </p>
         </div>
 
+        {/* 내 풀이 복습(읽기 전용) — step0 buildRecap/recapScore 소비. total 0(방어)이면 생략.
+            위계: 완료·금맥이 주. 복습은 보조라 요약·정답수를 summary 한 줄에 접어(기본 닫힘) 넣고,
+            '시험 점수'가 아니라 '찍고 틀려도 좋아요' 헤더 톤에 맞춘 가벼운 복습 프레이밍으로 낮춘다. */}
+        {total > 0 && (
+          <details className="border-t border-trus-white/15 pt-3">
+            <summary className="flex cursor-pointer items-baseline justify-between gap-3 text-[10px] font-bold uppercase tracking-widest text-trus-white/40 marker:text-trus-white/40">
+              <span>내 풀이 다시 보기</span>
+              <span className="shrink-0 tracking-widest">
+                <span className="text-trus-yellow">{correct}</span>
+                <span className="text-trus-white/40"> / {total} 맞힘</span>
+              </span>
+            </summary>
+            <div className="mt-3 flex flex-col divide-y divide-trus-white/10">
+                {rows.map((row, ri) => (
+                  <div key={ri} className="flex flex-col gap-2 pt-4 first:pt-0">
+                    {/* 질문 + difficulty 배지(HOOK_LABEL 배지 톤 미러) */}
+                    <div className="flex items-start gap-2">
+                      <span className="mt-0.5 shrink-0 border border-trus-white/30 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-trus-white/50">
+                        {DIFFICULTY_OPTIONS.find((o) => o.d === row.question.difficulty)?.label ?? row.question.difficulty}
+                      </span>
+                      <p className="text-sm font-bold leading-snug text-trus-white">{row.question.prompt}</p>
+                    </div>
+                    {/* 보기 — 색만이 아니라 ✓/✗ 기호 + "정답"/"내 답·오답" 텍스트 + 오답픽 취소선으로 정오 병기(접근성). */}
+                    <ul className="flex flex-col gap-1">
+                      {row.question.choices.map((choice, ci) => {
+                        const isAnswer = ci === row.question.answerIdx;
+                        const isChosen = row.chosenIdx != null && ci === row.chosenIdx;
+                        const isWrongPick = isChosen && !isAnswer;
+                        const cls = isAnswer
+                          ? "border-trus-yellow text-trus-yellow"
+                          : isWrongPick
+                            ? "border-trus-white/40 text-trus-white/70"
+                            : "border-trus-white/15 text-trus-white/40";
+                        return (
+                          <li
+                            key={ci}
+                            className={`flex items-center justify-between gap-2 border px-3 py-1.5 text-sm ${cls}`}
+                          >
+                            <span>
+                              <span aria-hidden="true" className="mr-1.5 font-bold">
+                                {isAnswer ? "✓" : isWrongPick ? "✗" : ""}
+                              </span>
+                              {/* 오답으로 고른 보기는 취소선으로 색 없이도 '틀리게 골랐음'을 대비 */}
+                              <span className={isWrongPick ? "line-through" : ""}>{choice}</span>
+                            </span>
+                            {isAnswer ? (
+                              <span className="shrink-0 text-[10px] font-black uppercase tracking-widest">
+                                {isChosen ? "정답 · 내 답" : "정답"}
+                              </span>
+                            ) : isWrongPick ? (
+                              <span className="shrink-0 text-[10px] font-bold uppercase tracking-widest text-trus-white/50">
+                                내 답 · 오답
+                              </span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                    {/* 해설(ahaReveal) — 보기 아래 */}
+                    <div className="border-l-2 border-l-trus-yellow bg-trus-white/[0.03] px-3 py-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-trus-yellow">아하</span>
+                      <p className="mt-1 text-sm leading-relaxed text-trus-white/90">{row.question.ahaReveal}</p>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </details>
+        )}
+
         {/* 추가 문제 — 난이도 1개 선택 → 그 난이도 문항이 기존 아크에 이어붙어 재제출되면 금맥 갱신. live/review 둘 다 노출.
             위계: 완료·금맥이 주. 이 블록은 보조 액션이라 라벨을 흐린 톤(헤더의 '호기심 체크' 미러)으로 낮춘다. */}
         <div className="flex flex-col gap-2 border-t border-trus-white/15 pt-3">
@@ -190,6 +264,12 @@ export function OnboardingQuiz({ runId, arc, gold, mode = "live" }: { runId: str
           )}
           {moreError && <p className="text-xs font-bold text-trus-yellow">⚠ {moreError}</p>}
         </div>
+
+        {/* 레퍼런스 영상 — 이 온보딩의 근거 영상 목록. 0개면 컴포넌트가 null 반환하므로 섹션 자동 생략(하위호환).
+            문항별 출처가 아니라 온보딩 단위 목록이므로 스크립트 단계 "필수 시청"과 문구를 구분한다. */}
+        {arc.references && arc.references.length > 0 && (
+          <MustWatchReferences refs={arc.references} heading="이 온보딩의 근거 영상" />
+        )}
       </div>
     );
   }
