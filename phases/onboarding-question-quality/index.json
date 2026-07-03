@@ -14,9 +14,13 @@
     {
       "step": 1,
       "name": "term-definition-questions",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-03T14:28:32+0900",
+      "summary": "쏙이 아크에 '개념 이해' 축 추가 — 용어 정의 문항을 세 번째 hookMode 'term'으로 도입. schema.ts: ArcHookMode에 'term' 추가('reversal'|'practical'|'term'), HOOK_MODES 배열에 'term' 추가(isHookMode가 자동 흡수 → normalizeArc 무수정, term 문항 드랍 안 됨). ONBOARDER_SYSTEM: ① 항목에 hookMode='term' 설명 1줄 덧붙임(기존 reversal/practical 두 줄 미변경) + ④-3 항목 추가(레퍼런스 transcript·videoFacts의 처음 듣는 용어 1개↑를 정의문제로·정답=정확한정의/오답=그럴듯하지만 틀린정의·hookMode='term'·money-safety 유지 근거없는 용어 날조금지·소재없으면 생략). 기존 문장 재작성 없이 덧붙이기만. OnboardingQuiz.tsx: HOOK_LABEL에 term:'용어' 추가(Record<ArcHookMode> 타입이 누락 강제). 신규 tests/onboardingTermMode.test.ts(term 문항 normalizeArc 통과·hookMode 보존, 세 모드 나란히 통과, 미지 hookMode는 여전히 드랍). isHookMode 비-export라 normalizeArc 통과로 간접 검증. typecheck0·test 1229→1232·build0·마이그0·의존성0.",
+      "completed_at": "2026-07-03T14:35:04+0900"
     }
   ],
   "created_at": "2026-07-03T00:00:00+0900",
-  "status": "in_progress"
+  "status": "completed"
 }
