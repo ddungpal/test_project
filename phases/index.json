@@ -364,6 +364,11 @@
       "dir": "scribe-redundancy-flow",
       "status": "completed",
       "completed_at": "2026-07-04T12:09:30+0900"
+    },
+    {
+      "dir": "script-voice-analogy",
+      "status": "completed",
+      "completed_at": "2026-07-04T13:50:21+0900"
     }
   ]
 }
