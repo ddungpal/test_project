@@ -1,0 +1,17 @@
+{
+  "project": "produce script",
+  "phase": "scribe-redundancy-flow",
+  "steps": [
+    {
+      "step": 0,
+      "name": "redundancy-flow",
+      "status": "completed",
+      "summary": "SCRIBE_SYSTEM에 ■ 중복 금지(같은 의미 재진술 방지)·■ 자연스러운 연결(낭독 기준 흐름 유지) 두 불릿을 프롬프트 입구에 추가(기존 규칙 무손상·순수 추가). 회귀 가드 tests/scribeRedundancyFlow.test.ts 신설('중복 금지'·'낭독 기준' 토큰 toContain). typecheck0·test 1323(신규2)·build0. promptHash(scribe) 변경→다음 라이브 런서 fixture 자동 재기록.",
+      "team_round": "1/1 PASS",
+      "started_at": "2026-07-04T12:01:26+0900",
+      "completed_at": "2026-07-04T12:09:30+0900"
+    }
+  ],
+  "created_at": "2026-07-04T12:01:26+0900",
+  "completed_at": "2026-07-04T12:09:30+0900"
+}
