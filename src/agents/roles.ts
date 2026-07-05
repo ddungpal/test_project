@@ -36,6 +36,7 @@ export const ROLES = {
   tone_extractor: { roleId: "tone_extractor", name: "말투추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus
   style_extractor: { roleId: "style_extractor", name: "스타일추출", defaultModel: "opus", tools: [] }, // 기반·저빈도 → 품질 우선 opus. 파이프라인 단계 아님.
   analogy_extractor: { roleId: "analogy_extractor", name: "비유추출", defaultModel: "opus", tools: [] }, // 레퍼런스 릴스 트랜스크립트에서 비유 기법 1회 추출(유이 의존 자산). 파이프라인 단계 아님. roleId 영구.
+  owner_feedback_extractor: { roleId: "owner_feedback_extractor", name: "오너피드백추출", defaultModel: "opus", tools: [] }, // 김짠부 직접 피드백을 최우선 규칙으로 1회 증류(훅이·썸네일 의존 자산). 파이프라인 단계 아님. roleId 영구.
   title_extractor: { roleId: "title_extractor", name: "제목스타일추출", defaultModel: "opus", tools: [] }, // 채널 raw 제목에서 제목 스타일 1회 추출(훅이 의존 자산). 파이프라인 단계 아님. roleId 영구.
   structure_extractor: { roleId: "structure_extractor", name: "구성추출", defaultModel: "opus", tools: [] }, // 코퍼스 구성/전개 패턴 1회 추출(구다리 의존 자산). 파이프라인 단계 아님. roleId 영구.
   // 학습 루프 회고(Phase 4) — 발행 후 성과+선택+반응을 인과로 복기→인사이트 draft. 편당 1회·저빈도·고가치 → opus.

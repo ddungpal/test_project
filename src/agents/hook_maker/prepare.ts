@@ -5,7 +5,7 @@ import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
 import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM, HOOK_PERSONA_DIRECTIVE } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
-import { loadActiveTitleStyle, appendTitleStyle } from "../shared/styleProfile.js";
+import { loadActiveTitleStyle, appendTitleStyle, loadActiveTitleOwnerRules, appendTitleOwnerRules } from "../shared/styleProfile.js";
 import { gatherTitleReferences, type ExternalTitleRef } from "./externalRefs.js";
 
 export interface HookMakerInput {
@@ -57,9 +57,16 @@ export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ sys
   // target_persona 조건부 주입 — persona 있을 때만 input에 실음. 없으면 키 자체를 넣지 않음(바이트 불변 → 픽스처 해시 보존).
   if (targetPersona) input.target_persona = targetPersona;
 
-  // system 합성: learned_insights + (있으면) title 스타일 사양. 둘 다 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
-  //   ★ 기존 appendTitleStyle/appendLearnedInsights 체인은 그대로 두고, persona 있을 때만 그 결과 뒤에 지시문을 붙인다(짠펜 step.ts 미러).
-  let system = appendTitleStyle(appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), titleStyle);
+  // owner-feedback-rules step2 — 김짠부 직접 피드백 최우선 규칙(active title_owner_rules). system에만 주입(input 오염 금지).
+  //   ★ 활성 규칙 없으면(현재 상태) system 바이트 불변 → promptHash·hook_maker 픽스처 보존. 활성화 후에만 변동.
+  const ownerRules = await loadActiveTitleOwnerRules(supa);
+
+  // system 합성: learned_insights → title 스타일 사양 → owner 최우선 규칙 순(insights·style 뒤, persona 앞). 다 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
+  //   ★ 기존 appendTitleStyle/appendLearnedInsights 체인은 그대로 두고, owner 규칙을 맨 바깥 학습 래퍼로 감싼 뒤 persona 있을 때만 지시문을 붙인다.
+  let system = appendTitleOwnerRules(
+    appendTitleStyle(appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), titleStyle),
+    ownerRules,
+  );
   if (targetPersona) system += "\n" + HOOK_PERSONA_DIRECTIVE;
   return { system, input, schema: HOOK_MAKER_SCHEMA };
 }

@@ -10,6 +10,7 @@ import {
 } from "../../performance/abVerdict.js";
 import type { AbVariantKey } from "../../performance/types.js";
 import type { Json, TablesInsert } from "../../lib/supabase/database.types.js";
+import type { OwnerFeedbackCandidates } from "../../agents/owner_feedback/schema.js";
 
 export interface CopyAbInput {
   contentId?: string;
@@ -176,12 +177,37 @@ export function buildCorrectionRow(input: CorrectionInput): TablesInsert<"thumbn
   return row;
 }
 
-/** UI의 component 선택 → style_profiles.component_type. 썸네일 카피는 thumbnail_copy, 비유는 analogy_style. */
-export type CopyComponent = "thumbnail" | "title" | "analogy";
-export function componentTypeFor(component: CopyComponent): "thumbnail_copy" | "title" | "analogy_style" {
+/** UI의 component 선택 → style_profiles.component_type. 썸네일 카피는 thumbnail_copy, 비유는 analogy_style,
+ *   김짠부 직접 피드백 최우선 규칙은 title_owner_rules·thumbnail_owner_rules. */
+export type CopyComponent = "thumbnail" | "title" | "analogy" | "title_owner" | "thumbnail_owner";
+export function componentTypeFor(
+  component: CopyComponent,
+): "thumbnail_copy" | "title" | "analogy_style" | "title_owner_rules" | "thumbnail_owner_rules" {
   if (component === "thumbnail") return "thumbnail_copy";
   if (component === "analogy") return "analogy_style";
+  if (component === "title_owner") return "title_owner_rules";
+  if (component === "thumbnail_owner") return "thumbnail_owner_rules";
   return "title";
+}
+
+/** owner rules draft 의 provenance 한 건 — 원문 피드백·후보·주제를 보존(뉘앙스 유실 완화). */
+export interface OwnerRuleSource {
+  topic?: string;
+  candidates: OwnerFeedbackCandidates;
+  feedback: string;
+}
+
+/**
+ * owner rules draft 의 patterns jsonb 를 순수 조립(DB·server-only 무관).
+ *   - rules = 병합된 최우선 규칙셋(추출기 결과). sources = 이전 provenance + 이번 1건 누적.
+ *   - style_profiles.patterns 에 그대로 저장된다: { rules, sources }.
+ */
+export function buildOwnerRulesDraftPatterns(
+  prevSources: OwnerRuleSource[],
+  rules: string[],
+  newSource: OwnerRuleSource,
+): { rules: string[]; sources: OwnerRuleSource[] } {
+  return { rules, sources: [...prevSources, newSource] };
 }
 
 /** performance_metrics d1 overall 1행(순수 변환). ctr=ctr24h, views=views24h. */

@@ -1,0 +1,35 @@
+{
+  "project": "produce script",
+  "phase": "owner-feedback-rules",
+  "steps": [
+    {
+      "step": 0,
+      "name": "backend-extractor-action",
+      "status": "completed",
+      "started_at": "2026-07-05T19:37:14+0900",
+      "team_round": "2/3 PASS",
+      "summary": "김짠부 직접 피드백→최우선 룰 학습 백엔드(draft까지). 마이그034 style_profiles CHECK에 title_owner_rules·thumbnail_owner_rules 2종 추가(멱등 drop/재생성)+database.types.ts StyleProfiles 유니온 동시 확장(드리프트0). 신규 owner_feedback_extractor(opus·roles.ts 등록): schema.ts(OWNER_FEEDBACK_SCHEMA required=change_note만·rules 빈배열 방어·OwnerFeedbackCandidates 제목string[]|썸네일{main,box}[])·step.ts(callLLM1회·rules??[]·빈feedback시 LLM미호출·UNTRUSTED 델리미터·병합규칙 SYSTEM 명시). ownerRulesRelearn.ts submitOwnerFeedbackSweep 코어(active rules로드→추출병합→version=component_type스코프 max+1 draft INSERT·활성화 안함=사람게이트)+copyLearn.ts submitOwnerFeedback 얇은 래퍼(requireOwner·auditLog). copyLearnMap.ts에 순수 buildOwnerRulesDraftPatterns·OwnerRuleSource·componentTypeFor 확장(title_owner→title_owner_rules 등·server-only 무의존). 훅이/썸네일/유이 prepare·fixture 무변경=promptHash 불변. typecheck/test(1341)/build 전부 exit0.",
+      "completed_at": "2026-07-05T19:57:00+0900"
+    },
+    {
+      "step": 1,
+      "name": "copy-learn-ui",
+      "status": "completed",
+      "started_at": "2026-07-05T19:57:00+0900",
+      "team_round": "1/3 PASS",
+      "summary": "/copy-learn 에 '김짠부 직접 피드백(제목)·(썸네일)' 패널 2개 추가 — 순수 UI+조회뷰만(백엔드는 step0). copyLearnView.ts getOwnerRulesDrafts(component,limit=5): title_owner_rules/thumbnail_owner_rules version desc 조회·조회error 시 console.warn→[] best-effort 폴백(마이그034 미적용에도 /copy-learn 안 막힘)·OwnerRulesDraft{id,version,status,createdAt,rules,sourcesCount} export(patterns.rules/sources 방어)·CopyStyleComponentType union 미오염(별도 OwnerRulesComponentType 분리로 Record typecheck 보호). 신규 순수헬퍼 src/lib/learning/ownerRulesDraftSummary.ts(unknown 방어·'규칙 N개'·'근거 N건')+tests/ownerRulesDraftSummary.test.ts 6케이스. CopyLearningForm.tsx OwnerFeedbackPanel(component prop 분기)+OwnerRulesDraftCard 2인스턴스: topic(선택)+feedback textarea(필수)+제목 후보행 추가/삭제·썸네일 세트(메인2·박스2) 추가/삭제→submitOwnerFeedback / activateCopyStyle('title_owner'|'thumbnail_owner')(draft0 disabled)·활성 규칙셋 읽기전용 표시·STATUS_LABEL/fmtDate/PatternNode 재사용(새 렌더러0)·aria-busy·router.refresh. page.tsx Promise.all 2건 배선. TRUS 3색·직각·그림자0 준수(shadow/gradient/rounded 스캔 0). 서버액션·prepare·프롬프트·fixture 무변경(promptHash 불변). typecheck0·test1341→1347·build0·떠돌이 fixtures0. 미완=실 브라우저 라이브검증(코드/유닛/빌드만).",
+      "completed_at": "2026-07-05T20:09:15+0900"
+    },
+    {
+      "step": 2,
+      "name": "owner-rules-injection",
+      "status": "completed",
+      "started_at": "2026-07-05T20:09:15+0900",
+      "team_round": "1/3 PASS",
+      "summary": "활성 owner 규칙셋(title_owner_rules/thumbnail_owner_rules·patterns {rules:string[]})을 훅이·썸네일 카피 system에 최우선(맨 바깥 학습 래퍼=persona 직전)으로 주입해 학습 루프 종결. styleProfile.ts에 loadActiveOwnerRules(내부 공용→loadActiveTitleOwnerRules/loadActiveThumbnailOwnerRules)+cleanRules(hasUsablePatterns+rules 유효문자열만, 0개면 null)+appendOwnerRules(공용 순수→appendTitleOwnerRules/appendThumbnailOwnerRules 얇게 감쌈): null/빈rules/깨진입력이면 system 바이트동일 반환, 규칙 있으면 '━━ ⚠️ 김짠부 최우선 지시(충돌시 무조건 이걸) ━━'+불릿 블록을 끝에 append(evidence 표기 v1 생략). ★로드실패 best-effort: 조회 error 시 throw 아니라 console.warn→null(step1 getOwnerRulesDrafts 미러·step 금지사항 준수·기존 style 로더 throw와 의도적 분기). hook_maker/thumbnail_maker prepare에 loadActive*OwnerRules 1회 로드→appendTitleStyle/appendWinningThumbnailRefs 결과를 owner 래퍼로 감싼 뒤 persona directive(순서=insights·style 뒤·persona 앞). input 미오염(system에만). 활성 owner 프로필 0이므로 promptHash·골든 fixture 바이트 불변(활성화 후에만 변동). 신규 tests/ownerRulesInjection.test.ts(바이트동일·순서·로드실패 null 검증). typecheck0·test1347→1358·build0·fixtures 무변경.",
+      "completed_at": "2026-07-05T20:22:03+0900"
+    }
+  ],
+  "created_at": "2026-07-05T19:37:14+0900",
+  "completed_at": "2026-07-05T20:22:03+0900"
+}

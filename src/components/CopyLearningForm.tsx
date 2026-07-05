@@ -2,11 +2,13 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { saveCopyAbResults, requestCopyRelearn, requestChannelTitleRelearn, requestAnalogyRelearn, activateCopyStyle, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
+import { saveCopyAbResults, requestCopyRelearn, requestChannelTitleRelearn, requestAnalogyRelearn, activateCopyStyle, submitOwnerFeedback, createLearningVideo, updateContentTitle, updateContentUploadDate, deleteLearningVideo } from "@/app/actions/copyLearn";
 import type { CopyAbInput, NewLearningVideoInput } from "@/app/actions/copyLearnMap";
+import type { OwnerFeedbackCandidates } from "@/agents/owner_feedback/schema";
 import type { AbVariantKey } from "@/performance/types";
-import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow, StructureProfile, StructureProfiles, AnalogyDraft } from "@/lib/dashboard/copyLearnView";
+import type { CopyLearnVideo, CopyStyleDraft, CopyStyleComponentType, CorrectionRow, StructureProfile, StructureProfiles, AnalogyDraft, OwnerRulesDraft } from "@/lib/dashboard/copyLearnView";
 import { analogyDraftSummary } from "@/lib/learning/analogyDraftSummary";
+import { ownerRulesDraftSummary } from "@/lib/learning/ownerRulesDraftSummary";
 import { numOrNull, parseViews24h } from "@/components/copyViewsParse";
 
 // 카피 학습 입력 화면(copy-learning-admin step2) — owner가 영상별 썸네일·제목 A/B + CTR(24h)를 입력→저장,
@@ -1266,10 +1268,383 @@ function CorrectionPanel({ corrections }: { corrections: CorrectionRow[] }) {
   );
 }
 
-export function CopyLearningForm({ videos, drafts, corrections, structure, analogyDrafts }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[]; structure: StructureProfiles; analogyDrafts: AnalogyDraft[] }) {
+// ─────────────────────────────────────────────────────────────────────────────
+// 김짠부 직접 피드백 학습(owner feedback) — 오너가 제목/썸네일 후보를 보고 말로 준 정성 피드백을
+//   최우선 규칙으로 증류한다(submitOwnerFeedback→draft, activateCopyStyle('title_owner'|'thumbnail_owner')로
+//   활성화). AnalogyPanel 미러: 단일 component·재학습(여기선 [학습])→검토→직접 활성화. 제목/썸네일 두 인스턴스.
+//   요약은 ownerRulesDraftSummary(순수 헬퍼·src/lib), 카드는 AnalogyDraftCard 미러, STATUS_LABEL/fmtDate 재사용.
+// ─────────────────────────────────────────────────────────────────────────────
+
+type OwnerComponent = "title" | "thumbnail";
+
+const OWNER_LABEL: Record<OwnerComponent, string> = {
+  title: "제목",
+  thumbnail: "썸네일",
+};
+// activateCopyStyle 에 넘길 owner 인자(componentTypeFor 가 title_owner_rules|thumbnail_owner_rules 로 매핑).
+const OWNER_ACTIVATE_ARG: Record<OwnerComponent, "title_owner" | "thumbnail_owner"> = {
+  title: "title_owner",
+  thumbnail: "thumbnail_owner",
+};
+
+// owner rules 초안 1개 카드 — 요약 라인(ownerRulesDraftSummary) + rules 목록 토글(AnalogyDraftCard 미러).
+function OwnerRulesDraftCard({ d }: { d: OwnerRulesDraft }) {
+  const [open, setOpen] = useState(false);
+  const summary = ownerRulesDraftSummary({ rules: d.rules, sources: Array.from({ length: d.sourcesCount }) });
+  return (
+    <li className="border border-trus-white/15 px-3 py-2">
+      <div className="flex items-center gap-2 text-xs text-trus-white/55">
+        <span className="font-bold text-trus-white">v{d.version ?? "—"}</span>
+        <span
+          className={
+            d.status === "active"
+              ? "border border-trus-yellow px-1.5 py-0.5 font-bold text-trus-yellow"
+              : "border border-trus-white/25 px-1.5 py-0.5 text-trus-white/55"
+          }
+        >
+          {STATUS_LABEL[d.status]}
+        </span>
+        <span className="ml-auto">{fmtDate(d.createdAt)}</span>
+      </div>
+
+      {summary.length > 0 ? (
+        <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px] text-trus-white/70">
+          {summary.map((line, i) => (
+            <span key={i} className="border border-trus-white/20 px-1.5 py-0.5">
+              {line}
+            </span>
+          ))}
+        </div>
+      ) : (
+        <p className="mt-1 text-[11px] text-trus-white/35">요약할 규칙 없음</p>
+      )}
+
+      {d.rules.length > 0 && (
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          className="mt-1.5 text-[11px] font-bold text-trus-yellow/80 hover:text-trus-yellow"
+        >
+          {open ? "규칙 접기 −" : "규칙 보기 +"}
+        </button>
+      )}
+      {open && d.rules.length > 0 && (
+        <ul className="mt-2 flex list-disc flex-col gap-1 border-t border-trus-white/10 pl-5 pt-2 text-sm text-trus-white/80">
+          {d.rules.map((r, i) => (
+            <li key={i}>{r}</li>
+          ))}
+        </ul>
+      )}
+    </li>
+  );
+}
+
+function OwnerFeedbackPanel({ component, drafts }: { component: OwnerComponent; drafts: OwnerRulesDraft[] }) {
+  const [topic, setTopic] = useState("");
+  const [feedback, setFeedback] = useState("");
+  // 제목: 후보 문자열 행 목록. 썸네일: 세트(메인2·박스2) 목록.
+  const [titleRows, setTitleRows] = useState<string[]>([""]);
+  const [thumbSets, setThumbSets] = useState<{ main: [string, string]; box: [string, string] }[]>([
+    { main: ["", ""], box: ["", ""] },
+  ]);
+  const [error, setError] = useState<string | null>(null);
+  const [ok, setOk] = useState<string | null>(null);
+  const [busy, setBusy] = useState<null | "learn" | "activate">(null);
+  const [pending, startTransition] = useTransition();
+  const router = useRouter();
+
+  // 현재 활성 규칙셋(status==='active' draft) — 지금까지 쌓인 최우선 규칙을 읽기전용으로 보여준다.
+  const activeDraft = useMemo(() => drafts.find((d) => d.status === "active") ?? null, [drafts]);
+
+  // submitOwnerFeedback/activateCopyStyle 을 동기 await 하므로 pending 이 처리 끝까지 유지된다. AnalogyPanel.run 미러.
+  function run(tag: "learn" | "activate", fn: () => Promise<string>) {
+    setError(null);
+    setOk(null);
+    setBusy(tag);
+    startTransition(async () => {
+      try {
+        const msg = await fn();
+        setOk(msg);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "처리 실패");
+      } finally {
+        setBusy(null);
+      }
+    });
+  }
+
+  /** 입력 상태 → 서버액션 candidates. 빈 행/빈 칸은 걸러낸다(빈 값 누출 차단). */
+  function buildCandidates(): OwnerFeedbackCandidates {
+    if (component === "title") {
+      return titleRows.map((t) => t.trim()).filter(Boolean);
+    }
+    // 썸네일: 세트별 메인2·박스2 → {main, box}. 아무 값도 없는 세트는 스킵.
+    const sets: { main: string[]; box: string[] }[] = [];
+    for (const s of thumbSets) {
+      const main = s.main.map((x) => x.trim()).filter(Boolean);
+      const box = s.box.map((x) => x.trim()).filter(Boolean);
+      if (main.length === 0 && box.length === 0) continue;
+      sets.push({ main, box });
+    }
+    return sets;
+  }
+
+  function onLearn() {
+    const fb = feedback.trim();
+    if (fb.length === 0) {
+      setError(null);
+      setOk(null);
+      setError("피드백을 입력하세요(김짠부가 후보를 보고 준 말).");
+      return;
+    }
+    const candidates = buildCandidates();
+    const topicVal = topic.trim();
+    run("learn", async () => {
+      const r = await submitOwnerFeedback({
+        component,
+        ...(topicVal ? { topic: topicVal } : {}),
+        candidates,
+        feedback: fb,
+      });
+      if (!r.created) return "변경 없음(피드백에서 새 규칙이 나오지 않음).";
+      return `${OWNER_LABEL[component]} 규칙 v${r.version ?? "—"} 초안 생성 (규칙 ${r.ruleCount}개). 아래에서 검토 후 활성화하세요.`;
+    });
+  }
+
+  // 제목 후보 행 조작
+  function setTitleRow(i: number, value: string) {
+    setTitleRows((rows) => rows.map((r, idx) => (idx === i ? value : r)));
+  }
+  function addTitleRow() {
+    setTitleRows((rows) => [...rows, ""]);
+  }
+  function removeTitleRow(i: number) {
+    setTitleRows((rows) => (rows.length <= 1 ? rows : rows.filter((_, idx) => idx !== i)));
+  }
+
+  // 썸네일 세트 조작
+  function patchThumbSet(i: number, patch: Partial<{ main: [string, string]; box: [string, string] }>) {
+    setThumbSets((sets) => sets.map((s, idx) => (idx === i ? { ...s, ...patch } : s)));
+  }
+  function addThumbSet() {
+    setThumbSets((sets) => [...sets, { main: ["", ""], box: ["", ""] }]);
+  }
+  function removeThumbSet(i: number) {
+    setThumbSets((sets) => (sets.length <= 1 ? sets : sets.filter((_, idx) => idx !== i)));
+  }
+
+  return (
+    <section className="border border-trus-white/20 p-4">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 className="text-xs font-bold tracking-widest text-trus-yellow uppercase">
+          김짠부 직접 피드백 ({OWNER_LABEL[component]})
+        </h2>
+      </div>
+      <p className="mt-2 text-xs text-trus-white/50">
+        김짠부가 {OWNER_LABEL[component]} 후보를 보고 준 말을 그대로 적으면, 그 이유를 <b className="text-trus-white/80">최우선 규칙</b>으로 뽑아
+        기존 규칙과 병합한다. 이 규칙은 다른 학습보다 <b className="text-trus-white/80">뒤(최우선)</b>에 주입돼 충돌 시 무조건 우선한다.
+        검토 후 <b className="text-trus-white/80">직접 활성화</b>한다(자동 활성화 없음).
+      </p>
+
+      {/* 현재 활성 규칙셋(읽기전용) — 지금까지 쌓인 최우선 규칙 */}
+      <div className="mt-4 border border-trus-white/15 p-3">
+        <h3 className="text-sm font-black text-trus-white">현재 적용 중인 규칙</h3>
+        {activeDraft && activeDraft.rules.length > 0 ? (
+          <ul className="mt-2 flex list-disc flex-col gap-1 pl-5 text-sm text-trus-white/80">
+            {activeDraft.rules.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-2 border border-dashed border-trus-white/15 px-3 py-3 text-center text-xs text-trus-white/35">
+            아직 활성 규칙 없음 — 아래에서 피드백을 학습하고 초안을 활성화하세요
+          </p>
+        )}
+      </div>
+
+      {/* 입력: 주제(선택) + 후보 + 피드백 */}
+      <div className="mt-4 flex flex-col gap-3">
+        <label className="block">
+          <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">주제 (선택)</span>
+          <input
+            value={topic}
+            onChange={(e) => setTopic(e.target.value)}
+            placeholder="예: 40대 노후 준비"
+            aria-label={`${OWNER_LABEL[component]} 피드백 주제`}
+            className={`mt-1 ${INPUT_CLS}`}
+          />
+        </label>
+
+        {component === "title" ? (
+          <fieldset className="border border-trus-white/15 p-3">
+            <legend className="px-1 text-xs font-bold tracking-widest text-trus-yellow uppercase">제목 후보</legend>
+            <div className="flex flex-col gap-2">
+              {titleRows.map((row, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    value={row}
+                    onChange={(e) => setTitleRow(i, e.target.value)}
+                    placeholder={`제목 후보 ${i + 1}`}
+                    aria-label={`제목 후보 ${i + 1}`}
+                    className={INPUT_CLS}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removeTitleRow(i)}
+                    disabled={titleRows.length <= 1}
+                    aria-label={`제목 후보 ${i + 1} 삭제`}
+                    className="shrink-0 border border-trus-white/25 px-2 py-1 text-xs font-bold text-trus-white/60 hover:border-trus-yellow hover:text-trus-yellow disabled:cursor-not-allowed disabled:opacity-30"
+                  >
+                    −
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addTitleRow}
+              className="mt-2 border border-trus-white/25 px-3 py-1 text-xs font-bold text-trus-white/70 hover:border-trus-yellow hover:text-trus-yellow"
+            >
+              ＋ 후보 추가
+            </button>
+          </fieldset>
+        ) : (
+          <fieldset className="border border-trus-white/15 p-3">
+            <legend className="px-1 text-xs font-bold tracking-widest text-trus-yellow uppercase">썸네일 후보 세트</legend>
+            <div className="flex flex-col gap-4">
+              {thumbSets.map((s, i) => (
+                <div key={i} className="border border-trus-white/15 p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-black text-trus-white">세트 {i + 1}</span>
+                    <button
+                      type="button"
+                      onClick={() => removeThumbSet(i)}
+                      disabled={thumbSets.length <= 1}
+                      aria-label={`세트 ${i + 1} 삭제`}
+                      className="border border-trus-white/25 px-2 py-1 text-xs font-bold text-trus-white/60 hover:border-trus-yellow hover:text-trus-yellow disabled:cursor-not-allowed disabled:opacity-30"
+                    >
+                      세트 삭제
+                    </button>
+                  </div>
+                  <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {[0, 1].map((j) => (
+                      <input
+                        key={`main-${j}`}
+                        value={s.main[j]}
+                        onChange={(e) =>
+                          patchThumbSet(i, {
+                            main: [j === 0 ? e.target.value : s.main[0], j === 1 ? e.target.value : s.main[1]],
+                          })
+                        }
+                        placeholder={`메인문구 ${j + 1}`}
+                        aria-label={`세트 ${i + 1} 메인문구 ${j + 1}`}
+                        className={INPUT_CLS}
+                      />
+                    ))}
+                    {[0, 1].map((j) => (
+                      <input
+                        key={`box-${j}`}
+                        value={s.box[j]}
+                        onChange={(e) =>
+                          patchThumbSet(i, {
+                            box: [j === 0 ? e.target.value : s.box[0], j === 1 ? e.target.value : s.box[1]],
+                          })
+                        }
+                        placeholder={`박스문구 ${j + 1}`}
+                        aria-label={`세트 ${i + 1} 박스문구 ${j + 1}`}
+                        className={INPUT_CLS}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={addThumbSet}
+              className="mt-2 border border-trus-white/25 px-3 py-1 text-xs font-bold text-trus-white/70 hover:border-trus-yellow hover:text-trus-yellow"
+            >
+              ＋ 세트 추가
+            </button>
+          </fieldset>
+        )}
+
+        <label className="block">
+          <span className="text-xs font-bold tracking-widest text-trus-yellow uppercase">피드백 (필수)</span>
+          <textarea
+            value={feedback}
+            onChange={(e) => setFeedback(e.target.value)}
+            rows={3}
+            placeholder="예: 이건 낚시라 별로. 숫자가 없으면 안 눌러. '~하는 법'은 식상해."
+            aria-label={`${OWNER_LABEL[component]} 피드백`}
+            className={`mt-1 ${INPUT_CLS} resize-y`}
+          />
+        </label>
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={onLearn}
+          disabled={pending}
+          aria-busy={busy === "learn"}
+          className="bg-trus-yellow px-4 py-1.5 text-sm font-black text-trus-black disabled:opacity-50"
+        >
+          {busy === "learn" ? "학습 중… (수십 초)" : "학습"}
+        </button>
+        <button
+          type="button"
+          onClick={() => run("activate", async () => {
+            const r = await activateCopyStyle(OWNER_ACTIVATE_ARG[component]);
+            return r.activated > 0 ? `${OWNER_LABEL[component]} 최신 초안을 활성화했어` : `${OWNER_LABEL[component]} — 이미 활성(변경 없음)`;
+          })}
+          disabled={pending || drafts.length === 0}
+          aria-busy={busy === "activate"}
+          className="border border-trus-yellow px-3 py-1.5 text-xs font-bold text-trus-yellow hover:bg-trus-yellow hover:text-trus-black disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          최신 초안 활성화
+        </button>
+        {busy === "learn" && (
+          <span className="inline-flex items-center gap-2 text-xs text-trus-yellow">
+            <span className="inline-block h-3 w-3 animate-spin border-2 border-trus-yellow border-t-transparent" aria-hidden />
+            학습 중 — 끝나면 자동 새로고침됩니다. 버튼을 다시 누르지 마세요.
+          </span>
+        )}
+      </div>
+
+      {/* 최근 초안 목록 */}
+      <div className="mt-4 border border-trus-white/15 p-3">
+        <h3 className="text-sm font-black text-trus-white">최근 초안</h3>
+        {drafts.length === 0 ? (
+          <p className="mt-3 border border-dashed border-trus-white/15 px-3 py-4 text-center text-xs text-trus-white/35">
+            아직 초안 없음 — 피드백을 학습하세요
+          </p>
+        ) : (
+          <ul className="mt-3 flex flex-col gap-2">
+            {drafts.map((d) => (
+              <OwnerRulesDraftCard key={d.id} d={d} />
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {(ok || error) && (
+        <p className="mt-3 text-xs text-trus-yellow">{error ? `⚠ ${error}` : `✓ ${ok}`}</p>
+      )}
+    </section>
+  );
+}
+
+export function CopyLearningForm({ videos, drafts, corrections, structure, analogyDrafts, titleOwnerDrafts, thumbnailOwnerDrafts }: { videos: CopyLearnVideo[]; drafts: CopyStyleDraft[]; corrections: CorrectionRow[]; structure: StructureProfiles; analogyDrafts: AnalogyDraft[]; titleOwnerDrafts: OwnerRulesDraft[]; thumbnailOwnerDrafts: OwnerRulesDraft[] }) {
   return (
     <div className="mt-8 flex flex-col gap-8">
       <StylePanel drafts={drafts} />
+
+      <OwnerFeedbackPanel component="title" drafts={titleOwnerDrafts} />
+
+      <OwnerFeedbackPanel component="thumbnail" drafts={thumbnailOwnerDrafts} />
 
       <AnalogyPanel drafts={analogyDrafts} />
 

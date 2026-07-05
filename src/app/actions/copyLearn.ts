@@ -8,6 +8,8 @@
 import { createAdminClient } from "../../lib/supabase/admin.js";
 import { styleRelearnSweep } from "../../performance/styleRelearn.js";
 import { analogyRelearnSweep } from "../../performance/analogyRelearn.js";
+import { submitOwnerFeedbackSweep } from "../../performance/ownerRulesRelearn.js";
+import type { OwnerFeedbackCandidates } from "../../agents/owner_feedback/schema.js";
 import { fetchChannelTitles } from "../../ingest/channelTitles.js";
 import { extractTitleStylePatterns, saveTitleStyleDraft } from "../../performance/titleStyleLearn.js";
 import { requireOwner } from "./auth.js";
@@ -377,6 +379,33 @@ export async function requestAnalogyRelearn(): Promise<{
   });
 
   return { transcribed: res.transcribed, created: res.created, version: res.version };
+}
+
+/**
+ * 김짠부 직접 피드백 제출(사람 게이트). requireOwner 후 submitOwnerFeedbackSweep 를 **동기로 await** 한다.
+ *   ★ requestAnalogyRelearn 미러 — 이벤트 발행이 아니라 직접 실행(pending 이 학습 끝까지 유지·정확한 안내).
+ *   sweep = 활성 owner 규칙 로드 → 추출기로 이번 피드백 병합 → style_profiles(*_owner_rules) draft 삽입.
+ *   draft 까지만 — activate 는 별도 사람 게이트('최신 초안 활성화'). 빈 피드백이면 created:false(추출/INSERT 0·과금 0).
+ */
+export async function submitOwnerFeedback(input: {
+  component: "title" | "thumbnail";
+  topic?: string;
+  candidates: OwnerFeedbackCandidates;
+  feedback: string;
+}): Promise<{ created: boolean; version: number | null; ruleCount: number }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const res = await submitOwnerFeedbackSweep(supa, input);
+
+  // auditLog 는 best-effort(던지지 않음).
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "owner_feedback_submitted",
+    detail: { component: input.component, created: res.created, version: res.version, ruleCount: res.ruleCount },
+  });
+
+  return { created: res.created, version: res.version, ruleCount: res.ruleCount };
 }
 
 // 채널 제목 학습 대상 핸들 — @zzanboo 고정(입력 인자/입력칸 없음). 김짠부 채널 단일 출처.
