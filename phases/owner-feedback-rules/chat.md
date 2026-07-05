@@ -19,3 +19,21 @@
 [Joy] 리드 오케이! index.json은 리드 몫이니까 코드 판정에서 뺄게. AC 3개 방금 다시 돌렸는데 typecheck exit 0, test 1341 전부 통과, build exit 0 다 깨끗해. 코드는 원래 7/7이었으니 이제 걸리는 거 하나도 없어. 맥스 이번 것도 완벽하다 최종 통과 🎉
 [Joy] index.json 사유 빼면 남는 blocker 없어~ 코드 7/7 그대로 유효, AC 3개 다시 돌려도 전부 exit 0! 통과 🎉
 [리드] 좋아, step 0 완료로 확정했어. index.json completed + summary 갱신 끝. 맥스·조이 수고했어!
+
+=== Step 1: copy-learn-ui ===
+[리드] step1은 순수 UI+조회뷰야. step0에서 백엔드(submitOwnerFeedback·activateCopyStyle 매핑·추출기)는 다 됐고, 이제 /copy-learn 에 "김짠부 직접 피드백(제목)·(썸네일)" 패널 2개만 얹으면 돼. AnalogyPanel을 거의 그대로 미러하는 일이라 맥스한테 통째로 맡길게. 새 렌더러 만들지 말고 기존 거 재사용하는 게 핵심이야.
+
+[Max] step1 시작할게. copyLearnView 조회뷰랑 순수헬퍼부터 미러하고 UI 패널 두 개 붙일 예정이야.
+[Max] 조회뷰(getOwnerRulesDrafts)랑 순수헬퍼·유닛테스트 만들어놨어. 이제 UI 패널 두 개 붙일게.
+[Max] UI 패널 두 개랑 페이지 배선 끝냈어. typecheck 돌려볼게.
+[Max] AC 세 개 다 통과했어. typecheck 0, test 1347개 다 초록, build도 깨끗해. fixtures는 안 건드렸고 떠돌이도 없어. 놓친 거 있으면 말해줘.
+[Joy] 맥스 코드 잘 봤어 깔끔하다 git diff부터 훑는 중
+[Joy] 오 서버액션이랑 agents fixture 하나도 안 건드렸네 UI랑 조회뷰만 딱 만졌어 굿
+[Joy] CopyStyleComponentType union도 그대로 두 개고 owner는 OwnerRulesComponentType로 따로 뺐네 typecheck 안 깨지겠다
+[Joy] 이제 typecheck test build 직접 돌려볼게 커피 한 잔 타올 시간이네 ☕
+[Joy] typecheck 0 test 1347 다 통과 0 실패 build 0 다 초록불이야 🎉
+[Joy] 순수헬퍼 src/lib에 잘 뒀고 unknown 방어에 테스트까지 야무지네 조회는 error나면 warn 찍고 빈배열 폴백이라 마이그 안 돼도 페이지 안 막혀
+[Joy] TRUS 3색만 쓰고 shadow gradient 하나도 없어 활성화 버튼도 draft 0이면 disabled 잘 걸었고
+[Joy] 떠돌이 fixtures 0에 범위 외 파일도 없어 맥스 이번거 통과야 고생했어 👍
+[Joy] 검수 끝! 8개 계약 전부 통과, AC 3개 내가 다시 돌려도 typecheck 0·test 1347·build 0 다 초록이야. 순수헬퍼 위치도 union 오염 금지도 Max가 이미 정확히 지켰어. 통과 🎉
+[리드] 좋아, Joy PASS 확정. AC ground-truth도 내가 직접 재확인했고(0/0/0·떠돌이 0) 센티넬 하나뿐이라 유효. step1 completed+summary 갱신 끝. Max·Joy 수고했어! 다음은 step2 주입이야.

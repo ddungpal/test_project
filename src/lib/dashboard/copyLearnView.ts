@@ -234,6 +234,74 @@ export async function getAnalogyDrafts(limit = 5): Promise<AnalogyDraft[]> {
   return out;
 }
 
+// ── 김짠부 직접 피드백 최우선 규칙(owner rules) draft 조회 — component_type='title_owner_rules'|'thumbnail_owner_rules'. ──
+//   썸네일/제목(getCopyStyleDrafts)·구성·비유와 다른 독립 타입. ⚠️ CopyStyleComponentType union 에 owner 타입을
+//   넣지 않는다(넣으면 CopyLearningForm 의 Record<CopyStyleComponentType,...> typecheck 가 깨짐 — getStructureProfiles/
+//   getAnalogyDrafts 가 분리된 이유와 동일). getAnalogyDrafts 의 최신순·limit 패턴 + best-effort(try/warn→[]) 폴백 미러
+//   (마이그 034 미적용·테이블 이슈에도 /copy-learn 전체가 막히지 않게).
+
+export type OwnerRulesComponentType = "title_owner_rules" | "thumbnail_owner_rules";
+
+/** owner rules draft 1건 — 증류 규칙(rules) + provenance 근거 수(sourcesCount). patterns 는 임의 구조라 방어적으로 뽑는다. */
+export interface OwnerRulesDraft {
+  id: string;
+  version: number | null;
+  status: CopyStyleStatus;
+  createdAt: string;
+  rules: string[]; // patterns.rules(비배열/누락이면 [])
+  sourcesCount: number; // patterns.sources 길이(비배열/누락이면 0)
+}
+
+/** patterns(jsonb)에서 rules(string[])만 안전 추출. 비객체·null·배열·rules 비배열이면 []. */
+function ownerRulesOf(patterns: unknown): string[] {
+  if (patterns === null || typeof patterns !== "object" || Array.isArray(patterns)) return [];
+  const rules = (patterns as Record<string, unknown>).rules;
+  if (!Array.isArray(rules)) return [];
+  return rules.filter((r): r is string => typeof r === "string" && r.trim().length > 0);
+}
+
+/** patterns(jsonb)에서 sources 길이만 안전 추출. 비객체·sources 비배열이면 0. */
+function ownerSourcesCountOf(patterns: unknown): number {
+  if (patterns === null || typeof patterns !== "object" || Array.isArray(patterns)) return 0;
+  const sources = (patterns as Record<string, unknown>).sources;
+  return Array.isArray(sources) ? sources.length : 0;
+}
+
+/**
+ * style_profiles 에서 owner rules(title_owner_rules|thumbnail_owner_rules)를 component별 최신순(version desc)으로
+ *   최대 `limit`개(기본 5) 조회. UI 가 검수·활성화 후보로 쓴다. 조회 실패(마이그 034 미적용·테이블 이슈)면 빈 목록 폴백.
+ */
+export async function getOwnerRulesDrafts(
+  component: OwnerRulesComponentType,
+  limit = 5,
+): Promise<OwnerRulesDraft[]> {
+  const supa = createAdminClient();
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("id, version, status, patterns, created_at")
+    .eq("component_type", component)
+    .order("version", { ascending: false, nullsFirst: false });
+  if (error) {
+    // 마이그 034 미적용·테이블 이슈에도 페이지가 막히지 않게 빈 목록 폴백(getAnalogyDrafts 패턴 미러).
+    console.warn(`[owner-rules:${component}] style_profiles 조회 실패(빈 목록으로 처리 — 마이그레이션 미적용 가능): ${error.message}`);
+    return [];
+  }
+
+  const out: OwnerRulesDraft[] = [];
+  for (const r of data ?? []) {
+    if (out.length >= limit) break;
+    out.push({
+      id: r.id,
+      version: r.version,
+      status: r.status as CopyStyleStatus,
+      createdAt: r.created_at,
+      rules: ownerRulesOf(r.patterns),
+      sourcesCount: ownerSourcesCountOf(r.patterns),
+    });
+  }
+  return out;
+}
+
 export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
   const supa = createAdminClient();
   const { data: contents, error } = await supa
