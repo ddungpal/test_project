@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "owner-feedback-rules",
+  "steps": [
+    {
+      "step": 0,
+      "name": "backend-extractor-action",
+      "status": "completed",
+      "started_at": "2026-07-05T19:37:14+0900",
+      "team_round": "2/3 PASS",
+      "summary": "김짠부 직접 피드백→최우선 룰 학습 백엔드(draft까지). 마이그034 style_profiles CHECK에 title_owner_rules·thumbnail_owner_rules 2종 추가(멱등 drop/재생성)+database.types.ts StyleProfiles 유니온 동시 확장(드리프트0). 신규 owner_feedback_extractor(opus·roles.ts 등록): schema.ts(OWNER_FEEDBACK_SCHEMA required=change_note만·rules 빈배열 방어·OwnerFeedbackCandidates 제목string[]|썸네일{main,box}[])·step.ts(callLLM1회·rules??[]·빈feedback시 LLM미호출·UNTRUSTED 델리미터·병합규칙 SYSTEM 명시). ownerRulesRelearn.ts submitOwnerFeedbackSweep 코어(active rules로드→추출병합→version=component_type스코프 max+1 draft INSERT·활성화 안함=사람게이트)+copyLearn.ts submitOwnerFeedback 얇은 래퍼(requireOwner·auditLog). copyLearnMap.ts에 순수 buildOwnerRulesDraftPatterns·OwnerRuleSource·componentTypeFor 확장(title_owner→title_owner_rules 등·server-only 무의존). 훅이/썸네일/유이 prepare·fixture 무변경=promptHash 불변. typecheck/test(1341)/build 전부 exit0.",
+      "completed_at": "2026-07-05T19:57:00+0900"
+    },
+    {
+      "step": 1,
+      "name": "copy-learn-ui",
+      "status": "pending"
+    },
+    {
+      "step": 2,
+      "name": "owner-rules-injection",
+      "status": "pending"
+    }
+  ],
+  "created_at": "2026-07-05T19:37:14+0900"
+}
