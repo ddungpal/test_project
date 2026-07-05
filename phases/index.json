@@ -372,12 +372,8 @@
     },
     {
       "dir": "owner-feedback-rules",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (owner-rules-injection)",
-      "attempt": 1,
-      "elapsed_seconds": 720,
-      "heartbeat_at": "2026-07-05T20:21:13+0900"
+      "status": "completed",
+      "completed_at": "2026-07-05T20:22:03+0900"
     }
   ]
 }
