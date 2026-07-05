@@ -260,3 +260,76 @@ export function appendWinningThumbnailRefs(system: string, refs: WinningThumbnai
     ...refs.map(winningRefLine),
   ].join("\n");
 }
+
+// ── 김짠부 직접 피드백 규칙(owner-feedback-rules step2) — 훅이(제목)·썸네일에 active owner 규칙셋을 주입. ──
+//   ★ 김짠부가 후보를 보고 말로 준 정성 피드백을 증류한 '최우선 규칙'(component_type='title_owner_rules'|'thumbnail_owner_rules').
+//   ★ 다른 학습(insights·style_profile)보다 '뒤(맨 마지막)'에 주입돼 "충돌 시 무조건 이걸 따른다" 최상위가 된다.
+//   ★ 활성 규칙 없거나 rules가 비면 원본 system 그대로(바이트 동일 → promptHash·골든 fixture 불변). 다른 append* 미러.
+//   patterns 구조: { rules: string[], sources: ... } — 주입엔 rules 만 쓴다(sources는 provenance).
+
+/** active owner 규칙셋 형태. ActiveThumbnailStyle 미러(id·version·patterns). */
+export type ActiveOwnerRules = ActiveThumbnailStyle;
+
+/** 주어진 component_type의 active owner 규칙셋을 로드(최신 version 1행). 없으면 null. loadActiveTitleStyle 미러(공용). */
+async function loadActiveOwnerRules(
+  supa: Supa,
+  componentType: "title_owner_rules" | "thumbnail_owner_rules",
+): Promise<ActiveOwnerRules | null> {
+  const { data, error } = await supa
+    .from("style_profiles")
+    .select("id, version, patterns")
+    .eq("component_type", componentType)
+    .eq("status", "active")
+    .order("version", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) {
+    // 로드 실패는 파이프라인을 막지 않고 base 프롬프트로 폴백(best-effort). getOwnerRulesDrafts 패턴 미러.
+    console.warn(`[owner-rules:${componentType}] active 규칙 조회 실패(base 프롬프트로 처리): ${error.message}`);
+    return null;
+  }
+  if (!data) return null;
+  return { id: `style:${data.id}`, version: data.version ?? 0, patterns: data.patterns };
+}
+
+/** active 제목 owner 규칙셋(component_type='title_owner_rules')을 로드. 없으면 null. */
+export function loadActiveTitleOwnerRules(supa: Supa): Promise<ActiveOwnerRules | null> {
+  return loadActiveOwnerRules(supa, "title_owner_rules");
+}
+
+/** active 썸네일 owner 규칙셋(component_type='thumbnail_owner_rules')을 로드. 없으면 null. */
+export function loadActiveThumbnailOwnerRules(supa: Supa): Promise<ActiveOwnerRules | null> {
+  return loadActiveOwnerRules(supa, "thumbnail_owner_rules");
+}
+
+/** patterns.rules(unknown)에서 비지 않은 문자열만 다듬어 반환. 유효 0개면 null. cleanStrArray(analogyStyle) 미러. */
+function cleanRules(patterns: unknown): string[] | null {
+  if (!hasUsablePatterns(patterns)) return null;
+  const rules = (patterns as Record<string, unknown>).rules;
+  if (!Array.isArray(rules)) return null;
+  const valid = rules.filter((r): r is string => typeof r === "string" && r.trim().length > 0).map((r) => r.trim());
+  return valid.length > 0 ? valid : null;
+}
+
+/** owner 규칙셋을 system 끝에 '최우선 지시' 블록으로 덧붙인다(순수·공용). 규칙 없으면 원본 그대로(바이트 동일 → 해시 불변). */
+function appendOwnerRules(system: string, ownerRules: ActiveOwnerRules | null): string {
+  if (!ownerRules) return system;
+  const rules = cleanRules(ownerRules.patterns);
+  if (!rules) return system;
+  return [
+    system,
+    "",
+    "━━ ⚠️ 김짠부 최우선 지시 (다른 학습 규칙과 충돌하면 무조건 이걸 따른다) ━━",
+    ...rules.map((r) => `- ${r}`),
+  ].join("\n");
+}
+
+/** 훅이(제목) system에 active 제목 owner 규칙셋을 최우선 블록으로 덧붙인다(순수). 규칙 없으면 원본 그대로. */
+export function appendTitleOwnerRules(system: string, ownerRules: ActiveOwnerRules | null): string {
+  return appendOwnerRules(system, ownerRules);
+}
+
+/** 썸네일 system에 active 썸네일 owner 규칙셋을 최우선 블록으로 덧붙인다(순수). 규칙 없으면 원본 그대로. */
+export function appendThumbnailOwnerRules(system: string, ownerRules: ActiveOwnerRules | null): string {
+  return appendOwnerRules(system, ownerRules);
+}

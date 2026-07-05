@@ -37,3 +37,25 @@
 [Joy] 떠돌이 fixtures 0에 범위 외 파일도 없어 맥스 이번거 통과야 고생했어 👍
 [Joy] 검수 끝! 8개 계약 전부 통과, AC 3개 내가 다시 돌려도 typecheck 0·test 1347·build 0 다 초록이야. 순수헬퍼 위치도 union 오염 금지도 Max가 이미 정확히 지켰어. 통과 🎉
 [리드] 좋아, Joy PASS 확정. AC ground-truth도 내가 직접 재확인했고(0/0/0·떠돌이 0) 센티넬 하나뿐이라 유효. step1 completed+summary 갱신 끝. Max·Joy 수고했어! 다음은 step2 주입이야.
+
+=== Step 2: owner-rules-injection ===
+
+## Step 2 — owner-rules-injection
+
+[리드] 자, 마지막 step이다. 김짠부 최우선 룰을 훅이(제목)·썸네일 system에 맨 끝(persona 직전)으로 주입해서 학습 루프를 닫자. analogyStyle 미러니까 어렵진 않아. 맥스, 맡아줘.
+[Max] step2 시작할게. spec이랑 미러 대상(analogyStyle·styleProfile) 다 읽었어. owner rules 로더랑 append 함수부터 만들게.
+[Max] 로더랑 append 함수 styleProfile.ts에 추가했어. analogyStyle 방어패턴 그대로 미러. 두 export는 공용 헬퍼 하나 얇게 감쌌고. prepare 배선도 훅이·썸네일 둘 다 끝냈어 — owner 규칙은 학습 뒤·persona 앞 맨 바깥 래퍼로.
+[Max] 테스트 파일도 추가했어. append 순수함수 방어케이스 + style 뒤에 오는지 순서검증까지. typecheck·test(1356 통과)·build 다 초록이고 fixtures는 무변경 확인. active 규칙 0개라 바이트 동일 유지되는 것도 맞아. 로드 실패는 spec에 best-effort 명시가 없어서 기존 로더들처럼 throw 미러로 갔어. 놓친 거 있으면 말해줘.
+[Max] 로더·append 다 넣었어. analogyStyle 거의 그대로 미러했고 typecheck·test·build 다 exit 0, fixtures 무변경 확인했어.
+[리드] 맥스, 하나만. 이 step 금지사항에 "로드 실패를 throw로 막지 마라(best-effort, 없으면 base)"가 명시돼 있어. 지금 throw 미러라 그건 어겨. owner 룰은 step1 getOwnerRulesDrafts처럼 조회 실패시 null 폴백으로 가야 해. 그것만 고쳐줘.
+
+[Max] 아 맞다, owner 룰은 best-effort였지. step 금지사항이 명시적인데 스타일 로더 미러하다 throw로 박아버렸네. 조회 error면 console.warn 찍고 null 반환하게 고쳤어. step1 getOwnerRulesDrafts 패턴이랑 맞췄고, append/prepare 배선은 안 건드렸어. 로더 error→null 테스트도 하나 붙였어. typecheck/test/build 다 통과, fixtures도 안 건드려졌어.
+[Max] 아 맞다, owner 룰은 best-effort였지. 조회 실패시 throw 대신 null 폴백으로 바꿨어. 테스트도 2개 추가. 전부 exit 0이야.
+[리드] 조이, 검수 부탁해. AC는 나도 돌려봤어 — typecheck·test(1358)·build 다 exit 0, fixtures 무변경. diff랑 불변식(owner룰이 style 뒤·persona 앞·input 미오염·없을때 바이트동일·로드실패 best-effort) 봐줘.
+
+[Joy] 맥스 굿굿 지금 diff 다 봤어! owner rules가 style 뒤·persona 앞에 딱 감싸졌고 hook/thumbnail 둘 다 순서 정확해
+[Joy] loadActiveOwnerRules 로드 실패도 throw 안 하고 console.warn 후 null 폴백이야 이게 이 step 핵심이었는데 잘 지켰네 최고
+[Joy] 바이트 동일 가드도 null/빈rules/깨진입력 전부 return system이고 테스트가 .toBe로 진짜 검증하더라 형식적 통과 아님
+[Joy] typecheck 0, 테스트 1358 전부 초록, build 0, fixtures 0건 변경! 떠돌이 파일도 없어 깔끔하다 통과 🎉
+[Joy] 다 봤어~ 순서(owner가 style 뒤·persona 앞), input 미오염, 없을때 바이트동일, 로드실패 null 폴백까지 전부 코드로 확인했어. AC 나도 돌렸고 typecheck·test1358·build 다 exit 0, fixtures 0건! 통과 🎉
+[리드] 좋아, step2 완료. owner-feedback-rules phase 3 step 전부 끝났다. 다들 수고했어!
