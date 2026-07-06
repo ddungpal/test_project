@@ -374,6 +374,15 @@
       "dir": "owner-feedback-rules",
       "status": "completed",
       "completed_at": "2026-07-05T20:22:03+0900"
+    },
+    {
+      "dir": "title-shortlist",
+      "status": "running",
+      "progress": "0/3",
+      "running_step": "0 (alternates-model)",
+      "attempt": 1,
+      "elapsed_seconds": 540,
+      "heartbeat_at": "2026-07-06T16:54:59+0900"
     }
   ]
 }
