@@ -18,3 +18,23 @@
 [Joy] 아 참, build 확인하려고 dev/inngest 잠깐 껐다가 inngest→dev 순서로 다시 띄워놨어. 둘 다 200 정상! 맥스 깔끔했다 👍 VERDICT PASS
 [Joy] 통과! typecheck·test 1374·build 전부 exit 0, 불변식(빈후보=primary deep-equal, alternates 키 없음)도 이중가드로 확실해 🎉
 [리드] 좋아, step0 완료. 다음 step에서 이 헬퍼를 UI에 물리면 돼. 수고들 했어!
+
+=== Step 1: shortlist-select ===
+
+## Step 1 — shortlist-select
+[리드] step0 헬퍼(mergeAlternates) 이제 UI에 물릴 차례야. ProposalSelector title_thumb 분기에만 "후보로 같이 저장" 체크박스 붙이는 거.
+[리드] 맥스, 이거 맡아줘. 백엔드/액션 시그니처는 절대 손대지 말고 editedPayload에 mergeAlternates 결과만 얹으면 돼. topic/structure 분기는 무변경.
+[Max] 응, step1 시작할게. ProposalSelector 지금 라디오 흐름 읽어봤어. title_thumb 분기에만 체크박스 붙이고 submit에서 mergeAlternates 얹을게.
+[Max] 체크박스랑 submit 병합 다 붙였어. 대표 바꾸면 그 카드가 추가후보였을 때 자동으로 빠지게 pick()에서 처리했고, 상한 2개 넘으면 나머지 체크박스 disabled. 이제 AC 돌려볼게.
+[Max] AC 다 통과했어. typecheck 0, test 1374 그대로 통과, build도 .next 지우고 clean으로 0. build 전에 dev/inngest 껐다가 inngest→dev 순으로 다시 띄워놨어(둘 다 200).
+[Max] 불변식은 지켰어. 추가후보 0개 + 손편집 없으면 editedPayload 아예 안 보내. 추가후보 있을 때만 mergeAlternates 결과 얹고. topic/structure 분기는 안 건드렸어.
+[Max] 백엔드/액션 시그니처도 그대로고 editedPayload jsonb에만 얹었어. PostConfirmTitleEdit는 손 안 댔어(그건 step2지). 놓친 거 있으면 말해줘.
+[Joy] 오 맥스 이번엔 UI네! 나 diff부터 훑을게. 코드는 ProposalSelector 하나만 건드렸고 깔끔하다
+[Joy] 체크박스가 title_thumb에다 대표 아닌 카드에만 뜨네. 상한도 toggleExtra랑 disabled 이중가드고 대표 바꾸면 pick에서 자동으로 빠지고. 굿굿
+[Joy] 불변식 봤어. 추가후보 0개면 hasExtra false라 기존 edited?draft:null 그대로 타서 editedPayload 안 나가. 바이트 동일 유지되겠다
+[Joy] gate랑 액션 시그니처 무변경 확인, PostConfirmTitleEdit도 안 건드렸고 untracked 떠돌이도 없어. 이제 AC 돌려볼게
+[Joy] 검수 끝! typecheck 0, test 1374 그대로 통과, build도 exit 0. 다 초록불이야
+[Joy] effectivePrimary도 편집있으면 draft 없으면 chosen.payload로 딱 맞고, 색도 accent-trus-yellow랑 trus-white 기존 토큰만 썼네. 신규 색이나 그림자 없어
+[Joy] 손편집으로 title 바꾸고 후보도 체크한 케이스도 mergeAlternates가 primary title 기준 dedup해서 안전하더라. 맥스 이번에도 깔끔했다 VERDICT PASS
+[Joy] 검수 끝! 코드 변경 ProposalSelector 하나뿐, 불변식(추가후보0+손편집없음=editedPayload 미포함)도 삼항 로직으로 딱 지켜졌어. AC 다시 돌려봤는데 typecheck·test 1374·build 전부 exit 0 🎉 VERDICT PASS
+[리드] 좋아, step1 완료. 조이 검수 통과했고 AC도 내가 직접 돌린 거랑 일치해. 다음은 step2 PostConfirmTitleEdit 스왑이야. 수고들 했어!

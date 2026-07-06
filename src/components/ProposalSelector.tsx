@@ -12,10 +12,14 @@ import {
   type StructurePayload,
   type ProposalSource,
 } from "@/lib/dashboard/proposalTypes";
+import { mergeAlternates } from "@/lib/title/alternates";
 import { CandidateBody } from "./CandidateBody";
 import { CandidateSourceBadge } from "./CandidateSourceBadge";
 import { SourceLinks } from "./SourceLinks";
 import { OutlineEditor } from "./OutlineEditor";
+
+// 추가 후보 상한 2개(대표 포함 총 3개). mergeAlternates도 동일 상한이지만 UI 체크 단계에서 먼저 막는다.
+const MAX_EXTRA_ALTERNATES = 2;
 
 // 제안→선택(§8.1 사람 게이트) — 후보 라디오 선택 + (선택)수정 + 한 줄 이유 → select 액션(상태전환만, AI 0회).
 //   editedPayload는 원안과 다를 때만 전송(§8.4 학습: proposed↔selected 델타 + selection_reason).
@@ -47,6 +51,8 @@ export function ProposalSelector({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState<unknown>(null);
   const [reason, setReason] = useState("");
+  // 대표 외에 함께 저장할 추가 후보의 idx 집합(title_thumb 전용). 대표는 자동 포함이라 여기 안 넣는다.
+  const [extraIdxs, setExtraIdxs] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
@@ -58,6 +64,16 @@ export function ProposalSelector({
     setEditing(false);
     setDraft(null);
     setError(null);
+    // 새 대표가 추가 후보 집합에 있었으면 제거(대표=추가후보 중복 방지).
+    setExtraIdxs((prev) => prev.filter((i) => i !== idx));
+  }
+
+  function toggleExtra(idx: number) {
+    setExtraIdxs((prev) => {
+      if (prev.includes(idx)) return prev.filter((i) => i !== idx);
+      if (prev.length >= MAX_EXTRA_ALTERNATES) return prev; // 상한 도달 시 무시
+      return [...prev, idx];
+    });
   }
   function startEdit() {
     if (!chosen) return;
@@ -69,13 +85,26 @@ export function ProposalSelector({
     if (chosen == null) return;
     setError(null);
     const edited = editing && draft != null && JSON.stringify(draft) !== JSON.stringify(chosen.payload);
+    // 손편집이 있으면 그 draft, 없으면 대표 후보 payload가 유효 대표 payload.
+    const effectivePrimary = (edited ? draft : chosen.payload) as TitlePayload;
+    // title_thumb 전용: 체크된 추가 후보들의 title을 모아 alternates로 병합.
+    //   추가 후보가 하나라도 있으면 mergeAlternates 결과를 editedPayload로 보낸다.
+    //   추가 후보 0개 + 손편집 없음이면 editedPayload 미포함(불변식 — 바이트 동일).
+    const extraTitles =
+      stage === "title_thumb"
+        ? extraIdxs
+            .map((i) => (candidates.find((c) => c.idx === i)?.payload as TitlePayload | undefined)?.title ?? "")
+            .filter((t) => t.trim() !== "")
+        : [];
+    const hasExtra = extraTitles.length > 0;
+    const editedPayload = hasExtra ? mergeAlternates(effectivePrimary, extraTitles) : edited ? draft : null;
     startTransition(async () => {
       try {
         await SELECT[stage]({
           runId,
           proposalId,
           chosenIdx: chosen.idx,
-          ...(edited ? { editedPayload: draft } : {}),
+          ...(editedPayload != null ? { editedPayload } : {}),
           ...(reason.trim() ? { selectionReason: reason.trim() } : {}),
         });
         router.refresh();
@@ -125,6 +154,21 @@ export function ProposalSelector({
                 </div>
               </div>
             </button>
+            {/* 추가 후보 체크박스 — title_thumb에서 대표가 아닌 카드에만. 대표는 자동 포함이라 숨김. */}
+            {stage === "title_thumb" && !active && (
+              <div className="px-4 pb-3">
+                <label className="flex items-center gap-2 text-xs text-trus-white/60">
+                  <input
+                    type="checkbox"
+                    checked={extraIdxs.includes(c.idx)}
+                    disabled={!extraIdxs.includes(c.idx) && extraIdxs.length >= MAX_EXTRA_ALTERNATES}
+                    onChange={() => toggleExtra(c.idx)}
+                    className="accent-trus-yellow disabled:opacity-40"
+                  />
+                  후보로 같이 저장
+                </label>
+              </div>
+            )}
             {stage !== "title_thumb" && candSources.length > 0 && (
               <div className="px-4 pb-3">
                 <SourceLinks sources={candSources} />

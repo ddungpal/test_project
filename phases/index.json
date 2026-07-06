@@ -378,11 +378,11 @@
     {
       "dir": "title-shortlist",
       "status": "running",
-      "progress": "0/3",
-      "running_step": "0 (alternates-model)",
+      "progress": "1/3",
+      "running_step": "1 (shortlist-select)",
       "attempt": 1,
-      "elapsed_seconds": 540,
-      "heartbeat_at": "2026-07-06T16:54:59+0900"
+      "elapsed_seconds": 480,
+      "heartbeat_at": "2026-07-06T17:03:22+0900"
     }
   ]
 }
