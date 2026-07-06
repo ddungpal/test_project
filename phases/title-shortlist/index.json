@@ -14,7 +14,11 @@
     {
       "step": 1,
       "name": "shortlist-select",
-      "status": "pending"
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-06T16:55:22+0900",
+      "summary": "ProposalSelector.tsx title_thumb 분기에만 '후보로 같이 저장' 체크박스 추가(비대표 카드·상한2/대표포함3·상한도달시 disabled·대표 교체 시 추가후보집합서 제거). submit 시 effectivePrimary(손편집 draft 우선, 없으면 chosen.payload) + 체크된 title들로 mergeAlternates → editedPayload. 불변식: 추가후보0+손편집없음이면 editedPayload 미포함(바이트 동일). topic/structure 분기·백엔드/액션/게이트/마이그 무변경. AC: typecheck0·test 1374·build0. 단일파일 변경.",
+      "completed_at": "2026-07-06T17:04:11+0900"
     },
     {
       "step": 2,
