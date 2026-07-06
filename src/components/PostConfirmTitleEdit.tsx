@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { editTitle, regenerateAfterConfirm } from "@/app/actions/topicRun";
 import { LiveRefresh } from "@/components/LiveRefresh";
 import type { TitlePayload } from "@/lib/dashboard/proposalTypes";
+import { promotePrimary } from "@/lib/title/alternates";
 
 // 확정(titles_selected) 후 제목 손편집 — editTitle만 호출(상태 전이 없음).
 //   읽기전용 표시(CandidateBody)는 그대로 두고, 그 아래 수정 토글. effective payload를 펼치고 title만 교체해
@@ -40,6 +41,9 @@ export function PostConfirmTitleEdit({
   const router = useRouter();
   const titleId = useId();
 
+  // 함께 저장한 후보 제목(step1에서 mergeAlternates로 얹힘) — 있고 비어있지 않을 때만 스왑 목록 노출.
+  const alternates = Array.isArray(p.alternates) ? p.alternates : [];
+
   // 재생성(step1) — RegenerateButton 폴링 정본 미러.
   const [reason, setReason] = useState(""); // 선택 입력 — 왜 다시 생성하는지. 비/공백이면 백엔드에서 미전송.
   const [startId, setStartId] = useState<string | null>(null); // 제출 시점 proposalId(null=유휴). 이게 바뀌면 완료.
@@ -55,7 +59,7 @@ export function PostConfirmTitleEdit({
 
   function submit() {
     setError(null);
-    // 기존 effective payload 펼치고 title만 교체 — thumbnail_layout 등 다른 필드 보존.
+    // 기존 effective payload 펼치고 title만 교체 — thumbnail_layout·alternates 등 다른 필드 보존(스프레드).
     const next = { ...p, title: title.trim() } as TitlePayload;
     startTransition(async () => {
       try {
@@ -64,6 +68,22 @@ export function PostConfirmTitleEdit({
         router.refresh();
       } catch (e) {
         setError(e instanceof Error ? e.message : "수정 실패");
+      }
+    });
+  }
+
+  // 후보 스왑(step2) — 대표 title과 alternates[altIndex]를 맞교환한 새 payload로 editTitle만 호출.
+  //   promotePrimary(순수·step0)가 제목 문자열만 교환하고 나머지 필드(썸네일 등)는 스프레드로 보존.
+  //   상태 전이·AI·파이프라인 재실행 0 — 정직 카피로 "최종 제목만 교체"임을 고지. submit() 패턴 미러(pending·error·refresh 재사용).
+  function promote(altIndex: number) {
+    setError(null);
+    const next = promotePrimary(p as TitlePayload, altIndex);
+    startTransition(async () => {
+      try {
+        await editTitle(runId, next);
+        router.refresh();
+      } catch (e) {
+        setError(e instanceof Error ? e.message : "대표 교체 실패");
       }
     });
   }
@@ -169,6 +189,30 @@ export function PostConfirmTitleEdit({
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 나중에 고르기(step2) — 함께 저장한 후보 중에서 최종 제목만 교체. alternates 없으면 렌더 안 함(회귀 0). */}
+      {alternates.length > 0 && (
+        <div className="mt-4 border-t border-trus-white/15 pt-3">
+          <span className="text-[10px] font-bold uppercase tracking-widest text-trus-white/40">함께 저장한 후보</span>
+          <p className="mt-1.5 text-xs text-trus-white/50">
+            썸네일·대본은 대표 제목 기준으로 만들어졌어요. 여기서 바꾸면 최종 제목만 교체됩니다.
+          </p>
+          <ul className="mt-2 space-y-2">
+            {alternates.map((alt, i) => (
+              <li key={`${i}-${alt}`} className="flex items-center justify-between gap-3">
+                <span className="text-sm text-trus-white/80">{alt}</span>
+                <button
+                  onClick={() => promote(i)}
+                  disabled={pending || submitted}
+                  className="shrink-0 border border-trus-white/30 px-2 py-1 text-xs text-trus-white/70 hover:border-trus-yellow focus-visible:outline focus-visible:outline-2 focus-visible:outline-trus-yellow disabled:opacity-50"
+                >
+                  {pending ? "교체 중…" : "이걸 대표로"}
+                </button>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

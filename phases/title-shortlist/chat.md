@@ -38,3 +38,25 @@
 [Joy] 손편집으로 title 바꾸고 후보도 체크한 케이스도 mergeAlternates가 primary title 기준 dedup해서 안전하더라. 맥스 이번에도 깔끔했다 VERDICT PASS
 [Joy] 검수 끝! 코드 변경 ProposalSelector 하나뿐, 불변식(추가후보0+손편집없음=editedPayload 미포함)도 삼항 로직으로 딱 지켜졌어. AC 다시 돌려봤는데 typecheck·test 1374·build 전부 exit 0 🎉 VERDICT PASS
 [리드] 좋아, step1 완료. 조이 검수 통과했고 AC도 내가 직접 돌린 거랑 일치해. 다음은 step2 PostConfirmTitleEdit 스왑이야. 수고들 했어!
+
+=== Step 2: shortlist-swap ===
+
+## Step 2 — shortlist-swap
+[리드] 마지막 step이다. PostConfirmTitleEdit에 alternates 후보 목록 + "이걸 대표로" 스왑 버튼. promotePrimary(step0) 재사용해서 editTitle만 호출 — 상태전이·AI·재실행 0.
+[리드] 맥스, 맡아줘. editTitle 시그니처 손대지 말고, 손편집 저장 경로가 alternates를 안 지우는지도 확인해줘. 정직 카피 한 줄 꼭 넣고.
+[Max] 응, step2 시작할게. PostConfirmTitleEdit 지금 손편집·AI재생성 경로 읽어봤어. 확정 제목 아래에 후보 목록이랑 이걸 대표로 버튼 붙이고, promotePrimary로 맞교환해서 editTitle만 부를게.
+[Max] 후보 목록 섹션이랑 이걸 대표로 버튼 다 붙였어. promotePrimary로 맞교환한 payload를 editTitle만 부르게 했고, pending·error·router.refresh는 손편집 submit 경로 그대로 재사용했어. 상태전이나 이벤트 발행은 안 넣었어.
+[Max] 정직 카피도 넣었어 — 썸네일·대본은 대표 제목 기준으로 만들어졌어요, 여기서 바꾸면 최종 제목만 교체됩니다.
+[Max] alternates 없거나 비면 섹션 자체를 안 그려서 기존 화면이랑 동일해. effective가 edited_payload 우선이라 step1에서 저장한 후보가 실려오는 것도 배선 확인했어.
+[Max] 손편집 submit은 여전히 스프레드라 alternates 안 지워. AC 다 통과했어 — typecheck 0, test 1374 그대로, build도 서버 껐다 .next 지우고 clean으로 0. inngest→dev 순으로 다시 띄워놨어(둘 다 200).
+[Max] 색은 기존 trus 토큰만 썼고 신규 색·그림자 없어. 파일도 이 컴포넌트 하나만 건드렸어. 놓친 거 있으면 말해줘.
+
+[Joy] 오 맥스 step2도 왔다! 바로 git diff 봤는데 PostConfirmTitleEdit 하나만 건드렸고 스코프 딱 맞아 깔끔하다
+[Joy] promote()가 submit() 패턴 그대로 미러했네 — pending·error·router.refresh 재사용, editTitle만 호출하고 상태전이나 인제스트 이벤트 하나도 안 붙였어 굿굿
+[Joy] 정직 카피 한 줄 그대로 있고 alternates 없으면 아예 렌더 안 함(회귀 0). trus 토큰만 쓰고 신규 색·그림자도 없어. 이제 typecheck랑 test 돌려서 교차확인만 할게!
+
+[Joy] typecheck exit 0, test 1374 passed exit 0! 리드가 준 값이랑 딱 맞아 교차확인 완료
+[Joy] titleAlternates.test.ts도 그대로 살아있고(promotePrimary 맞교환·필드보존·범위밖·순수 다 커버) 이번 diff는 컴포넌트 하나만 손대서 테스트 약화 0이야
+[Joy] editTitle 시그니처 그대로, 스왑은 editTitle만 호출·상태전이 인제스트 재생성 하나도 안 붙임. 썸네일 payload는 promotePrimary가 대표 것 보존하고 제목 문자열만 스왑. 깔끔하다 통과! 맥스 손 왜 이렇게 빨라 나 커피 탈 시간도 없잖아
+[리드] 조이 고마워. AC 나도 직접 돌렸어 — typecheck·test 1374·build(clean) 전부 exit 0. 센티넬 PASS 확인.
+[리드] step2 완료! title-shortlist phase 3 step 전부 끝. 대표 1개+후보 보관→선택→나중에 스왑까지 다 물렸다. 다들 수고했어 🎉
