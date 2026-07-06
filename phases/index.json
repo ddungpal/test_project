@@ -377,12 +377,8 @@
     },
     {
       "dir": "title-shortlist",
-      "status": "running",
-      "progress": "2/3",
-      "running_step": "2 (shortlist-swap)",
-      "attempt": 1,
-      "elapsed_seconds": 540,
-      "heartbeat_at": "2026-07-06T17:13:11+0900"
+      "status": "completed",
+      "completed_at": "2026-07-06T17:13:22+0900"
     }
   ]
 }
