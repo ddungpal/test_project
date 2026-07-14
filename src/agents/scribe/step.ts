@@ -4,6 +4,7 @@ import { callLLM, type CallLLMDeps } from "../../llm/callLLM.js";
 import {
   SCRIBE_SCHEMA,
   SCRIBE_SYSTEM,
+  SCRIBE_LENGTH_DIRECTIVE,
   SCRIBE_PERSONA_DIRECTIVE,
   SCRIBE_SEGMENT_SCHEMA,
   SCRIBE_SEGMENT_DIRECTIVE,
@@ -16,14 +17,17 @@ export async function scribeStep(
   runId: string,
   input: { tone: unknown; outline: unknown; facts: unknown; assets: unknown; target_persona?: string },
 ): Promise<ScribeOutput> {
-  // target_persona 조건부 주입 — persona 있을 때만 system에 지시 append + input에 키 포함.
-  //   없으면(옛 주제/런) system도 input도 기존과 바이트 동일 → promptHash 보존 → 골든 픽스처 안 깨짐.
-  const system = input.target_persona ? `${SCRIBE_SYSTEM}\n${SCRIBE_PERSONA_DIRECTIVE}` : SCRIBE_SYSTEM;
+  // 목표 분량 지시는 full 모드에 항상 append(대본이 너무 짧은 근본 문제 대응 — 깊이로 채운다).
+  //   target_persona는 있을 때만 그 뒤에 추가 append + input에 키 포함.
+  //   ★ 길이 지시가 항상 붙으므로 full 모드 promptHash는 바뀐다(의도된 것 — 짠펜 골든/replay 재기록됨).
+  const base = `${SCRIBE_SYSTEM}\n${SCRIBE_LENGTH_DIRECTIVE}`;
+  const system = input.target_persona ? `${base}\n${SCRIBE_PERSONA_DIRECTIVE}` : base;
   const llmInput: Record<string, unknown> = { tone: input.tone, outline: input.outline, facts: input.facts, assets: input.assets };
   if (input.target_persona) llmInput.target_persona = input.target_persona;
 
+  // 목표(≈12분)로 올리면 8192 토큰은 truncate → 16384로 상향. 부분 모드(4096)는 그대로.
   const r = await callLLM<ScribeOutput>(
-    { roleId: "scribe", system, input: llmInput, schema: SCRIBE_SCHEMA, runId, maxTokens: 8192 },
+    { roleId: "scribe", system, input: llmInput, schema: SCRIBE_SCHEMA, runId, maxTokens: 16384 },
     llm,
   );
   return r.data;

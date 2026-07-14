@@ -5,7 +5,7 @@
 //   fake driver로 LlmRequest(system/input)를 캡처. structurerPrepareWiring 미러(짠펜은 system 합성이 step.ts라 driver 캡처).
 import { describe, it, expect } from "vitest";
 import { scribeStep } from "../src/agents/scribe/step.js";
-import { SCRIBE_SYSTEM, SCRIBE_PERSONA_DIRECTIVE } from "../src/agents/scribe/schema.js";
+import { SCRIBE_SYSTEM, SCRIBE_LENGTH_DIRECTIVE, SCRIBE_PERSONA_DIRECTIVE } from "../src/agents/scribe/schema.js";
 import { CostGuard } from "../src/llm/costGuard.js";
 import type { LlmConfig } from "../src/llm/config.js";
 import type { LlmBackendDriver, LlmUsage } from "../src/llm/types.js";
@@ -69,15 +69,18 @@ describe("scribeStep 배선 — target_persona 조건부 주입", () => {
     await scribeStep(makeLlm(driver), "run-B", { ...BASE_INPUT });
 
     expect("target_persona" in (captured.input as object)).toBe(false);
-    expect(captured.system).toBe(SCRIBE_SYSTEM); // 바이트 동일 — 기존 짠펜 픽스처 안 깨짐.
+    // persona 없으면 system = SCRIBE_SYSTEM + LENGTH_DIRECTIVE(길이 지시는 full 모드에 항상 붙음). PERSONA_DIRECTIVE는 미포함.
+    expect(captured.system).toBe(`${SCRIBE_SYSTEM}\n${SCRIBE_LENGTH_DIRECTIVE}`);
+    expect(captured.system).not.toContain(SCRIBE_PERSONA_DIRECTIVE);
   });
 
-  it("케이스 C: target_persona가 빈 문자열이면 주입하지 않는다(truthy일 때만 — 바이트 불변)", async () => {
+  it("케이스 C: target_persona가 빈 문자열이면 주입하지 않는다(truthy일 때만 — persona 미주입)", async () => {
     const { driver, captured } = makeCapturingDriver();
     await scribeStep(makeLlm(driver), "run-C", { ...BASE_INPUT, target_persona: "" });
 
     expect("target_persona" in (captured.input as object)).toBe(false);
-    expect(captured.system).toBe(SCRIBE_SYSTEM);
+    expect(captured.system).toBe(`${SCRIBE_SYSTEM}\n${SCRIBE_LENGTH_DIRECTIVE}`);
+    expect(captured.system).not.toContain(SCRIBE_PERSONA_DIRECTIVE);
   });
 
   it("케이스 D: SCRIBE_PERSONA_DIRECTIVE는 SCRIBE_SYSTEM 본문에 포함되어 있지 않다(별도 상수 — 본문 미오염)", () => {

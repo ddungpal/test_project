@@ -5,7 +5,7 @@
 //   scribePersonaWiring 미러(fake driver로 LlmRequest system/input 캡처).
 import { describe, it, expect } from "vitest";
 import { scribeSegmentStep } from "../src/agents/scribe/step.js";
-import { SCRIBE_SYSTEM, SCRIBE_SEGMENT_DIRECTIVE, SCRIBE_PERSONA_DIRECTIVE } from "../src/agents/scribe/schema.js";
+import { SCRIBE_SYSTEM, SCRIBE_LENGTH_DIRECTIVE, SCRIBE_SEGMENT_DIRECTIVE, SCRIBE_PERSONA_DIRECTIVE } from "../src/agents/scribe/schema.js";
 import { CostGuard } from "../src/llm/costGuard.js";
 import type { LlmConfig } from "../src/llm/config.js";
 import type { LlmBackendDriver, LlmUsage } from "../src/llm/types.js";
@@ -89,8 +89,9 @@ describe("SCRIBE_SYSTEM 본문 불변(promptHash 보존)", () => {
     expect(SCRIBE_SEGMENT_DIRECTIVE).toContain("부분 모드");
   });
 
-  it("full-mode scribeStep의 system은 여전히 SCRIBE_SYSTEM과 바이트 동일(persona 없을 때)", async () => {
+  it("full-mode scribeStep의 system은 SCRIBE_SYSTEM + LENGTH_DIRECTIVE이고 SEGMENT_DIRECTIVE는 미포함(persona 없을 때)", async () => {
     // full-mode 회귀 가드 — 부분 모드 상수 추가가 full-mode system을 오염시키지 않았는지.
+    //   (길이 지시는 full 모드에 항상 붙는다 → 더는 SCRIBE_SYSTEM과 바이트 동일이 아니다. 스코핑은 scribeLengthTarget.test에서 잠근다.)
     const { scribeStep } = await import("../src/agents/scribe/step.js");
     const { driver, captured } = makeCapturingDriver();
     // full-mode driver는 segments 배열을 반환해야 한다(SCRIBE_SCHEMA).
@@ -113,6 +114,7 @@ describe("SCRIBE_SYSTEM 본문 불변(promptHash 보존)", () => {
     };
     void driver;
     await scribeStep(makeLlm(fullDriver), "run-full", { tone: {}, outline: {}, facts: [], assets: [] });
-    expect(captured.system).toBe(SCRIBE_SYSTEM);
+    expect(captured.system).toBe(`${SCRIBE_SYSTEM}\n${SCRIBE_LENGTH_DIRECTIVE}`);
+    expect(captured.system).not.toContain(SCRIBE_SEGMENT_DIRECTIVE); // 부분 모드 지시는 full-mode에 새지 않는다.
   });
 });
