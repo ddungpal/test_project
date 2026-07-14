@@ -6,6 +6,7 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { TablesInsert, Json } from "../../lib/supabase/database.types.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
+import { buildVideoWeightMap } from "./videoWeight.js";
 import { gatherExternalSignals, viewsPerSubscriber, engagementRate, type ExternalItem } from "./externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 
@@ -114,6 +115,40 @@ export function buildCompetitorCandidate(
 }
 
 /**
+ * videoId → 영상 가중 맵(공유). discovery·prepare 둘 다 댓글에 "인기도×최신성" 가중을 붙일 때 쓴다.
+ *   contents(upload_date) + performance_metrics(views, window='d1')를 조인해 buildVideoWeightMap에 넘긴다.
+ *   ★ best-effort: 두 쿼리 에러/빈 결과여도 throw 하지 않고 빈 Map 반환 → 성과 데이터 부재 시 가중 없이 기존 동작으로 강등.
+ *   ★ now 주입으로 결정적(콜러가 nowIso 전달 — recencyWeight가 이 now를 쓴다).
+ *   ★ metric_window='d1' 고정: 다른 window는 views가 전부 null이라 가중이 죽는다.
+ */
+export async function loadVideoWeightMap(supa: Supa, now: Date | string): Promise<Map<string, number>> {
+  // contents: 업로드일 + youtube_video_id(가중 키). youtube_video_id null 행은 키가 될 수 없어 제외.
+  const { data: contents, error: cerr } = await supa
+    .from("contents")
+    .select("id, youtube_video_id, upload_date")
+    .not("youtube_video_id", "is", null);
+  if (cerr || !contents || contents.length === 0) return new Map();
+
+  // performance_metrics: d1 views만(다른 window는 views null → 가중 죽음). content_id → views 맵.
+  const { data: metrics } = await supa
+    .from("performance_metrics")
+    .select("content_id, views")
+    .eq("metric_window", "d1");
+  const viewsByContent = new Map<string, number | null>();
+  for (const m of metrics ?? []) viewsByContent.set(m.content_id, m.views);
+
+  // 조인: contents 각 행 → { youtubeVideoId, views, uploadDate }. views 없으면 null(폴백은 순수부가 처리).
+  const videos = contents
+    .filter((c): c is typeof c & { youtube_video_id: string } => c.youtube_video_id != null)
+    .map((c) => ({
+      youtubeVideoId: c.youtube_video_id,
+      views: viewsByContent.get(c.id) ?? null,
+      uploadDate: c.upload_date,
+    }));
+  return buildVideoWeightMap(videos, now);
+}
+
+/**
  * 전역 발굴 1회. supa = service-role(admin) 클라이언트. asOfYear = 트렌드 쿼리 연도(테스트 주입용).
  *   - 댓글: 광역 키워드 신호 top → source='comment'
  *   - YouTube 경쟁영상: source='competitor' (주제 발굴 유튜브 only — web 트렌드 후보 미생성, trend는 항상 0)
@@ -126,15 +161,23 @@ export async function refreshTopicCandidates(
   const asOfYear = opts.asOfYear ?? new Date().getFullYear().toString();
   const nowIso = opts.nowIso ?? new Date().toISOString();
 
-  // 1) 댓글 광역 신호(원문 비전송) — 공유 헬퍼.
+  // 1) 댓글 광역 신호(원문 비전송) — 공유 헬퍼. youtube_video_id로 영상 가중을 붙인다.
   const { data: comments, error: ce } = await supa
     .from("comments_raw")
-    .select("body, like_count")
+    .select("body, like_count, youtube_video_id")
     .is("redacted_at", null)
     .not("body", "is", null)
+    .order("posted_at", { ascending: false }) // limit(5000)이 임의 순서가 되지 않게 최근순.
     .limit(5000);
   if (ce) throw new Error(`comments_raw 조회 실패: ${ce.message}`);
-  const { keyword_signals } = aggregateCommentSignals(comments ?? []);
+  // 영상 가중 맵(인기도×최신성). best-effort — 성과 데이터 없으면 빈 맵 → weight 1 폴백(기존 동작).
+  const wmap = await loadVideoWeightMap(supa, nowIso);
+  const commentRows = (comments ?? []).map((c) => ({
+    body: c.body,
+    like_count: c.like_count,
+    weight: wmap.get(c.youtube_video_id) ?? 1,
+  }));
+  const { keyword_signals } = aggregateCommentSignals(commentRows);
   const topComment = keyword_signals.slice(0, 10);
 
   // 2) 외부 경쟁영상(YouTube only). 주제 발굴은 유튜브 영상 기준 — 웹 트렌드 기사(Tavily)는 제거.

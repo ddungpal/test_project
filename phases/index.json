@@ -379,6 +379,11 @@
       "dir": "title-shortlist",
       "status": "completed",
       "completed_at": "2026-07-06T17:13:22+0900"
+    },
+    {
+      "dir": "comment-interest-weighting",
+      "status": "completed",
+      "completed_at": "2026-07-15T00:54:08+0900"
     }
   ]
 }

@@ -43,11 +43,13 @@ export interface CommentAggregate {
 
 /**
  * 댓글 행(원문 비전송) → 키워드 빈도·질문 카운트. keyword 지정 시 그 키워드 포함 댓글만(군집).
- *   - like_count 가중, 동일 댓글 내 중복 토큰 1회, 숫자·불용어·1자 어간 제외.
- *   - 컷: 키워드 군집(표본 작음) ≥2, 광역 ≥3.
+ *   - like_count 가중(likeBoost), 동일 댓글 내 중복 토큰 1회, 숫자·불용어·1자 어간 제외.
+ *   - 옵셔널 영상 가중(weight, videoWeight.ts가 계산) → likeBoost에 곱한다.
+ *     weight 미제공/비유한/≤0 → vw=1 폴백(곱셈 결과가 기존과 바이트 동일 → 미배선 호출부 회귀 0).
+ *   - 컷: 키워드 군집(표본 작음) ≥2, 광역 ≥3. count는 float일 수 있어 소수 둘째 자리 반올림(결정성).
  */
 export function aggregateCommentSignals(
-  rows: { body: string | null; like_count: number | null }[],
+  rows: { body: string | null; like_count: number | null; weight?: number | null }[],
   opts: { keyword?: string | null } = {},
 ): CommentAggregate {
   const kwNorm = opts.keyword ? opts.keyword.normalize("NFC") : null;
@@ -58,7 +60,10 @@ export function aggregateCommentSignals(
   for (const c of pool) {
     const body = (c.body ?? "").normalize("NFC");
     if (QUESTION_RE.test(body)) questionCount++;
-    const w = 1 + Math.min(5, Math.floor((c.like_count ?? 0) / 10)); // like 가중
+    const likeBoost = 1 + Math.min(5, Math.floor((c.like_count ?? 0) / 10)); // like 가중(상한 ×6)
+    // 영상 가중(옵셔널) — 미제공/비유한/≤0이면 1(기존 동작 바이트 동일). videoWeight.ts가 값 계산.
+    const vw = c.weight == null || !Number.isFinite(c.weight) || c.weight <= 0 ? 1 : c.weight;
+    const w = likeBoost * vw;
     const seen = new Set<string>();
     for (const raw of body.split(/[^\p{L}\p{N}]+/u)) {
       if (raw.length < 2) continue;
@@ -76,7 +81,9 @@ export function aggregateCommentSignals(
     .filter(([, n]) => n >= (kwNorm ? 2 : 3)) // 키워드 군집은 표본이 작아 컷 완화
     .sort((a, b) => b[1] - a[1])
     .slice(0, 40)
-    .map(([term, count]) => ({ id: `kw:${term}`, term, count }));
+    // count는 weight로 float일 수 있음 → 소수 둘째 자리 반올림(competitorSignalScore 미러·결정성).
+    //   weight 미제공 시 count는 정수라 반올림해도 값 불변(바이트 동일 유지).
+    .map(([term, count]) => ({ id: `kw:${term}`, term, count: Math.round(count * 100) / 100 }));
 
   return { comment_count: pool.length, question_comment_count: questionCount, keyword_signals };
 }

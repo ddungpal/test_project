@@ -55,6 +55,60 @@ describe("댓글 신호 집계(aggregateCommentSignals)", () => {
     expect(comment_count).toBe(2); // 파킹통장 포함 2건만
     expect(keyword_signals.map((s) => s.term)).not.toContain("파킹통장"); // 키워드 자체 제외
   });
+
+  describe("영상 가중(weight) — likeBoost × vw", () => {
+    it("weight 미제공 시 결과가 기존과 동일(불변식 회귀 가드)", () => {
+      // 같은 입력을 weight 없이 / weight:null 로 → keyword_signals 바이트 동일해야 한다.
+      const withoutWeight = aggregateCommentSignals(rows);
+      const withNull = aggregateCommentSignals(rows.map((r) => ({ ...r, weight: null })));
+      expect(withNull.keyword_signals).toEqual(withoutWeight.keyword_signals);
+      expect(withNull.comment_count).toBe(withoutWeight.comment_count);
+      expect(withNull.question_comment_count).toBe(withoutWeight.question_comment_count);
+    });
+
+    it("weight 준 댓글의 count가 likeBoost × weight로 커진다", () => {
+      // like 50 → likeBoost = 1 + min(5, floor(50/10)) = 6. weight 2.0 → w = 12.
+      // "파킹통장"은 like0 댓글(likeBoost1·weight1=1)에도 등장 → base(weight없음)=1+6=7.
+      const base = aggregateCommentSignals(rows);
+      const baseParking = base.keyword_signals.find((s) => s.term === "파킹통장")!;
+      const weighted = aggregateCommentSignals([
+        { body: "파킹통장 금리 어떻게 되나요?", like_count: 0, weight: 1 }, // 1×1 = 1
+        { body: "파킹통장 추천해주세요 파킹통장 진짜 궁금", like_count: 50, weight: 2 }, // 6×2 = 12
+        { body: "ISA 계좌 어떤가요?", like_count: 0, weight: 1 },
+        { body: "그냥 영상 감사합니다 ㅋㅋㅋ", like_count: 0, weight: 1 },
+      ]);
+      const wParking = weighted.keyword_signals.find((s) => s.term === "파킹통장")!;
+      expect(baseParking.count).toBe(7); // 1 + 6
+      expect(wParking.count).toBe(13); // 1 + 12
+    });
+
+    it("weight <= 0 / NaN / 비유한 → 1.0 폴백(기존과 동일)", () => {
+      const base = aggregateCommentSignals(rows).keyword_signals;
+      for (const bad of [0, -5, Number.NaN, Number.POSITIVE_INFINITY]) {
+        const got = aggregateCommentSignals(rows.map((r) => ({ ...r, weight: bad }))).keyword_signals;
+        expect(got).toEqual(base);
+      }
+    });
+
+    it("weight 키 미제공(undefined) → 1.0 폴백(불변식)", () => {
+      // 키 자체를 넣지 않아 진짜 undefined(미제공) 경로를 탄다.
+      const base = aggregateCommentSignals(rows).keyword_signals;
+      const got = aggregateCommentSignals(rows.map((r) => ({ body: r.body, like_count: r.like_count }))).keyword_signals;
+      expect(got).toEqual(base);
+    });
+
+    it("count는 float여도 소수 둘째 자리로 반올림돼 결정적", () => {
+      // weight 1.005 → 6×1.005 = 6.03, +1(like0 댓글) = 7.03 → 반올림 7.03.
+      const { keyword_signals } = aggregateCommentSignals([
+        { body: "파킹통장 금리 어떻게 되나요?", like_count: 0, weight: 1 },
+        { body: "파킹통장 추천해주세요 파킹통장 진짜 궁금", like_count: 50, weight: 1.005 },
+        { body: "ISA 계좌 어떤가요?", like_count: 0, weight: 1 },
+      ]);
+      const parking = keyword_signals.find((s) => s.term === "파킹통장")!;
+      expect(parking.count).toBe(Math.round((1 + 6 * 1.005) * 100) / 100); // 7.03
+      expect(Number.isInteger(parking.count * 100)).toBe(true); // 부동소수 잔재 없음
+    });
+  });
 });
 
 describe("경쟁 영상 signal_score(competitorSignalScore) — 배수 가중", () => {

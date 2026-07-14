@@ -9,6 +9,7 @@ import { TOPIC_SCOUT_SCHEMA, TOPIC_SCOUT_SYSTEM, appendLevelDirective, appendPer
 import { gatherExternalSignals, pickSpreadYoutube, type ExternalItem } from "./externalSignals.js";
 import { FLOOR_SUBS } from "../hook_maker/externalRefs.js";
 import { aggregateCommentSignals } from "./commentSignals.js";
+import { loadVideoWeightMap } from "./discovery.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
 
 // stripJosa 등 댓글 키워드 집계는 commentSignals.ts(매일 발굴 Cron과 공유). 하위호환 re-export.
@@ -47,14 +48,24 @@ export async function prepareTopicScout(
   await setProgress(supa, runId, "1/3·댓글 신호 분석");
 
   // 1) 댓글 본문 로드(redacted 제외). 본문은 코드 안에서만 쓰고 버린다(거버넌스 C). 집계는 공유 헬퍼.
+  //   per-run엔 nowIso가 없어 진입부에서 앱 서버 런타임 값을 한 번 만든다(스크립트 컨텍스트 아님 → new Date() 허용).
+  const nowIso = new Date().toISOString();
   const { data: comments, error: ce } = await supa
     .from("comments_raw")
-    .select("body, like_count")
+    .select("body, like_count, youtube_video_id")
     .is("redacted_at", null)
     .not("body", "is", null)
+    .order("posted_at", { ascending: false }) // limit(5000)이 임의 순서가 되지 않게 최근순.
     .limit(5000);
   if (ce) throw new Error(`comments_raw 조회 실패: ${ce.message}`);
-  const { comment_count, question_comment_count, keyword_signals } = aggregateCommentSignals(comments ?? [], { keyword });
+  // 영상 가중 맵(인기도×최신성). best-effort — 성과 데이터 없으면 빈 맵 → weight 1 폴백(기존 동작).
+  const wmap = await loadVideoWeightMap(supa, nowIso);
+  const commentRows = (comments ?? []).map((c) => ({
+    body: c.body,
+    like_count: c.like_count,
+    weight: wmap.get(c.youtube_video_id) ?? 1,
+  }));
+  const { comment_count, question_comment_count, keyword_signals } = aggregateCommentSignals(commentRows, { keyword });
 
   // 2) 외부 검색 신호(YouTube 경쟁영상 only). 주제 선정은 유튜브 영상 기준 — 웹 기사(Tavily)는
   //   주제 경로에서 제거(기사는 리서치 단계용).
