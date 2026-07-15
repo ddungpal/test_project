@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "script-doc-export",
+  "steps": [
+    {
+      "step": 0,
+      "name": "export-doc-builder",
+      "status": "completed",
+      "started_at": "2026-07-15T11:25:07+0900",
+      "team_round": "1/3 PASS",
+      "summary": "신규 순수 함수 src/lib/export/scriptDoc.ts + tests/scriptDoc.test.ts — 런의 제목·썸네일카피·더보기란(빈칸 플레이스홀더)·스크립트를 김짠부 구글독스 코퍼스 포맷(라벨 4개+em-dash 100자 구분선, 메인:/작은 박스N: 표기)과 동일한 마크다운으로 조립. segmentBlock 타입 재사용해 table/case/visual 블록 렌더+알 수 없는 kind prose 폴백(throw 0). DB/fetch/Date.now import 0. typecheck0/test 1419→1440/build0·마이그0·의존성0.",
+      "completed_at": "2026-07-15T11:33:51+0900"
+    },
+    {
+      "step": 1,
+      "name": "export-download-route",
+      "status": "completed",
+      "started_at": "2026-07-15T11:33:51+0900",
+      "team_round": "1/3 PASS",
+      "summary": "신규 GET route src/app/api/runs/[id]/export/route.ts — requireOwner 게이트 후 제목(getSelectedStagePayload title_thumb)·썸네일(getSelectedStagePayload thumbnail, 배열이면 첫 대표의 thumbnail_main/boxes)·스크립트(getScriptView ord순)를 기존 로더로 모아 step0 buildScriptDocMarkdown 호출만으로 .md 조립, text/markdown+Content-Disposition attachment(불가문자 제거·한글 filename*·제목 없으면 script-<id8>)로 다운로드. 세그먼트 0개 400 방어, toStringArray/?? 방어로 crash 0. page.tsx ScriptSection에 대본 있는 상태(script_review·approved·published) 전용 '구글 문서용 내보내기' <a download> 링크+안내(TRUS 3색만). typecheck0/test1440/build0(route 등록 확인)·마이그0·의존성0·떠돌이0.",
+      "completed_at": "2026-07-15T11:45:57+0900"
+    }
+  ],
+  "created_at": "2026-07-15T11:25:07+0900",
+  "completed_at": "2026-07-15T11:45:57+0900"
+}

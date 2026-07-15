@@ -317,6 +317,24 @@ function ResearchSection({ runId, runState, rv, progressNote }: { runId: string;
   );
 }
 
+// 대본 있는 상태에서 김짠부 구글 문서용 .md 다운로드(route). 서버액션 아님 — <a download>가 가장 단순.
+function ExportScriptLink({ runId }: { runId: string }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <a
+        href={`/api/runs/${runId}/export`}
+        download
+        className="inline-block border border-trus-yellow px-4 py-2 text-sm font-bold text-trus-yellow hover:bg-trus-yellow hover:text-trus-black"
+      >
+        구글 문서용 내보내기
+      </a>
+      <p className="text-xs text-trus-white/40">
+        제목·썸네일·더보기란(빈칸)·스크립트를 김짠부 문서 구조로 내려받아 구글 문서로 가져오세요.
+      </p>
+    </div>
+  );
+}
+
 // 스크립트 단계(3.4) — 시작/대기/검수진입+세그먼트/검수/완료. segments는 lineage 포함.
 function ScriptSection({
   runId,
@@ -378,10 +396,18 @@ function ScriptSection({
     unused = <UnusedResearch facts={uFacts} assets={uAssets} />;
   }
 
+  // 대본 있는 상태(검수·승인·발행)에서만 문서 내보내기 노출 — 대기/작성 중 상태엔 숨김.
+  const canExport = runState === "script_review" || runState === "approved" || runState === "published";
+
   return (
     <section className="mt-8">
       <h2 className="text-trus-yellow text-xs font-bold tracking-widest uppercase">스크립트 (짠펜) · lineage</h2>
       <div className="mt-3">{body}</div>
+      {canExport && (
+        <div className="mt-4">
+          <ExportScriptLink runId={runId} />
+        </div>
+      )}
       {unused}
     </section>
   );

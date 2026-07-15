@@ -399,6 +399,11 @@
       "dir": "regenerate-approved-script",
       "status": "completed",
       "completed_at": "2026-07-15T11:03:22+0900"
+    },
+    {
+      "dir": "script-doc-export",
+      "status": "completed",
+      "completed_at": "2026-07-15T11:45:57+0900"
     }
   ]
 }
