@@ -8,8 +8,8 @@ import type { TablePayload, CasePayload, VisualPayload } from "../../pipeline/se
 export interface ScriptDocInput {
   title: string;
   titleAlternates?: string[];
-  thumbnailMain: string[]; // 보통 2개: 상단/하단
-  thumbnailBoxes: string[]; // 보통 2개
+  // 썸네일 3안(각 안: main 보통 2개 상단/하단, boxes 보통 2개). 순서대로 [1안][2안][3안].
+  thumbnails: { main: string[]; boxes: string[] }[];
   segments: { kind?: string; text: string; payload?: unknown }[]; // ord 순
 }
 
@@ -143,13 +143,17 @@ function renderSegment(seg: { kind?: string; text: string; payload?: unknown }):
 
 // ── 섹션 조립 ─────────────────────────────────────────────────────────────
 function thumbnailSection(input: ScriptDocInput): string {
-  const lines: string[] = [LABEL_THUMBNAIL, ""];
-  // 개수가 달라도 있는 만큼만(방어).
-  for (const main of input.thumbnailMain) {
-    lines.push(`메인 : ${main}`);
-  }
-  input.thumbnailBoxes.forEach((box, i) => {
-    lines.push(`작은 박스${i + 1} : ${box}`);
+  const lines: string[] = [LABEL_THUMBNAIL];
+  // 3안을 [1안]/[2안]/[3안]으로 전부 렌더. 각 안: 메인 한 줄(/ 연결) + 작은 박스들.
+  //   개수가 달라도 있는 만큼만(방어). 비면 라벨만.
+  input.thumbnails.forEach((thumb, ti) => {
+    lines.push(""); // 안 앞에 빈 줄(라벨과·안 사이 구분).
+    lines.push(`[${ti + 1}안]`);
+    // 메인은 상단/하단을 한 줄로 ' / ' 연결(2줄 아님).
+    lines.push(`메인 : ${thumb.main.join(" / ")}`);
+    thumb.boxes.forEach((box, i) => {
+      lines.push(`작은 박스${i + 1} : ${box}`);
+    });
   });
   return lines.join("\n");
 }

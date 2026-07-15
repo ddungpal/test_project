@@ -11,8 +11,11 @@ import {
 function base(over: Partial<ScriptDocInput> = {}): ScriptDocInput {
   return {
     title: "대표 제목",
-    thumbnailMain: ["상단 메인", "하단 메인"],
-    thumbnailBoxes: ["박스A", "박스B"],
+    thumbnails: [
+      { main: ["1안 상단", "1안 하단"], boxes: ["1박스A", "1박스B"] },
+      { main: ["2안 상단", "2안 하단"], boxes: ["2박스A", "2박스B"] },
+      { main: ["3안 상단", "3안 하단"], boxes: ["3박스A", "3박스B"] },
+    ],
     segments: [{ text: "첫 문단입니다." }],
     ...over,
   };
@@ -45,17 +48,38 @@ describe("buildScriptDocMarkdown — 구조·라벨·구분선", () => {
 });
 
 describe("buildScriptDocMarkdown — 썸네일·제목", () => {
-  it("썸네일 메인·박스를 코퍼스 표기로 렌더한다", () => {
+  it("메인을 한 줄(/ 연결)로 렌더하고 박스를 코퍼스 표기로 렌더한다", () => {
     const md = buildScriptDocMarkdown(base());
-    expect(md).toContain("메인 : 상단 메인");
-    expect(md).toContain("메인 : 하단 메인");
-    expect(md).toContain("작은 박스1 : 박스A");
-    expect(md).toContain("작은 박스2 : 박스B");
+    // 메인은 상단/하단을 ' / '로 이은 한 줄(2줄 아님).
+    expect(md).toContain("메인 : 1안 상단 / 1안 하단");
+    expect(md).not.toContain("메인 : 1안 상단\n");
+    expect(md).toContain("작은 박스1 : 1박스A");
+    expect(md).toContain("작은 박스2 : 1박스B");
+  });
+
+  it("3후보를 [1안]/[2안]/[3안]으로 전부 순서대로 렌더한다", () => {
+    const md = buildScriptDocMarkdown(base());
+    const i1 = md.indexOf("[1안]");
+    const i2 = md.indexOf("[2안]");
+    const i3 = md.indexOf("[3안]");
+    expect(i1).toBeGreaterThanOrEqual(0);
+    expect(i2).toBeGreaterThan(i1);
+    expect(i3).toBeGreaterThan(i2);
+    expect(md).toContain("메인 : 2안 상단 / 2안 하단");
+    expect(md).toContain("메인 : 3안 상단 / 3안 하단");
+    expect(md).toContain("작은 박스1 : 3박스A");
+  });
+
+  it("빈 썸네일 배열이면 라벨만(안 없음, throw 없음)", () => {
+    const md = buildScriptDocMarkdown(base({ thumbnails: [] }));
+    expect(md).toContain("**썸네일**");
+    expect(md).not.toContain("[1안]");
+    expect(md).not.toContain("메인 :");
   });
 
   it("메인·박스 개수가 달라도 있는 만큼만 렌더한다(throw 없음)", () => {
     const md = buildScriptDocMarkdown(
-      base({ thumbnailMain: ["하나만"], thumbnailBoxes: [] }),
+      base({ thumbnails: [{ main: ["하나만"], boxes: [] }] }),
     );
     expect(md).toContain("메인 : 하나만");
     expect(md).not.toContain("작은 박스1");
@@ -178,15 +202,13 @@ describe("buildScriptDocMarkdown — 방어(빈 입력)", () => {
     expect(() =>
       buildScriptDocMarkdown({
         title: "제목만",
-        thumbnailMain: [],
-        thumbnailBoxes: [],
+        thumbnails: [],
         segments: [],
       }),
     ).not.toThrow();
     const md = buildScriptDocMarkdown({
       title: "제목만",
-      thumbnailMain: [],
-      thumbnailBoxes: [],
+      thumbnails: [],
       segments: [],
     });
     expect(md).toContain("**썸네일**");

@@ -27,12 +27,25 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     ? titlePayload.alternates.filter((x): x is string => typeof x === "string")
     : undefined;
 
-  // 썸네일: 확정 시 A/B/C 배열(edited_payload) 또는 단일 후보 payload. 대표 = 첫 번째.
-  const thumbSel = await getSelectedStagePayload(supa, runId, "thumbnail");
-  const first = Array.isArray(thumbSel) ? thumbSel[0] : thumbSel;
-  const firstObj = (first ?? {}) as Record<string, unknown>;
-  const thumbnailMain = toStringArray(firstObj.thumbnail_main);
-  const thumbnailBoxes = toStringArray(firstObj.thumbnail_boxes);
+  // 썸네일: 3후보 전부([1안][2안][3안]). 최신 thumbnail proposal의 candidates 순서 그대로.
+  const { data: thumbProposal } = await supa
+    .from("stage_proposals")
+    .select("candidates")
+    .eq("run_id", runId)
+    .eq("stage", "thumbnail")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const thumbCandidates = Array.isArray(thumbProposal?.candidates)
+    ? (thumbProposal.candidates as { payload?: unknown }[])
+    : [];
+  const thumbnails = thumbCandidates.map((c) => {
+    const p = (c?.payload ?? {}) as Record<string, unknown>;
+    return {
+      main: toStringArray(p.thumbnail_main),
+      boxes: toStringArray(p.thumbnail_boxes),
+    };
+  });
 
   // 스크립트(getScriptView가 이미 ord 순 정렬).
   const segs = await getScriptView(runId);
@@ -44,8 +57,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const md = buildScriptDocMarkdown({
     title,
     ...(titleAlternates ? { titleAlternates } : {}),
-    thumbnailMain,
-    thumbnailBoxes,
+    thumbnails,
     segments,
   });
 

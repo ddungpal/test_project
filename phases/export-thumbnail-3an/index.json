@@ -1,0 +1,17 @@
+{
+  "project": "produce script",
+  "phase": "export-thumbnail-3an",
+  "steps": [
+    {
+      "step": 0,
+      "name": "thumbnail-variants-align",
+      "status": "completed",
+      "started_at": "2026-07-15T12:02:53+0900",
+      "team_round": "1/3 PASS",
+      "summary": "대본 export 썸네일 섹션을 실제 김짠부 템플릿에 맞춤 — ScriptDocInput을 thumbnails:{main,boxes}[] 배열로 교체하고 thumbnailSection이 [1안]/[2안]/[3안] + '메인 : <상단> / <하단>' 한 줄(슬래시 연결)로 렌더, export route는 최신 thumbnail proposal candidates 3개를 순서 보존 로드. 제목·더보기란(빈칸)·스크립트·구분선·섹션순서 무변경. typecheck0/test1442/build0(clean). 변경 3파일뿐, 마이그·의존성 0.",
+      "completed_at": "2026-07-15T12:12:11+0900"
+    }
+  ],
+  "created_at": "2026-07-15T12:02:53+0900",
+  "completed_at": "2026-07-15T12:12:11+0900"
+}
