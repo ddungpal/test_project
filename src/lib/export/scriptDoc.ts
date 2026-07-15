@@ -159,13 +159,11 @@ function thumbnailSection(input: ScriptDocInput): string {
 }
 
 function titleSection(input: ScriptDocInput): string {
-  const lines: string[] = [LABEL_TITLE, "", input.title];
+  // 선택된 대표 제목과 후보를 라벨로 명확히 구분한다(그냥 '1.' 번호는 후보인지 알기 어렵다).
+  const lines: string[] = [LABEL_TITLE, "", `선택 : ${input.title}`];
   const alts = input.titleAlternates ?? [];
-  if (alts.length > 0) {
-    lines.push("");
-    alts.forEach((alt, i) => {
-      lines.push(`${i + 1}. ${alt}`);
-    });
+  for (const alt of alts) {
+    lines.push(`후보 : ${alt}`);
   }
   return lines.join("\n");
 }

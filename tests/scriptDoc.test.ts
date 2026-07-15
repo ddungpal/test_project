@@ -85,16 +85,18 @@ describe("buildScriptDocMarkdown — 썸네일·제목", () => {
     expect(md).not.toContain("작은 박스1");
   });
 
-  it("대표 제목만 있으면 후보 목록 없음", () => {
+  it("대표 제목만 있으면 '선택 :'만 있고 '후보 :' 없음", () => {
     const md = buildScriptDocMarkdown(base());
-    expect(md).toContain("대표 제목");
-    expect(md).not.toContain("1. ");
+    expect(md).toContain("선택 : 대표 제목");
+    expect(md).not.toContain("후보 :");
   });
 
-  it("titleAlternates가 있으면 1. 2.로 렌더한다", () => {
+  it("titleAlternates는 '후보 :' 라벨로 렌더한다(혼동되는 1. 번호 대신)", () => {
     const md = buildScriptDocMarkdown(base({ titleAlternates: ["후보 둘", "후보 셋"] }));
-    expect(md).toContain("1. 후보 둘");
-    expect(md).toContain("2. 후보 셋");
+    expect(md).toContain("선택 : 대표 제목");
+    expect(md).toContain("후보 : 후보 둘");
+    expect(md).toContain("후보 : 후보 셋");
+    expect(md).not.toContain("1. 후보 둘");
   });
 });
 
