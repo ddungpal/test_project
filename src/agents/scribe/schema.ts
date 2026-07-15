@@ -51,6 +51,34 @@ export const SCRIBE_SCHEMA: JsonSchema = {
   },
 };
 
+// 섹션 격리 생성 스키마 — 한 섹션분 세그먼트 배열. SCRIBE_SCHEMA와 동일 구조지만 minItems:1
+//   (한 섹션분이라 3개 강제가 부담 — 오프닝·정리 섹션은 세그먼트 1개로 끝날 수 있다).
+//   ord는 이 호출 안에서의 상대 순번(전역 ord는 파이프라인 배선 step이 다시 매긴다).
+export const SCRIBE_SECTION_SCHEMA: JsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["segments"],
+  properties: {
+    segments: {
+      type: "array",
+      minItems: 1,
+      items: {
+        type: "object",
+        additionalProperties: false,
+        required: ["ord", "text", "used_fact_idxs", "used_asset_idxs"],
+        properties: {
+          ord: { type: "integer", minimum: 0 },
+          text: { type: "string", minLength: 1 },
+          used_fact_idxs: { type: "array", items: { type: "integer", minimum: 0 } },
+          used_asset_idxs: { type: "array", items: { type: "integer", minimum: 0 } },
+          kind: { type: "string", enum: ["prose", "table", "case", "visual"] },
+          payload: { type: "object" },
+        },
+      },
+    },
+  },
+};
+
 // 단일 세그먼트 재생성 스키마 — ScriptSegmentOut에서 ord를 뺀 세그먼트 1개 객체.
 //   required=text/used_fact_idxs/used_asset_idxs. kind enum·payload loose object는 SCRIBE_SCHEMA와 동일.
 export const SCRIBE_SEGMENT_SCHEMA: JsonSchema = {
@@ -170,4 +198,25 @@ export const SCRIBE_SEGMENT_DIRECTIVE = [
   "  - 입력: reason(수정 사유) · target(현재 이 세그먼트 텍스트) · neighbors(앞뒤 세그먼트 prev/next 맥락) · facts · assets.",
   "  - 앞뒤 맥락(neighbors)과 자연스럽게 이어지게 쓰되, tone·money-safety·lineage(used_fact_idxs/used_asset_idxs) 규칙은 그대로 지킨다.",
   "  - 전체 대본을 다시 쓰지 말고 이 한 덩어리만 출력한다(세그먼트 1개 객체). ord는 출력하지 않는다.",
+].join("\n");
+
+// 섹션 격리 생성 지시(별도 상수) — 섹션 모드(scribeSectionStep)에서만 SCRIBE_SYSTEM 뒤에 append한다.
+//   ★ SCRIBE_SYSTEM 본문·SCHEMA·LENGTH/SEGMENT/PERSONA_DIRECTIVE는 절대 건드리지 않는다(신규 별도 상수로만 추가).
+//   배경: 8개 섹션을 한 번에 쓰면 (dev claude-p는 maxTokens 미사용) 섹션당 ~675자에서 천장을 친다.
+//   섹션을 하나씩 격리 생성하면 경쟁 섹션이 없어 더 길게 전개된다 → 이 지시는 그 섹션 하나만 쓰게 한다.
+//   ★ SCRIBE_LENGTH_DIRECTIVE는 절대 함께 붙이지 않는다(전체 분량 목표 vs 섹션 분량 목표 충돌 방지) — 이 상수가 섹션 분량을 다룬다.
+export const SCRIBE_SECTION_DIRECTIVE = [
+  "■ 섹션 부분 생성(섹션 모드): 이번엔 전체 대본이 아니라 주어진 이 섹션 하나(section)의 세그먼트들만 쓴다.",
+  "  - 입력: section(이 섹션의 { section, goal, why, format }) · sectionIndex(0부터) · totalSections · prior_tail(직전까지 작성된 대본의 끝부분) · facts · assets.",
+  "  - 전체 대본을 처음부터 다시 시작하지 마라. 오직 이 section 하나에 해당하는 세그먼트들만 출력한다.",
+  "■ 연속성(필수): prior_tail(직전까지 작성된 대본의 마지막 부분)에서 자연스럽게 이어서 시작한다.",
+  "  - 섹션마다 처음부터 다시 시작하듯 끊지 마라 — prior_tail의 흐름·화제를 받아 김짠부 구어체 연결말로 매끄럽게 넘어간다.",
+  "  - 단, 첫 섹션(sectionIndex=0이거나 prior_tail이 비어 있음)은 이어붙일 앞이 없으므로 tone의 고정 인사로 오프닝을 연다('짠하! 안녕하세요…' 류).",
+  "  - prior_tail의 문장을 그대로 다시 말하지 마라(중복 금지) — 이어받되 새 내용으로 나아간다.",
+  "■ 섹션 분량(핵심): 이 섹션을 900~1,200자로 충분히 전개한다 — 구체 수치·상황·예시를 들고, 되짚는 질문을 던지고, 왜 그런지·그래서 뭘 할지까지 한 걸음 더 파고든다.",
+  "  - 한 섹션을 한두 문장으로 스치지 말고, 보통 세그먼트 2~3개로 나눠 시청자가 납득할 만큼 실제로 풀어 준다.",
+  "  - 단, 오프닝·정리(마무리) 성격의 섹션은 그보다 짧아도 된다(section의 성격을 보고 판단한다).",
+  "  - ★ 억지로 늘리지 말고 '깊이'로 채운다 — 재진술·군더더기로 늘리지 말고, 새 정보·구체 예시·시청자 상황 묘사로 전개한다(위 '■ 중복 금지'는 그대로 지킨다).",
+  "■ 규칙 승계(전체 모드와 동일): 말투(tone)·쉬운 설명(북극성)·money-safety·형식 블록(table/case/visual)·lineage(used_fact_idxs/used_asset_idxs) 규칙은 전체 모드와 똑같이 지킨다.",
+  "  - facts·assets 인덱스는 입력으로 받은 그대로의 '전역 인덱스'다 — 이 섹션 안에서 새로 매기지 말고, 근거로 쓴 것을 그 전역 인덱스로 used_fact_idxs/used_asset_idxs에 링크한다.",
 ].join("\n");

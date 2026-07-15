@@ -9,11 +9,16 @@ import { bumpRework, abortRun, MAX_REWORK, flushLedger } from "./runGuards.js";
 import { getSelectedStagePayload, getToneProfile } from "./context.js";
 import { buildCorpusShingles, containment, PLAGIARISM_THRESHOLD, PLAGIARISM_BLOCK_THRESHOLD } from "./scriptGuards.js";
 import { parseAxStages, resolveToneInjection } from "./axFlag.js";
-import { scribeStep } from "../agents/scribe/step.js";
+import { scribeStep, scribeSectionStep } from "../agents/scribe/step.js";
+import type { ScriptSegmentOut } from "../agents/scribe/schema.js";
+import { buildPriorTail } from "../lib/scribe/priorTail.js";
 import { normalizeSegmentPayload } from "./segmentBlock.js";
 import { isAssetUsable, buildAssetsInput, type AssetRowForScribe } from "./comparisonAsset.js";
 import { isFactUsableForScript } from "./scriptFactEligibility.js";
 import type { Json } from "../lib/supabase/database.types.js";
+
+// 섹션 격리 생성 시 다음 섹션에 넘길 연속성 꼬리 길이(직전 대본 끝부분 최대 문자 수).
+const PRIOR_TAIL_CHARS = 500;
 
 export interface ScriptStageDeps {
   supa: Supa;
@@ -107,8 +112,41 @@ export async function runScriptStage(runId: string, deps: ScriptStageDeps): Prom
   const scribeInput: { tone: unknown; outline: unknown; facts: unknown; assets: unknown; target_persona?: string } = { tone: toneInjection, outline: structure, facts: factsInput, assets: assetsInput };
   // persona 있을 때만 키 포함(없으면 scribeStep input/system 바이트 불변 → promptHash 보존).
   if (topicPayload?.target_persona) scribeInput.target_persona = topicPayload.target_persona;
-  const scribe = await scribeStep(llm, runId, scribeInput);
-  const segments = [...scribe.segments].sort((a, b) => a.ord - b.ord);
+  // ★ 섹션 격리 생성(가설): outline 섹션을 하나씩 격리 생성하면 경쟁 섹션이 없어
+  //   dev(claude-p, maxTokens 미사용) 천장 아래에서 섹션당 더 길게 전개된다 → 총 분량 증가.
+  //   outline이 없으면(구조 방어) 기존 단발 scribeStep 경로로 폴백(회귀 안전).
+  //   facts/assets 인덱스는 '전역'을 각 섹션 호출에 그대로 넘긴다(로컬 재인덱싱 금지 — lineage 일관).
+  const sections = Array.isArray((structure as { outline?: unknown } | null)?.outline)
+    ? (structure as { outline: unknown[] }).outline
+    : [];
+
+  let allSegments: ScriptSegmentOut[];
+  if (sections.length === 0) {
+    // 폴백: outline 없으면 기존 단발 경로(scribeStep) 유지 — 회귀 안전.
+    const scribe = await scribeStep(llm, runId, scribeInput);
+    allSegments = [...scribe.segments].sort((a, b) => a.ord - b.ord);
+  } else {
+    allSegments = [];
+    for (let i = 0; i < sections.length; i++) {
+      const prior_tail = buildPriorTail(allSegments, PRIOR_TAIL_CHARS);
+      const res = await scribeSectionStep(llm, runId, {
+        tone: toneInjection,
+        section: sections[i],
+        sectionIndex: i,
+        totalSections: sections.length,
+        prior_tail,
+        facts: factsInput, // 전역 인덱스 유지(lineage 일관)
+        assets: assetsInput, // 전역 인덱스 유지
+        ...(scribeInput.target_persona ? { target_persona: scribeInput.target_persona } : {}),
+      });
+      allSegments.push(...res.segments);
+      await setProgress(supa, runId, `1/2·대본 작성 (짠펜 ${i + 1}/${sections.length})`);
+    }
+  }
+  // 전역 ord 재부여(섹션별 상대 ord를 무시하고 순서대로).
+  allSegments = allSegments.map((s, idx) => ({ ...s, ord: idx }));
+  // 이후 표절 가드·저장·lineage 로직은 동일한 세그먼트 배열 형태를 소비한다(별칭으로 최소 diff).
+  const segments = allSegments;
 
   // 3) 표절 가드 — 코퍼스 대비 포함도.
   await setProgress(supa, runId, "2/2·표절 검사");

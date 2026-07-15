@@ -1,0 +1,1 @@
+- 제안: 하네스 step 완료 시 phases/<phase>/index.json의 steps[].status를 pending→completed로 갱신하고 summary를 채운다 (근거: scribe-section-step 산출물은 완성됐으나 index.json step0이 pending으로 남음 — 기존 rules.md "status가 pending으로 남고 output이 stale" 규칙의 phase-local index.json 판 재발 방지).
