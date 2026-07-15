@@ -12,6 +12,7 @@ const MODEL_ID: Record<ModelTier, string> = {
   haiku: "claude-haiku-4-5-20251001", // haiku는 날짜 핀(현재 미사용 — 전 역할 opus). 쓰려면 별칭으로 교체.
   sonnet: "claude-sonnet-4-6",
   opus: "claude-opus-4-8",
+  fable: "claude-fable-5", // 앤트로픽 테스트 모델. api 백엔드로 열려있는지는 미확인(dev=claude-p로 검증됨·API 크레딧 0).
 };
 
 export const apiDriver: LlmBackendDriver = {

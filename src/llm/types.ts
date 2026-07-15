@@ -1,6 +1,6 @@
 // callLLM 어댑터 계약 (tech.md §2). dev=claude-p / prod=api 를 호출부 코드 동일하게 스위치.
 
-export type ModelTier = "haiku" | "sonnet" | "opus";
+export type ModelTier = "haiku" | "sonnet" | "opus" | "fable"; // fable=claude-fable-5(앤트로픽 테스트). PIPELINE_MODEL env로 리서치·짠펜에 토글.
 // claude-p=개발($0), api=Anthropic 운영(종량), openai=GPT(골든 A/B 비교용·종량).
 export type LlmBackend = "claude-p" | "api" | "openai";
 export type CacheMode = "system" | "context" | "none";

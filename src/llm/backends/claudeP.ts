@@ -21,6 +21,8 @@ const MODEL_FLAG: Record<ModelTier, string> = {
   haiku: "haiku",
   sonnet: "sonnet",
   opus: "opus",
+  // fable은 별칭이 없어 정식명으로 지정한다(claude CLI가 --model claude-fable-5로 받음·검증됨. /model 목록엔 없어도 동작).
+  fable: "claude-fable-5",
 };
 
 /** --system-prompt 로 넣을 시스템 프롬프트(기본 에이전트 프롬프트 교체). 스키마 출력 규칙 포함. */

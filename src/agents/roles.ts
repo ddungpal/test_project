@@ -48,9 +48,26 @@ export const ROLES = {
 
 export type RoleId = keyof typeof ROLES;
 
+// Fable 테스트 토글 대상 역할 — 리서치 단계 전체 + 짠펜(대본). env PIPELINE_MODEL=claude-fable-5 일 때만 fable로.
+//   (주제·제목·썸네일·구성·온보딩은 제외 — 사용자 선택 (나): 리서치+작성만.)
+const FABLE_ROLES: ReadonlySet<string> = new Set([
+  "sherlock_lead", // 셜록(리서치 리드)
+  "fact_verifier", // 팩트검증가
+  "numbers", // 셈이
+  "analogist", // 유이(비유)
+  "comparator", // 비교가
+  "case_miner", // 분기가
+  "critic", // 반론
+  "scribe", // 짠펜(대본)
+]);
+
 export function resolveModel(roleId: string): ModelTier {
   const role = (ROLES as Record<string, AgentRole>)[roleId];
-  return role?.defaultModel ?? "sonnet";
+  const base = role?.defaultModel ?? "sonnet";
+  // Fable 테스트 토글: env가 켜져 있고 대상 역할이면 fable로 오버라이드(끄면 base=opus 그대로 → A/B 쉬움).
+  //   ★ 미설정/다른 값이면 완전 무영향(base 반환) → promptHash·fixture 보존.
+  if (process.env.PIPELINE_MODEL === "claude-fable-5" && FABLE_ROLES.has(roleId)) return "fable";
+  return base;
 }
 
 export function roleTools(roleId: string): readonly string[] {

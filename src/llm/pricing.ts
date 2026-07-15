@@ -14,6 +14,7 @@ const PRICING: Record<ModelTier, TierPrice> = {
   haiku: { inPerM: 1, outPerM: 5, cachedInPerM: 0.1 },
   sonnet: { inPerM: 3, outPerM: 15, cachedInPerM: 0.3 },
   opus: { inPerM: 15, outPerM: 75, cachedInPerM: 1.5 },
+  fable: { inPerM: 15, outPerM: 75, cachedInPerM: 1.5 }, // 단가 미공개 → opus값으로 보수적 추정(비용가드 상한용). dev=claude-p는 $0라 무관.
 };
 
 /** OpenAI(GPT-5.5 등) 단가 — 정확값 불확실(§15) → env 주입, 기본은 캡 누수 방지용 보수적(높게) 값.
