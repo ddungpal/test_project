@@ -409,6 +409,11 @@
       "dir": "export-thumbnail-3an",
       "status": "completed",
       "completed_at": "2026-07-15T12:12:11+0900"
+    },
+    {
+      "dir": "topic-context-to-copy",
+      "status": "completed",
+      "completed_at": "2026-07-15T16:13:03+0900"
     }
   ]
 }

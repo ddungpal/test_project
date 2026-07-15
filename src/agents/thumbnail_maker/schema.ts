@@ -80,3 +80,15 @@ export const THUMBNAIL_PERSONA_DIRECTIVE = [
   "  - 단 김짠부 말투·시그니처 워딩·직설(낚시 금지)·정중-탐문 종결 금지·주제 키워드 필수 원칙은 그대로 유지한다 — persona는 대상 맥락만 더하는 보조 신호일 뿐 스타일을 덮어쓰지 않는다.",
   "  - 억지 금지: 대상에 안 맞는 각도를 무리하게 끼우지 말고, 자연스럽게 그 막막함이 후킹되는 카피에서만 반영한다.",
 ].join("\n");
+
+// 주제 맥락 지시(별도 상수) — topic_reason·audience_need·audience_level 중 하나라도 있을 때만 base(THUMBNAIL_MAKER_SYSTEM) 직후에 append한다.
+//   ★ THUMBNAIL_MAKER_SYSTEM 본문은 절대 늘리지 않는다(맥락 없는 런은 system 바이트 동일 → promptHash 보존 → 골든 픽스처 안 깨짐).
+//   ★ 위치는 base 직후·learned/style/winning/owner/persona 체인보다 안쪽 → 말투·시그니처·상하단 골격·스타일·winning·owner·persona가 우선순위상 더 바깥(뒤)에 남는다.
+export const THUMBNAIL_TOPIC_CONTEXT_DIRECTIVE = [
+  "■ 주제 근거 조준: 입력에 topic_reason·audience_need·audience_level(촉이가 이 주제를 고른 이유·시청자가 지금 원하는 것·시청자 수준)이 주어지면, 썸네일 카피가 그 근거를 조준하도록 각도·어휘를 맞춘다(강한 권고).",
+  "  - 메인문구·박스는 audience_need(시청자가 지금 답답해하는 것)를 정면으로 조준한다 — 무엇을 담을지의 중심축이다(강한 권고).",
+  "  - topic_reason의 각도를 살린다 — 촉이가 이 주제를 고른 이유(왜 이 각도인지)가 썸네일에 드러나게 한다.",
+  "  - audience_level에 어휘·구체성을 맞춘다 — 입문은 쉬운 개념·용어, 고급은 구체 전략·수치.",
+  "  - reference_titles_external(고조회 유튜브 제목)이 있으면 이 각도를 뒷받침하는 근거로만 참고한다 — 표현·훅 문구 모방은 금지(기존 규칙 유지).",
+  "  - ★ 역할 분담(필수): 김짠부 썸네일 시그니처·상하단 골격·어미 규칙 등 기존 최우선 규칙이 여전히 우선이다. 주제 근거는 '무엇을 담을지(내용·각도)'를 조준하고, 시그니처·골격은 '어떻게 쓸지(어투)'를 지배한다. 둘이 충돌하면 시그니처·골격이 이긴다.",
+].join("\n");

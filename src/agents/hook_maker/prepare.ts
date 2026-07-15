@@ -3,7 +3,7 @@
 import type { Supa } from "../../pipeline/runState.js";
 import type { JsonSchema } from "../../llm/types.js";
 import { getSelectedStagePayload, getToneProfile } from "../../pipeline/context.js";
-import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM, HOOK_PERSONA_DIRECTIVE } from "./schema.js";
+import { HOOK_MAKER_SCHEMA, HOOK_MAKER_SYSTEM, HOOK_PERSONA_DIRECTIVE, HOOK_TOPIC_CONTEXT_DIRECTIVE } from "./schema.js";
 import { loadApprovedInsights, appendLearnedInsights, type LearnedInsight } from "../shared/approvedInsights.js";
 import { loadActiveTitleStyle, appendTitleStyle, loadActiveTitleOwnerRules, appendTitleOwnerRules } from "../shared/styleProfile.js";
 import { gatherTitleReferences, type ExternalTitleRef } from "./externalRefs.js";
@@ -11,6 +11,9 @@ import { gatherTitleReferences, type ExternalTitleRef } from "./externalRefs.js"
 export interface HookMakerInput {
   topic: string;
   target_persona?: string; // 주제 payload에 실린 시청 대상 한 줄 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
+  topic_reason?: string; // 주제의 reason(왜/각도·evidence 내러티브) — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
+  audience_need?: string; // 시청자가 지금 뭘 원하는지 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
+  audience_level?: string; // 입문/초급/중급/고급 — 있을 때만(없으면 input 바이트 불변 → 픽스처 해시 보존)
   tone: { id: string; version: number; components: unknown } | null;
   reference_titles: { id: string; text: string }[]; // 과거 완성 제목(corpus) — 톤 레퍼런스
   learned_insights?: LearnedInsight[]; // 환류(슬라이스 4): 승인된 'title' 학습 규칙 — 있을 때만(픽스처 해시 보존)
@@ -19,10 +22,15 @@ export interface HookMakerInput {
 }
 
 export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ system: string; input: HookMakerInput; schema: JsonSchema }> {
-  const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { title?: string; target_persona?: string } | null;
+  const topicPayload = await getSelectedStagePayload(supa, runId, "topic") as { title?: string; target_persona?: string; reason?: string; audience_need?: string; audience_level?: string } | null;
   const topic = topicPayload?.title;
   if (!topic) throw new Error("훅이 prep: 선택된 주제를 찾을 수 없음(topic 단계 미선택?).");
   const targetPersona = topicPayload?.target_persona; // target_persona: 같은 payload에서 함께 추출(별도 조회 없음 — 구다리 패턴)
+  // 주제 맥락 번들 — 같은 payload에서 함께 추출(별도 조회 없음). 셋 다 있을 때만 input/system에 실린다(없으면 바이트 불변 → 픽스처 해시 보존).
+  const topicReason = topicPayload?.reason;
+  const audienceNeed = topicPayload?.audience_need;
+  const audienceLevel = topicPayload?.audience_level;
+  const hasTopicContext = Boolean(topicReason || audienceNeed || audienceLevel);
 
   const tone = await getToneProfile(supa);
 
@@ -57,14 +65,23 @@ export async function prepareHookMaker(supa: Supa, runId: string): Promise<{ sys
   // target_persona 조건부 주입 — persona 있을 때만 input에 실음. 없으면 키 자체를 넣지 않음(바이트 불변 → 픽스처 해시 보존).
   if (targetPersona) input.target_persona = targetPersona;
 
+  // 주제 맥락 조건부 주입 — 각 필드 있을 때만 input에 실음. 셋 다 없으면 어떤 키도 안 넣음(바이트 불변 → 픽스처 해시 보존).
+  if (topicReason) input.topic_reason = topicReason;
+  if (audienceNeed) input.audience_need = audienceNeed;
+  if (audienceLevel) input.audience_level = audienceLevel;
+
   // owner-feedback-rules step2 — 김짠부 직접 피드백 최우선 규칙(active title_owner_rules). system에만 주입(input 오염 금지).
   //   ★ 활성 규칙 없으면(현재 상태) system 바이트 불변 → promptHash·hook_maker 픽스처 보존. 활성화 후에만 변동.
   const ownerRules = await loadActiveTitleOwnerRules(supa);
 
-  // system 합성: learned_insights → title 스타일 사양 → owner 최우선 규칙 순(insights·style 뒤, persona 앞). 다 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
+  // 주제 맥락 지시는 base(HOOK_MAKER_SYSTEM) 직후에 붙여 learned/style/owner/persona 체인보다 안쪽에 둔다.
+  //   ★ 셋 다 없으면 base = HOOK_MAKER_SYSTEM 그대로(바이트 불변 → promptHash 보존). 말투·시그니처·스타일·owner·persona가 더 바깥(뒤)에 남아 우선순위 유지.
+  const base = hasTopicContext ? HOOK_MAKER_SYSTEM + "\n" + HOOK_TOPIC_CONTEXT_DIRECTIVE : HOOK_MAKER_SYSTEM;
+
+  // system 합성: (base) → learned_insights → title 스타일 사양 → owner 최우선 규칙 순(insights·style 뒤, persona 앞). 다 없으면 HOOK_MAKER_SYSTEM 그대로(바이트 불변).
   //   ★ 기존 appendTitleStyle/appendLearnedInsights 체인은 그대로 두고, owner 규칙을 맨 바깥 학습 래퍼로 감싼 뒤 persona 있을 때만 지시문을 붙인다.
   let system = appendTitleOwnerRules(
-    appendTitleStyle(appendLearnedInsights(HOOK_MAKER_SYSTEM, learned), titleStyle),
+    appendTitleStyle(appendLearnedInsights(base, learned), titleStyle),
     ownerRules,
   );
   if (targetPersona) system += "\n" + HOOK_PERSONA_DIRECTIVE;
