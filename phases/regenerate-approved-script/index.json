@@ -1,0 +1,26 @@
+{
+  "project": "produce script",
+  "phase": "regenerate-approved-script",
+  "steps": [
+    {
+      "step": 0,
+      "name": "reopen-transition-backend",
+      "status": "completed",
+      "started_at": "2026-07-15T10:44:27+0900",
+      "team_round": "1/1 PASS",
+      "summary": "approved→scripting 재오픈 백엔드. 마이그 20260705120035_approved_reopen_script.sql(additive·on conflict do nothing·멱등·⚠라이브 DB 사람 직접 적용 필요) + enums.ts ALLOWED_TRANSITIONS.approved에 scripting 추가(published·aborted 병존, DB전이표 동기화) + scriptGate.ts reopenApprovedForScript(approved에서만·bumpRework 미적용·transitionRun 후 {state:'scripting'}) + topicRun.ts regenerateApprovedScriptAction(requireOwner→reopen→auditLog(script_regenerate)→scripting이면 run/script.requested 재발행) + auditLog.ts AuditAction에 script_regenerate 추가 + tests/reopenApprovedScript.test.ts(전이표 동기화 잠금·approved에서만 전이·비-approved throw). runScriptStage·scriptStageFn·짠펜 무변경. UI 미변경(step1). AC: typecheck0/test 1419→1423/build0(stale .next로 첫 빌드 실패→rm -rf .next 후 성공). ⚠마이그 라이브 적용은 사람 몫(AC 아님).",
+      "completed_at": "2026-07-15T10:54:40+0900"
+    },
+    {
+      "step": 1,
+      "name": "reopen-ui-button",
+      "status": "completed",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-15T10:54:40+0900",
+      "summary": "approved 런 화면 '대본 다시 생성' 버튼. 신규 클라 컴포넌트 RegenerateApprovedScriptButton.tsx(RegenerateOnboardingButton 미러: useTransition·useRouter·LiveRefresh 폴링·POLL_LIMIT 180s·error·timedOut) + window.confirm 정직 카피(승인 해제·검수 회귀 명시)+취소 시 no-op → regenerateApprovedScriptAction(runId)(step0) 호출 → router.refresh. 버튼 아래 보조 안내 한 줄. TRUS 3색 토큰만(bg-trus-yellow/text-trus-black/text-trus-white/50·이모지/그림자/그라데이션 없음). page.tsx: import 1줄 + approved/published 분기 SegmentList 아래 {runState==='approved' && <RegenerateApprovedScriptButton/>} 1줄(published 미노출=백엔드 approved 한정 재오픈과 정합). 순수 로직 없어 src/lib 헬퍼·테스트 미생성(ponytail). 백엔드(actions·scriptGate·enums·runScriptStage·짠펜) 무변경. AC: typecheck0/test 1423(무증감·UI만)/build0. 실클릭→재생성은 라이브(claude-p·마이그 20260705120035 라이브 적용 필요)라 머지 후 사용자 확인. 떠돌이 fixture 0.",
+      "completed_at": "2026-07-15T11:03:22+0900"
+    }
+  ],
+  "created_at": "2026-07-15T10:44:27+0900",
+  "completed_at": "2026-07-15T11:03:22+0900"
+}

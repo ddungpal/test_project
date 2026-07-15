@@ -48,7 +48,7 @@ export const ALLOWED_TRANSITIONS: Record<RunState, readonly RunState[]> = {
   scripting: ["script_ready", "researching", "paused_soft_cap", "aborted"], // freshness rework
   script_ready: ["script_review", "aborted"],
   script_review: ["approved", "scripting", "aborted"],
-  approved: ["published", "aborted"],
+  approved: ["published", "scripting", "aborted"], // scripting: 승인된 런의 대본 재생성 재오픈(마이그 20260705120035)
   published: [],
   paused_soft_cap: ["researching", "scripting", "aborted"], // 사람 승인 후 재개
   aborted: [],

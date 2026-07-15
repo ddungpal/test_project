@@ -15,7 +15,7 @@ import { enterResearchReview, approveResearch, listEscalatedFacts, type Research
 import { selectResearchScope, regenerateResearchScope, type ManualClaim, type ManualConcept } from "../../pipeline/researchScope.js";
 import { reenterResearch } from "../../pipeline/researchReentry.js";
 import { withStageRuntime } from "../../pipeline/stageRuntime.js";
-import { enterScriptReview, approveScript, requestScriptRework, reviewScript } from "../../pipeline/scriptGate.js";
+import { enterScriptReview, approveScript, requestScriptRework, reviewScript, reopenApprovedForScript } from "../../pipeline/scriptGate.js";
 import { abortRun, resumeFromSoftCap } from "../../pipeline/runGuards.js";
 import { requireOwner } from "./auth.js";
 import { auditLog } from "../../lib/observability/auditLog.js";
@@ -435,6 +435,17 @@ export async function requestScriptReworkAction(runId: string): Promise<{ state:
   await auditLog(supa, { actorId: ownerId, action: "script_rework", targetType: "run", targetId: runId });
   // rework는 script_review→scripting으로 되돌린다 — 짠펜 재실행 이벤트를 반드시 재발행한다.
   //   (이유: scriptStageFn은 run/script.requested로만 실행. 안 쏘면 scripting 상태로 멈춰 "작성 중" 안내만 뜬 채 stuck.)
+  if (res.state === "scripting") await inngest.send({ name: "run/script.requested", data: { runId } });
+  return res;
+}
+
+// 승인된 런의 대본 재생성(오너 의도 액션) — approved→scripting 재오픈 후 짠펜 재실행.
+//   bumpRework 미적용(오너 의도). 재오픈 후 반드시 이벤트 재발행 — 안 쏘면 scripting에서 stuck(requestScriptReworkAction과 동일 함정).
+export async function regenerateApprovedScriptAction(runId: string): Promise<{ state: string }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+  const res = await reopenApprovedForScript(supa, runId);
+  await auditLog(supa, { actorId: ownerId, action: "script_regenerate", targetType: "run", targetId: runId });
   if (res.state === "scripting") await inngest.send({ name: "run/script.requested", data: { runId } });
   return res;
 }

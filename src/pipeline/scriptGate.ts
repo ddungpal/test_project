@@ -31,6 +31,18 @@ export async function requestScriptRework(supa: Supa, runId: string): Promise<{ 
 }
 
 /**
+ * 승인된 런을 대본 재생성용으로 재오픈 — approved → scripting.
+ *   ★ 오너의 의도적 재생성이므로 bumpRework(자동 rework 루프 가드)는 걸지 않는다
+ *     — max_rework 소진으로 오너 액션이 막히면 안 된다. freshness 재-rework 내부 가드는 runScriptStage가 자체 처리.
+ */
+export async function reopenApprovedForScript(supa: Supa, runId: string): Promise<{ state: "scripting" }> {
+  const run = await getRun(supa, runId);
+  if (run.state !== "approved") throw new Error(`대본 재생성 재오픈은 'approved'에서만(현재 '${run.state}').`);
+  await transitionRun(supa, runId, "approved", "scripting");
+  return { state: "scripting" };
+}
+
+/**
  * 단일 최종 검수(autoflow §D) — 완성 스크립트 검수 중 '보류(pending)' fact에 사람 최종확인을 박는다.
  *   거버넌스 불변식: 보류 fact의 human_approved=true 확정은 오직 이 사람 액션에서만(자동/암묵 승인 금지).
  *

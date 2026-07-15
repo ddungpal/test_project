@@ -34,6 +34,7 @@ import { ResearchPhaseStepper } from "@/components/ResearchPhaseStepper";
 import { SourceLinks } from "@/components/SourceLinks";
 import { RequestOnboardingButton } from "@/components/RequestOnboardingButton";
 import { RegenerateOnboardingButton } from "@/components/RegenerateOnboardingButton";
+import { RegenerateApprovedScriptButton } from "@/components/RegenerateApprovedScriptButton";
 import { OnboardingQuiz } from "@/components/OnboardingQuiz";
 import { isOnboardingArcStale } from "@/lib/onboarding/staleness";
 import { getSelectedStagePayload } from "@/pipeline/context";
@@ -361,6 +362,7 @@ function ScriptSection({
           {STATE_LABEL[runState]} — 대본 완성 ({segments.length}단락).
         </p>
         <SegmentList runId={runId} segments={segments} editable={runState === "approved"} runState={runState} />
+        {runState === "approved" && <RegenerateApprovedScriptButton runId={runId} />}
       </div>
     );
   } else {
