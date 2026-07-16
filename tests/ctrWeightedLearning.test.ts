@@ -296,4 +296,53 @@ describe("loadAbResultsFromDb (DB 학습 소스 매핑)", () => {
     expect(await loadAbResultsFromDb(supa, "thumbnail")).toEqual([]);
     expect(await loadAbResultsFromDb(supa, "title")).toEqual([]);
   });
+
+  // ── 학습 윈도우 d7 우선·d1 폴백(learning-window-d7) ──
+
+  it("d7 우선: 한 영상에 d1·d7 둘 다 있으면 랭킹 CTR·views 는 d7 값을 쓴다", async () => {
+    const supa = makeMockSupa({
+      ab_variants: [
+        { content_id: "c1", component_type: "thumbnail", variant: "A", payload: { copy_main: "A" }, ctr_pct: 30, is_winner: true },
+        { content_id: "c1", component_type: "thumbnail", variant: "B", payload: { copy_main: "B" }, ctr_pct: 20, is_winner: false },
+      ],
+      contents: [{ id: "c1", title: "t", topic: "주제" }],
+      performance_metrics: [
+        { content_id: "c1", ctr: 3.0, views: 1000, metric_window: "d1", ab_variant: "overall" },
+        { content_id: "c1", ctr: 5.0, views: 8000, metric_window: "d7", ab_variant: "overall" },
+      ],
+    });
+    const videos = await loadAbResultsFromDb(supa, "thumbnail");
+    expect(videos).toHaveLength(1);
+    // d7(=업로드 1주일 성과)이 video_ctr24h/video_views24h 필드에 실린다.
+    expect(videos[0]!.video_ctr24h).toBe(5.0);
+    expect(videos[0]!.video_views24h).toBe(8000);
+  });
+
+  it("d1 폴백: d7 행이 없고 d1 만 있으면 d1 값을 쓴다", async () => {
+    const supa = makeMockSupa({
+      ab_variants: [
+        { content_id: "c1", component_type: "thumbnail", variant: "A", payload: { copy_main: "A" }, ctr_pct: 30, is_winner: true },
+        { content_id: "c1", component_type: "thumbnail", variant: "B", payload: { copy_main: "B" }, ctr_pct: 20, is_winner: false },
+      ],
+      contents: [{ id: "c1", title: "t", topic: "주제" }],
+      performance_metrics: [{ content_id: "c1", ctr: 3.0, views: 1000, metric_window: "d1", ab_variant: "overall" }],
+    });
+    const videos = await loadAbResultsFromDb(supa, "thumbnail");
+    expect(videos[0]!.video_ctr24h).toBe(3.0);
+    expect(videos[0]!.video_views24h).toBe(1000);
+  });
+
+  it("둘 다 없으면 null(안전 강등 유지)", async () => {
+    const supa = makeMockSupa({
+      ab_variants: [
+        { content_id: "c1", component_type: "thumbnail", variant: "A", payload: { copy_main: "A" }, ctr_pct: 30, is_winner: true },
+        { content_id: "c1", component_type: "thumbnail", variant: "B", payload: { copy_main: "B" }, ctr_pct: 20, is_winner: false },
+      ],
+      contents: [{ id: "c1", title: "t", topic: "주제" }],
+      performance_metrics: [],
+    });
+    const videos = await loadAbResultsFromDb(supa, "thumbnail");
+    expect(videos[0]!.video_ctr24h).toBeNull();
+    expect(videos[0]!.video_views24h).toBeNull();
+  });
 });

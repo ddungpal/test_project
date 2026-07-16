@@ -1,6 +1,7 @@
-import { getCopyLearnVideos, getCopyStyleDrafts, getCorrections, getStructureProfiles, getAnalogyDrafts, getOwnerRulesDrafts } from "@/lib/dashboard/copyLearnView";
+import { getCopyLearnVideos, getCopyStyleDrafts, getCorrections, getStructureProfiles, getAnalogyDrafts, getOwnerRulesDrafts, getCtrInputVideos } from "@/lib/dashboard/copyLearnView";
 import { isDevBypass, requireOwnerPage } from "@/app/actions/auth";
 import { CopyLearningForm } from "@/components/CopyLearningForm";
+import { PerformanceInputForm } from "@/components/PerformanceInputForm";
 
 // 문구 학습 입력 화면(copy-learning-admin step2) — owner가 영상별 썸네일·제목 A/B + CTR(24h)를 입력→저장,
 //   재학습 트리거→draft 검수→component별 활성화. 서버 컴포넌트: 매 요청 최신 DB(insights/page.tsx 패턴).
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function CopyLearnPage() {
   await requireOwnerPage();
-  const [videos, drafts, corrections, structure, analogyDrafts, titleOwnerDrafts, thumbnailOwnerDrafts, devBypass] = await Promise.all([
+  const [videos, drafts, corrections, structure, analogyDrafts, titleOwnerDrafts, thumbnailOwnerDrafts, ctrVideos, devBypass] = await Promise.all([
     getCopyLearnVideos(),
     getCopyStyleDrafts(),
     getCorrections(),
@@ -16,6 +17,7 @@ export default async function CopyLearnPage() {
     getAnalogyDrafts(),
     getOwnerRulesDrafts("title_owner_rules"),
     getOwnerRulesDrafts("thumbnail_owner_rules"),
+    getCtrInputVideos(),
     isDevBypass(),
   ]);
 
@@ -34,6 +36,10 @@ export default async function CopyLearnPage() {
         영상별 썸네일·제목 A/B와 <b className="text-trus-white">CTR(24h)</b>을 입력하면, 재학습이 카피 스타일 초안을 만든다.
         검토 후 <b className="text-trus-white">직접 활성화</b>한 것만 다음 제작에 반영된다.
       </p>
+
+      <div className="mt-6">
+        <PerformanceInputForm videos={ctrVideos} />
+      </div>
 
       <CopyLearningForm videos={videos} drafts={drafts} corrections={corrections} structure={structure} analogyDrafts={analogyDrafts} titleOwnerDrafts={titleOwnerDrafts} thumbnailOwnerDrafts={thumbnailOwnerDrafts} />
     </main>

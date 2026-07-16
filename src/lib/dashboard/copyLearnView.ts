@@ -370,3 +370,56 @@ export async function getCopyLearnVideos(): Promise<CopyLearnVideo[]> {
     };
   });
 }
+
+// ── CTR(노출클릭률) 수동입력 화면용 발행 영상 목록(ctr-input-screen step2). ──
+//   getCopyLearnVideos 미러(admin client·upload_date desc). 단 youtube_video_id 있는 발행 영상만,
+//   perf 는 d7 overall(views=자동수집·ctr=수동입력) 만 읽는다. 학습 윈도우가 d7 이므로 표시도 d7 기준.
+
+export interface CtrInputVideo {
+  contentId: string;
+  title: string;
+  uploadDate: string | null;
+  d7Views: number | null; // 자동수집(YouTube API) d7 조회수
+  d7Ctr: number | null; // 수동입력된 노출클릭률(없으면 null)
+}
+
+/**
+ * youtube_video_id 있는 발행 영상 목록 + 각 영상의 d7 overall 성과(views·ctr)를 코드 조인.
+ *   업로드일 내림차순. title 은 인터페이스가 non-null 이라 로더에서 `?? ""` 로 보장.
+ */
+export async function getCtrInputVideos(): Promise<CtrInputVideo[]> {
+  const supa = createAdminClient();
+  const { data: contents, error } = await supa
+    .from("contents")
+    .select("id, title, upload_date")
+    .not("youtube_video_id", "is", null)
+    .order("upload_date", { ascending: false, nullsFirst: false });
+  if (error) throw new Error(`콘텐츠 조회 실패: ${error.message}`);
+
+  const ids = (contents ?? []).map((c) => c.id);
+  if (ids.length === 0) return [];
+
+  // performance_metrics d7 overall 코드 조인(ctr=수동입력·views=자동수집).
+  const { data: perfRows, error: perfErr } = await supa
+    .from("performance_metrics")
+    .select("content_id, ctr, views")
+    .in("content_id", ids)
+    .eq("metric_window", "d7")
+    .eq("ab_variant", "overall");
+  if (perfErr) throw new Error(`performance_metrics 조회 실패: ${perfErr.message}`);
+
+  const ctrById = new Map<string, number | null>();
+  const viewsById = new Map<string, number | null>();
+  for (const r of perfRows ?? []) {
+    ctrById.set(r.content_id, r.ctr);
+    viewsById.set(r.content_id, r.views);
+  }
+
+  return (contents ?? []).map((c) => ({
+    contentId: c.id,
+    title: c.title ?? "",
+    uploadDate: c.upload_date,
+    d7Views: viewsById.get(c.id) ?? null,
+    d7Ctr: ctrById.get(c.id) ?? null,
+  }));
+}

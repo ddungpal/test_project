@@ -41,16 +41,31 @@ export async function ingestPerformance(
     result.contents += 1;
 
     // 1) 종합 성과(performance_metrics) — 윈도우별 1행, ab_variant='overall'.
-    const metricRows: TablesInsert<"performance_metrics">[] = entry.metrics.map((m) => ({
-      content_id: contentId,
-      metric_window: m.window,
-      views: m.views ?? null,
-      ctr: m.ctr ?? null,
-      avg_view_pct: m.avg_view_pct ?? null,
-      traffic_source: m.traffic_source ?? null,
-      ab_variant: "overall",
-      recorded_at: nowIso,
-    }));
+    //   ★ 필드별 병합 upsert(전체 교체 아님). unique 키 (content_id, metric_window, 'overall') 한 행에
+    //     자동수집(Cron)은 {views, avg_view_pct}만·ctr=null 로, 수동입력은 {ctr}만 쓴다.
+    //     ctr = 노출클릭률%(YouTube Analytics 미제공 → 자동수집은 못 채움, Studio 보고 사람이 수동입력만 채움).
+    //     그냥 upsert 하면 나중 쓴 쪽이 상대 필드를 null 로 지운다(Cron 이 사람 CTR 을 매일 날림).
+    //     그래서 기존 overall 행을 먼저 조회해 `입력값 ?? 기존값 ?? null` 로 병합 → 서로 안 지운다.
+    //     `??`(nullish)라 입력이 null/undefined 면 기존값 보존(멱등: 같은 입력 재적재 시 값·행수 불변).
+    const { data: existingMetrics } = await supa
+      .from("performance_metrics")
+      .select("metric_window, views, ctr, avg_view_pct, traffic_source")
+      .eq("content_id", contentId)
+      .eq("ab_variant", "overall");
+    const prevByWindow = new Map((existingMetrics ?? []).map((r) => [r.metric_window, r]));
+    const metricRows: TablesInsert<"performance_metrics">[] = entry.metrics.map((m) => {
+      const prev = prevByWindow.get(m.window);
+      return {
+        content_id: contentId,
+        metric_window: m.window,
+        views: m.views ?? prev?.views ?? null,
+        ctr: m.ctr ?? prev?.ctr ?? null, // 노출클릭률% — 수동입력만 채움. 자동수집은 null → 기존 CTR 보존.
+        avg_view_pct: m.avg_view_pct ?? prev?.avg_view_pct ?? null,
+        traffic_source: m.traffic_source ?? prev?.traffic_source ?? null,
+        ab_variant: "overall",
+        recorded_at: nowIso,
+      };
+    });
     if (metricRows.length) {
       const { error } = await supa.from("performance_metrics").upsert(metricRows, { onConflict: "content_id,metric_window,ab_variant" });
       if (error) throw new Error(`performance_metrics upsert 실패(${ref}): ${error.message}`);

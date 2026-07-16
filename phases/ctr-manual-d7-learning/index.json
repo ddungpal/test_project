@@ -5,20 +5,31 @@
     {
       "step": 0,
       "name": "perf-metrics-field-merge",
-      "status": "pending",
-      "summary": ""
+      "status": "completed",
+      "summary": "ingestPerformance metricRows upsert를 행 전체교체→필드별 병합(입력값 ?? 기존행 ?? null)으로 전환. 기존 overall 행을 조회해 병합하여 자동수집(views)·수동입력(ctr)이 서로 null로 안 지우게 함. onConflict 키 유지·ctr 정체 주석 명시. 신규 tests/performanceMerge.test.ts(인메모리 supa 스텁으로 ingestPerformance 실호출·4케이스: 자동→수동/수동→자동/멱등/하위호환). typecheck0/test 1454→1458/build0.",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-16T14:41:33+0900",
+      "completed_at": "2026-07-16T14:50:03+0900"
     },
     {
       "step": 1,
       "name": "learning-window-d7",
-      "status": "pending",
-      "summary": ""
+      "status": "completed",
+      "summary": "loadAbResultsFromDb(abLearnSource.ts)의 영상 랭킹 CTR·조회수 조회를 d1 단일(.eq metric_window d1)에서 d1·d7 둘 다(.in [d1,d7])로 넓히고, 영상별로 d7 우선·없으면 d1 폴백·둘 다 없으면 null로 맵 구성(ctrById/viewsById). '1주일 성과로 학습' 취지에 맞춤. select에 metric_window 포함, 주석 d1→d7우선으로 갱신(ctr=수동입력 노출클릭률·views=자동수집 정체 명시). ab/single 경로·judgeComponent·ctrWeightedScore 바이트 무변경. 회귀 3케이스(d7우선 5.0/d1폴백 3.0/둘다없음 null) ctrWeightedLearning.test.ts에 추가. typecheck0/test 1458→1461/build0·마이그0·의존성0.",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-16T14:50:03+0900",
+      "completed_at": "2026-07-16T14:57:45+0900"
     },
     {
       "step": 2,
       "name": "ctr-input-screen",
-      "status": "pending",
-      "summary": ""
+      "status": "completed",
+      "summary": "CTR은 YouTube API 미제공(Studio '도달범위' 전용)이라 owner가 앱에 직접 입력하는 화면을 /copy-learn에 추가. 신규 순수헬퍼 src/lib/performance/ctrInput.ts(parseCtrInput: 0<ctr≤100 검증·한글에러·통과시 number / formatCtr: null→'—'·'3.8%'), 로더 getCtrInputVideos(copyLearnView.ts — youtube_video_id non-null·upload_date desc·perf d7 overall views·ctr 조인·title ?? ''), 서버액션 submitVideoCtr(copyLearn.ts — requireOwner→parseCtrInput→ingestPerformance에 metrics:[{window:'d7',ctr}]만 전달=step0 병합이 자동수집 views 보존→auditLog best-effort→revalidatePath), 클라이언트 컴포넌트 PerformanceInputForm.tsx(영상별 CTR 입력·프리필·인라인 성공/실패·순수로직 import만·TRUS 3색), page.tsx 섹션 배선. auditLog AuditAction 유니온에 video_ctr_submitted 추가(typecheck 필수 배선). 신규 tests/ctrInput.test.ts 15케이스(경계 0/100/100.1/150/-1·빈값·비숫자·formatCtr). 마이그0·새컬럼0·의존성0. typecheck0/test 1461→1476/build0(/copy-learn 포함). 떠돌이 fixtures 0.",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-16T14:57:45+0900",
+      "completed_at": "2026-07-16T15:07:01+0900"
     }
-  ]
+  ],
+  "created_at": "2026-07-16T14:41:33+0900",
+  "completed_at": "2026-07-16T15:07:01+0900"
 }
