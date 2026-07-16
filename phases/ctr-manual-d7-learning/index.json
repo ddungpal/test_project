@@ -23,8 +23,11 @@
     {
       "step": 2,
       "name": "ctr-input-screen",
-      "status": "pending",
-      "summary": ""
+      "status": "completed",
+      "summary": "CTR은 YouTube API 미제공(Studio '도달범위' 전용)이라 owner가 앱에 직접 입력하는 화면을 /copy-learn에 추가. 신규 순수헬퍼 src/lib/performance/ctrInput.ts(parseCtrInput: 0<ctr≤100 검증·한글에러·통과시 number / formatCtr: null→'—'·'3.8%'), 로더 getCtrInputVideos(copyLearnView.ts — youtube_video_id non-null·upload_date desc·perf d7 overall views·ctr 조인·title ?? ''), 서버액션 submitVideoCtr(copyLearn.ts — requireOwner→parseCtrInput→ingestPerformance에 metrics:[{window:'d7',ctr}]만 전달=step0 병합이 자동수집 views 보존→auditLog best-effort→revalidatePath), 클라이언트 컴포넌트 PerformanceInputForm.tsx(영상별 CTR 입력·프리필·인라인 성공/실패·순수로직 import만·TRUS 3색), page.tsx 섹션 배선. auditLog AuditAction 유니온에 video_ctr_submitted 추가(typecheck 필수 배선). 신규 tests/ctrInput.test.ts 15케이스(경계 0/100/100.1/150/-1·빈값·비숫자·formatCtr). 마이그0·새컬럼0·의존성0. typecheck0/test 1461→1476/build0(/copy-learn 포함). 떠돌이 fixtures 0.",
+      "team_round": "1/3 PASS",
+      "started_at": "2026-07-16T14:57:45+0900",
+      "completed_at": "2026-07-16T15:07:01+0900"
     }
   ],
   "created_at": "2026-07-16T14:41:33+0900"
