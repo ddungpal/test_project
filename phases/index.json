@@ -418,11 +418,11 @@
     {
       "dir": "ctr-manual-d7-learning",
       "status": "running",
-      "progress": "0/3",
-      "running_step": "0 (perf-metrics-field-merge)",
+      "progress": "1/3",
+      "running_step": "1 (learning-window-d7)",
       "attempt": 1,
-      "elapsed_seconds": 480,
-      "heartbeat_at": "2026-07-16T14:49:33+0900"
+      "elapsed_seconds": 420,
+      "heartbeat_at": "2026-07-16T14:57:03+0900"
     }
   ]
 }

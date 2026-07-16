@@ -1,7 +1,8 @@
 // A/B 학습 입력을 DB에서 구성(copy-learning-admin step1) — 앱 내 재학습(styleRelearnSweep)이
 //   JSON(loadAbResults) 대신 관리자 입력이 반영된 DB를 읽게 한다. "관리자 입력 → 재학습" 루프의 입력단.
 //   ★ 출력은 learn-ab-style 의 AbResultVideo[] 형태(기존 학습 본체 재사용·드리프트 차단).
-//   ★ CTR(24h)은 performance_metrics(d1·overall)에서 영상별 1건 — ctrWeightedScore 의 video_ctr24h 로 주입된다.
+//   ★ CTR·조회수는 performance_metrics(overall)에서 영상별 1건 — d7(업로드 1주일 성과) 우선·없으면 d1 폴백 —
+//     ctrWeightedScore 의 video_ctr24h/video_views24h 로 주입된다. (CTR 은 노출클릭률·수동입력, views 는 자동수집.)
 //
 //   세 경로:
 //     1) thumbnail / title-A/B: ab_variants(해당 component) + 영상 CTR → 영상 내 A/B 비교(mode 미지정=ab).
@@ -56,7 +57,7 @@ interface AbVariantRow {
 
 /**
  * DB에서 학습 입력(AbResultVideo[])을 구성한다.
- *   - ab_variants(component) + performance_metrics(d1·overall) + contents 를 코드 조인.
+ *   - ab_variants(component) + performance_metrics(d7 우선·없으면 d1 폴백·overall) + contents 를 코드 조인.
  *   - 영상당 variant ≥2: A/B 경로(영상 내 비교). variant 1개(제목): 영상간 CTR 순위로 single 합성.
  *   - CTR(24h) 없는 영상은 video_ctr24h=null(ctrWeightedScore 에서 ab 모드는 verdictWeight 동일·하위호환).
  */
@@ -83,19 +84,27 @@ export async function loadAbResultsFromDb(supa: Supa, component: AbComponent): P
   const labelById = new Map<string, string>();
   for (const c of contents ?? []) labelById.set(c.id, c.topic ?? c.title ?? c.id);
 
-  // performance_metrics d1 overall CTR·조회수 — 영상별 1건.
+  // performance_metrics overall CTR·조회수 — 영상별 1건. d7·d1 둘 다 조회해 영상별로 d7 우선 선택.
   const { data: perf, error: pe } = await supa
     .from("performance_metrics")
-    .select("content_id, ctr, views")
+    .select("content_id, ctr, views, metric_window")
     .in("content_id", contentIds)
-    .eq("metric_window", "d1")
+    .in("metric_window", ["d1", "d7"])
     .eq("ab_variant", "overall");
   if (pe) throw new Error(`performance_metrics 조회 실패: ${pe.message}`);
+
+  // 1주일(d7) 성과 우선 — 업로드 7일 미만·구자료는 d1 폴백. CTR 은 수동입력(노출클릭률), views 는 자동수집.
+  const d7 = new Map<string, { ctr: number | null; views: number | null }>();
+  const d1 = new Map<string, { ctr: number | null; views: number | null }>();
+  for (const r of (perf ?? []) as { content_id: string; ctr: number | null; views: number | null; metric_window: string }[]) {
+    (r.metric_window === "d7" ? d7 : d1).set(r.content_id, { ctr: r.ctr, views: r.views });
+  }
   const ctrById = new Map<string, number | null>();
   const viewsById = new Map<string, number | null>();
-  for (const r of perf ?? []) {
-    ctrById.set(r.content_id, r.ctr);
-    viewsById.set(r.content_id, r.views);
+  for (const cid of contentIds) {
+    const pick = d7.get(cid) ?? d1.get(cid) ?? { ctr: null, views: null };
+    ctrById.set(cid, pick.ctr);
+    viewsById.set(cid, pick.views);
   }
 
   // 영상별로 variant 묶기.
