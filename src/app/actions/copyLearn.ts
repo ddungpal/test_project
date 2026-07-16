@@ -5,7 +5,10 @@
 //   ★ requireOwner() 후에만 service-role 사용(RLS 우회 노출·감사필드 위조 차단).
 //   ★ 순수 매핑(mapCopyAbToRows·mapCtr24hToMetricRow)은 copyLearnMap.ts(server-only 무관)에 — 테스트가 DB 없이 import.
 
+import { revalidatePath } from "next/cache";
 import { createAdminClient } from "../../lib/supabase/admin.js";
+import { ingestPerformance } from "../../performance/ingest.js";
+import { parseCtrInput } from "../../lib/performance/ctrInput.js";
 import { styleRelearnSweep } from "../../performance/styleRelearn.js";
 import { analogyRelearnSweep } from "../../performance/analogyRelearn.js";
 import { submitOwnerFeedbackSweep } from "../../performance/ownerRulesRelearn.js";
@@ -85,6 +88,37 @@ export async function saveCopyAbResults(input: CopyAbInput): Promise<{ savedThum
   await auditLog(supa, { actorId: ownerId, action: "copy_ab_saved", targetType: "content", targetId: contentId, detail });
 
   return { savedThumbnail, savedTitle, decided: pick !== null };
+}
+
+/**
+ * 영상별 d7 노출클릭률(CTR) 수동입력 저장(ctr-input-screen step2). requireOwner 후 service-role.
+ *   - YouTube Analytics 가 CTR 을 안 주므로 Studio '도달범위' 보고 사람이 입력한 값을 d7 overall 행에 저장.
+ *   - ★ ctr 만 넘긴다(views·avg_view_pct·ab 미제공) → ingestPerformance 의 필드별 병합이 자동수집 views 를 보존.
+ *   - parseCtrInput 검증(0<ctr≤100·빈값/비숫자 거부) 실패 시 그 한글 에러로 throw.
+ *   - auditLog('video_ctr_submitted') best-effort. 저장 후 /copy-learn revalidate.
+ */
+export async function submitVideoCtr(contentId: string, ctrRaw: string): Promise<{ saved: boolean }> {
+  const ownerId = await requireOwner();
+  const supa = createAdminClient();
+
+  const parsed = parseCtrInput(ctrRaw);
+  if (!parsed.ok) throw new Error(parsed.error);
+  const ctr = parsed.ctr;
+
+  // views 등은 넘기지 않음 — step0 필드별 병합이 자동수집 값(views·avg_view_pct)을 보존한다.
+  await ingestPerformance(supa, [{ content_id: contentId, metrics: [{ window: "d7", ctr }] }], loadConfig().ab);
+
+  // auditLog 는 best-effort(던지지 않음).
+  await auditLog(supa, {
+    actorId: ownerId,
+    action: "video_ctr_submitted",
+    targetType: "content",
+    targetId: contentId,
+    detail: { ctr },
+  });
+
+  revalidatePath("/copy-learn");
+  return { saved: true };
 }
 
 /** 교정쌍 payload(썸네일 {copy_main,copy_boxes} | 제목 {title})에 실제 카피가 하나라도 있는지. */

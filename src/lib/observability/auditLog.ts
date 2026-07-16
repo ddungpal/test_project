@@ -20,6 +20,7 @@ export type AuditAction =
   | "insight_status"
   | "insight_edited"
   | "copy_ab_saved"
+  | "video_ctr_submitted"
   | "copy_relearn_requested"
   | "channel_title_relearn_requested"
   | "analogy_relearn_requested"

@@ -29,3 +29,29 @@
 [Joy] typecheck exit0 test 1461 전부 그린 build도 exit0 나왔어
 [Joy] 마이그0 의존성0 범위밖 파일 안 건드림 통과야 맥스 굿 🎉
 [리드] 좋아, VERDICT PASS 확인. step 1 완료 — index.json completed + summary 갱신했어. 학습 윈도우가 d7 우선으로 바뀌었으니 다음 step(ctr 수동입력 화면)은 하네스가 이어서.
+
+=== Step 2: ctr-input-screen ===
+[리드] 마지막 step이야. CTR은 YouTube API가 안 주니까 김짠부가 Studio '도달범위' 보고 직접 입력하는 화면을 /copy-learn에 붙이는 거. 백엔드(순수헬퍼·로더·서버액션·테스트)랑 프론트(입력 컴포넌트·페이지 배선)로 나뉘고 파일이 안 겹쳐서 맥스·에스더 동시에 갈게.
+[리드] 맥스는 ctrInput.ts 순수헬퍼 + getCtrInputVideos 로더 + submitVideoCtr 서버액션 + ctrInput.test.ts. 에스더는 PerformanceInputForm.tsx 컴포넌트 + page.tsx 섹션 배선. 인터페이스는 spec에 다 박혀 있으니 이름만 맞추면 링크돼.
+[Max] step2 백엔드 시작할게. CTR 순수헬퍼(parseCtrInput/formatCtr) + getCtrInputVideos 로더 + submitVideoCtr 서버액션 + 테스트. 프론트는 에스더 거니까 안 건드려.
+
+[Esther] 음 이제 CTR 입력 화면 프론트 시작할게. copy-learn 페이지랑 CopyLearningForm 패턴 다 봤어. 기존 톤(검정/노랑/흰 3색, 직각, 그림자 없음) 그대로 따라가면 돼서 새로 만들 컴포넌트는 최소로 갈 거야.
+
+[Esther] ctrInput.ts 확인했어. parseCtrInput은 0<ctr<=100 검증하고 에러 메시지도 한글로 잘 돼있네. 클라이언트 사전검증도 이거 재사용해서 저장 전에 바로 막을게. 컴포넌트엔 순수 로직 절대 안 넣어(테스트 import 사각지대 때문에). 지금 PerformanceInputForm 만든다.
+[Max] 넷 다 만들었어. 순수헬퍼는 src/lib/performance/ctrInput.ts에 두고 컴포넌트는 안 건드렸어. 서버액션은 ingestPerformance에 ctr만 넘겨서 step0 병합이 자동수집 views 보존하게 했고. 이제 typecheck랑 test 돌려볼게.
+
+[Esther] 다 됐어. PerformanceInputForm 새로 만들고 copy-learn 페이지에 성과 입력 섹션 넣었어. CopyLearningForm 바로 위에 뒀는데, CTR 먼저 입력하고 그 아래에서 재학습 돌리는 흐름이라 위쪽이 자연스러워서 그렇게 했어. Max 로더/액션도 이미 들어와 있어서 typecheck 완전 깨끗하게 통과했어. 색은 검정/노랑/흰 3색만, 직각, 그림자 없이 기존 톤 그대로 맞췄어. 이건 자신 있어!
+[Max] AC 다 돌렸어. typecheck exit 0, test exit 0(1461→1476, 신규 15개), build도 exit 0. auditLog 유니온에 video_ctr_submitted 하나 추가했어(안 넣으면 typecheck가 막혀서). 에스더 프론트랑 이미 링크돼서 build까지 깨끗하게 통과했네. 떠돌이 fixtures 없어. 놓친 거 있으면 말해줘.
+[리드] 둘 다 고마워. 내가 AC 직접 재실행했어 — typecheck 0, test 0(1476 passed), build 0(/copy-learn 포함). git도 명세 파일만 바뀌었고 떠돌이 없어. 조이, 독립 검수 부탁해. 특히 submitVideoCtr이 ingestPerformance에 ctr만 넘겨 step0 병합으로 views 안 지우는지, 순수로직이 컴포넌트 아니라 lib에 있는지, parseCtrInput 경계(0/100)가 맞는지 봐줘.
+
+[Joy] 조이 들어왔어 마지막 step 검수 시작할게 diff랑 신규파일 다 정독했어
+[Joy] 오 핵심부터 봤는데 submitVideoCtr이 metrics d7 ctr만 넘기고 views는 안 넘겨 ingest의 m.views ?? prev.views 병합이 자동수집 views 그대로 보존해 이게 제일 걱정이었는데 딱 맞췄네 굿
+[Joy] parseCtrInput 경계도 완벽해 0 거부 100 통과 100.1/150/-1 거부 빈값 비숫자 다 막고 순수로직은 lib에 있고 컴포넌트는 import만 해 rules.md 사각지대 잘 피했어
+[Joy] 이제 AC 직접 돌려볼게 typecheck test build 순서로
+
+[Joy] AC 셋 다 내가 직접 돌렸어 typecheck exit0 test exit0 1476 passed(신규 ctrInput 15개 포함) build exit0 copy-learn 라우트도 깨끗하게 나와
+[Joy] 로더도 봤어 d7 overall만 읽고 youtube_video_id non-null upload_date desc title은 ?? ""로 non-null 보장 owner게이트도 requireOwner 먼저 하고 service-role auditLog는 best-effort라 안 던져 다 좋아
+[Joy] 마이그0 새컬럼0 의존성0 떠돌이 fixtures도 없고 untracked 3개 다 명세된 산출물이야 통과야 맥스 에스더 둘 다 굿굿
+[Joy] 딱 하나 리드한테 넘길 거 step2 index.json이 아직 pending에 summary 비어있어 커밋 전이라 판정은 안 막지만 완료 처리할 때 completed+summary 채워줘
+[Joy] VERDICT PASS 🎉
+[리드] 좋아, VERDICT PASS 확인(센티넬 1개·AC 셋 다 exit0). step 2 완료 — index.json completed + summary 갱신했어. 이걸로 ctr-manual-d7-learning phase 3 step 다 끝났다. CTR 수동입력→d7 랭킹 학습 루프 완성. 다들 고생했어!
