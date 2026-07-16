@@ -1,0 +1,24 @@
+{
+  "project": "produce script",
+  "phase": "ctr-manual-d7-learning",
+  "steps": [
+    {
+      "step": 0,
+      "name": "perf-metrics-field-merge",
+      "status": "pending",
+      "summary": ""
+    },
+    {
+      "step": 1,
+      "name": "learning-window-d7",
+      "status": "pending",
+      "summary": ""
+    },
+    {
+      "step": 2,
+      "name": "ctr-input-screen",
+      "status": "pending",
+      "summary": ""
+    }
+  ]
+}
