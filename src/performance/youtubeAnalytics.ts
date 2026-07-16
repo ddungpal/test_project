@@ -61,7 +61,9 @@ export const youtubeAnalyticsBackend: YtBackend = {
       ids: "channel==MINE",
       startDate: req.startDate,
       endDate: req.endDate,
-      metrics: "views,averageViewPercentage,impressions,impressionsClickThroughRate",
+      // ⚠️ impressions·impressionsClickThroughRate 는 Analytics API 미제공(Studio 전용) → 400. 지원 지표만 요청.
+      // 노출·CTR 은 API로 못 가져온다 → ctr=null, A/B/노출클릭률 학습은 수동입력 경로 유지.
+      metrics: "views,averageViewPercentage",
       filters: `video==${req.videoId}`,
     });
     const res = await fetch(`${ANALYTICS_API}?${params}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -73,10 +75,9 @@ export const youtubeAnalyticsBackend: YtBackend = {
       const i = cols.indexOf(name);
       return i >= 0 && typeof row[i] === "number" ? (row[i] as number) : null;
     };
-    const ctrRatio = get("impressionsClickThroughRate"); // 0~1
     return {
       views: get("views"),
-      ctr: ctrRatio !== null ? Number((ctrRatio * 100).toFixed(2)) : null,
+      ctr: null, // API 미제공 — 노출클릭률은 Studio 수동입력으로만.
       avgViewPct: get("averageViewPercentage"),
     };
   },
